@@ -611,7 +611,7 @@
             const unita = selectedOption.getAttribute('data-unita') || 'L';
             
             // Aggiorna l'unità di misura
-            unitSpan.textContent = unita + '/ha';
+            unitSpan.textContent = unita;
             
             // Mostra info prodotto
             productInfo.innerHTML = `
@@ -800,7 +800,7 @@
                 <div class="summary-item">
                     <span class="summary-label">Data Esecuzione:</span>
                     <span class="summary-value">${new Date(dataEsecuzione).toLocaleDateString('it-IT')}</span>
-                </div>git 
+                </div>
             `;
         }
         
@@ -903,6 +903,9 @@
         let createdCount = 0;
         let errors = [];
         
+        // Ottieni il CSRF token
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        
         function createNext(index) {
             if (index >= trattamentiDaCreare.length) {
                 // Tutti i trattamenti processati
@@ -914,6 +917,7 @@
                     window.location.href = '{% url "trattamenti" %}';
                 } else {
                     alert(`${createdCount} trattamenti creati, ${errors.length} errori:\n${errors.join('\n')}`);
+                    console.error('Errori dettagliati:', errors);
                 }
                 return;
             }
@@ -921,41 +925,60 @@
             const trattamento = trattamentiDaCreare[index];
             const formData = new FormData();
             
+            // Aggiungi CSRF token
+            formData.append('csrfmiddlewaretoken', csrfToken);
+            
             // Prepara FormData
-            formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
             Object.keys(trattamento).forEach(key => {
                 if (key === 'terreni_selezionati') {
                     trattamento[key].forEach(terrenoId => {
                         formData.append('terreni_selezionati', terrenoId);
                     });
-                } else if (trattamento[key] !== null) {
+                } else if (trattamento[key] !== null && trattamento[key] !== undefined) {
                     formData.append(key, trattamento[key]);
                 }
             });
             
+            console.log(`Invio trattamento ${index + 1}:`, trattamento);
+            
             // Invio richiesta
             fetch('/api/trattamenti/', {
                 method: 'POST',
-                body: formData
+                body: formData,
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                },
+                credentials: 'same-origin'
             })
-            .then(response => response.json())
+            .then(response => {
+                console.log(`Risposta trattamento ${index + 1}:`, response.status, response.statusText);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                return response.json();
+            })
             .then(data => {
+                console.log(`Dati risposta trattamento ${index + 1}:`, data);
+                
                 if (data.success) {
                     createdCount++;
-                    console.log(`Trattamento ${index + 1} creato con successo: ID ${data.trattamento_id}`);
+                    console.log(`✅ Trattamento ${index + 1} creato con successo: ID ${data.trattamento_id}`);
                 } else {
                     errors.push(`Trattamento ${index + 1}: ${data.error || 'Errore sconosciuto'}`);
+                    console.error(`❌ Errore trattamento ${index + 1}:`, data.error);
                 }
                 
                 // Procedi al prossimo
-                setTimeout(() => createNext(index + 1), 200); // Piccola pausa tra le richieste
+                setTimeout(() => createNext(index + 1), 500); // Pausa più lunga
             })
             .catch(error => {
-                console.error(`Errore trattamento ${index + 1}:`, error);
-                errors.push(`Trattamento ${index + 1}: Errore di connessione`);
+                console.error(`💥 Errore completo trattamento ${index + 1}:`, error);
+                errors.push(`Trattamento ${index + 1}: ${error.message}`);
                 
                 // Procedi al prossimo
-                setTimeout(() => createNext(index + 1), 200);
+                setTimeout(() => createNext(index + 1), 500);
             });
         }
         
@@ -1015,6 +1038,49 @@ ${selectedData.terreni ? selectedData.terreni.map(t => `- ${t.nome} (${t.superfi
         }
     }
     
+    // Test dell'API trattamenti
+    function testApiTrattamenti() {
+        console.log('🧪 Test API Trattamenti...');
+        
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const formData = new FormData();
+        
+        // Dati di test semplici
+        formData.append('csrfmiddlewaretoken', csrfToken);
+        formData.append('livello_applicazione', 'cliente');
+        formData.append('cliente', '1'); // Primo cliente
+        formData.append('prodotti_data', JSON.stringify([{
+            prodotto_id: '1',
+            quantita: '1.0'
+        }]));
+        formData.append('note', 'Test API da JavaScript');
+        
+        fetch('/api/trattamenti/', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': csrfToken,
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => {
+            console.log('Risposta test API:', response.status, response.statusText);
+            return response.text();
+        })
+        .then(text => {
+            console.log('Contenuto risposta:', text);
+            try {
+                const data = JSON.parse(text);
+                console.log('Dati JSON:', data);
+            } catch (e) {
+                console.error('Risposta non è JSON valido:', e);
+            }
+        })
+        .catch(error => {
+            console.error('Errore test API:', error);
+        });
+    }
+    
     // Funzione per forzare il passaggio al prossimo step (solo per debug)
     function forceNextStep() {
         console.log('🚀 FORCE NEXT STEP');
@@ -1045,10 +1111,11 @@ ${selectedData.terreni ? selectedData.terreni.map(t => `- ${t.nome} (${t.superfi
         // Aggiungi shortcuts per debug (rimuovi in produzione)
         window.debugState = debugCurrentState;
         window.forceNext = forceNextStep;
+        window.testApi = testApiTrattamenti;
         window.selectedData = selectedData;
         
         console.log('Form pronto con selezioni multiple!');
-        console.log('💡 Per debug usa: debugState() o forceNext()');
+        console.log('💡 Per debug usa: debugState(), forceNext(), o testApi()');
     });
 </script>
 {% endblock %}
