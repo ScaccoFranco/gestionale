@@ -1,0 +1,395 @@
+<!-- Modal Nuovo Trattamento -->
+<div class="modal fade" id="nuovoTrattamentoModal" tabindex="-1" aria-labelledby="nuovoTrattamentoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="nuovoTrattamentoModalLabel">
+                    <i class="fas fa-plus-circle"></i> Aggiungi un nuovo trattamento
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="nuovoTrattamentoForm">
+                    {% csrf_token %}
+                    
+                    <!-- Sezione Dettagli -->
+                    <div class="mb-4">
+                        <h6 class="mb-3 text-muted">Dettagli</h6>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="cliente" class="form-label">Cliente *</label>
+                                <select class="form-select" id="cliente" name="cliente" required onchange="loadCascine()">
+                                    <option value="">Seleziona</option>
+                                    {% for cliente in clienti %}
+                                    <option value="{{ cliente.id }}">{{ cliente.nome }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="cascina" class="form-label">Cascina</label>
+                                <select class="form-select" id="cascina" name="cascina" onchange="loadTerreni()">
+                                    <option value="">Seleziona</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="terreni" class="form-label">Terreni</label>
+                                <select class="form-select" id="terreni" name="terreni" multiple>
+                                    <option value="">Seleziona</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="form-row mt-3">
+                            <div class="form-group">
+                                <label for="contoterzista_info" class="form-label">Contoterzista Assegnato</label>
+                                <div class="form-control bg-light" id="contoterzista_info" style="cursor: not-allowed;">
+                                    <span class="text-muted" id="contoterzista_text">Seleziona prima una cascina</span>
+                                </div>
+                                <small class="form-text text-muted">Il contoterzista viene assegnato automaticamente in base alla cascina selezionata</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="data_esecuzione" class="form-label">Data Esecuzione Prevista</label>
+                                <input type="date" class="form-control" id="data_esecuzione" name="data_esecuzione_prevista">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Sezione Terreni (dinamica) -->
+                    <div class="mb-4" id="terreniSection" style="display: none;">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="text-muted mb-0">Terreni Selezionati</h6>
+                            <button type="button" class="btn-add-section" onclick="aggiungiTerrenoManuale()">
+                                <i class="fas fa-plus"></i> Aggiungi Terreni
+                            </button>
+                        </div>
+                        <div id="terreniList"></div>
+                    </div>
+                    
+                    <!-- Sezione Prodotti -->
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="text-muted mb-0">Prodotti</h6>
+                            <button type="button" class="btn-add-section" onclick="aggiungiProdotto()">
+                                <i class="fas fa-plus"></i> Aggiungi Prodotti
+                            </button>
+                        </div>
+                        <div id="prodottiList">
+                            <!-- I prodotti verranno aggiunti dinamicamente qui -->
+                        </div>
+                    </div>
+                    
+                    <!-- Note -->
+                    <div class="mb-4">
+                        <label for="note" class="form-label">Note</label>
+                        <textarea class="form-control" id="note" name="note" rows="3" placeholder="Note aggiuntive per il trattamento..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-primary" onclick="salvaTrattamento()">Aggiungi</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .prodotto-item, .terreno-item {
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        padding: 1rem;
+        margin-bottom: 0.5rem;
+        position: relative;
+    }
+    
+    .prodotto-item .btn-remove, .terreno-item .btn-remove {
+        position: absolute;
+        top: 0.5rem;
+        right: 0.5rem;
+        background: none;
+        border: none;
+        color: #dc3545;
+        font-size: 1rem;
+        cursor: pointer;
+    }
+    
+    .form-row-inline {
+        display: flex;
+        gap: 1rem;
+        align-items: end;
+    }
+    
+    .superficie-info {
+        background-color: #e3f2fd;
+        border: 1px solid #bbdefb;
+        border-radius: 4px;
+        padding: 0.5rem;
+        font-size: 0.9rem;
+        color: #1976d2;
+    }
+</style>
+
+<script>
+    let prodottoCounter = 0;
+    let terreniData = [];
+    
+    // Carica le cascine in base al cliente selezionato
+    function loadCascine() {
+        const clienteId = document.getElementById('cliente').value;
+        const cascinaSelect = document.getElementById('cascina');
+        const terreniSelect = document.getElementById('terreni');
+        
+        // Reset cascine e terreni
+        cascinaSelect.innerHTML = '<option value="">Seleziona</option>';
+        terreniSelect.innerHTML = '<option value="">Seleziona</option>';
+        
+        if (clienteId) {
+            fetch(`/api/cascine/${clienteId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    data.forEach(cascina => {
+                        const option = document.createElement('option');
+                        option.value = cascina.id;
+                        option.textContent = cascina.nome;
+                        cascinaSelect.appendChild(option);
+                    });
+                });
+        }
+    }
+    
+    // Carica i terreni in base alla cascina selezionata
+    function loadTerreni() {
+        const cascinaId = document.getElementById('cascina').value;
+        const terreniSelect = document.getElementById('terreni');
+        const contoterzistaTex t = document.getElementById('contoterzista_text');
+        
+        terreniSelect.innerHTML = '<option value="">Seleziona</option>';
+        
+        if (cascinaId) {
+            fetch(`/api/terreni/${cascinaId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    terreniData = data;
+                    data.forEach(terreno => {
+                        const option = document.createElement('option');
+                        option.value = terreno.id;
+                        option.textContent = `${terreno.nome} (${terreno.superficie} ha)`;
+                        terreniSelect.appendChild(option);
+                    });
+                });
+                
+            // Carica info contoterzista della cascina
+            fetch(`/api/cascina/${cascinaId}/contoterzista/`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.contoterzista) {
+                        contoterzistaTex t.textContent = data.contoterzista.nome;
+                        contoterzistaTex t.className = 'text-success';
+                    } else {
+                        contoterzistaTex t.textContent = 'Nessun contoterzista assegnato a questa cascina';
+                        contoterzistaTex t.className = 'text-warning';
+                    }
+                })
+                .catch(() => {
+                    contoterzistaTex t.textContent = 'Errore nel caricamento del contoterzista';
+                    contoterzistaTex t.className = 'text-danger';
+                });
+        } else {
+            contoterzistaTex t.textContent = 'Seleziona prima una cascina';
+            contoterzistaTex t.className = 'text-muted';
+        }
+    }
+    
+    function aggiungiProdotto() {
+        prodottoCounter++;
+        const prodottiList = document.getElementById('prodottiList');
+        
+        const prodottoDiv = document.createElement('div');
+        prodottoDiv.className = 'prodotto-item';
+        prodottoDiv.id = `prodotto-${prodottoCounter}`;
+        
+        prodottoDiv.innerHTML = `
+            <button type="button" class="btn-remove" onclick="rimuoviProdotto(${prodottoCounter})">
+                <i class="fas fa-times"></i>
+            </button>
+            <div class="form-row-inline">
+                <div class="form-group" style="flex: 2;">
+                    <label class="form-label">Prodotto</label>
+                    <select class="form-select" name="prodotto_${prodottoCounter}" required>
+                        <option value="">Seleziona</option>
+                        {% for prodotto in prodotti %}
+                        <option value="{{ prodotto.id }}">{{ prodotto.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label class="form-label">Quantità</label>
+                    <input type="number" class="form-control" name="quantita_${prodottoCounter}" step="0.001" min="0.001" required>
+                </div>
+            </div>
+        `;
+        
+        prodottiList.appendChild(prodottoDiv);
+    }
+    
+    function rimuoviProdotto(id) {
+        document.getElementById(`prodotto-${id}`).remove();
+    }
+    
+    function aggiungiTerrenoManuale() {
+        const terreniSection = document.getElementById('terreniSection');
+        const terreniList = document.getElementById('terreniList');
+        
+        // Mostra la sezione se nascosta
+        terreniSection.style.display = 'block';
+        
+        const terreniSelect = document.getElementById('terreni');
+        const selectedOptions = Array.from(terreniSelect.selectedOptions);
+        
+        if (selectedOptions.length === 0) {
+            alert('Seleziona almeno un terreno dalla lista');
+            return;
+        }
+        
+        selectedOptions.forEach(option => {
+            if (!document.getElementById(`terreno-selected-${option.value}`)) {
+                const terrenoData = terreniData.find(t => t.id == option.value);
+                
+                const terrenoDiv = document.createElement('div');
+                terrenoDiv.className = 'terreno-item';
+                terrenoDiv.id = `terreno-selected-${option.value}`;
+                
+                terrenoDiv.innerHTML = `
+                    <button type="button" class="btn-remove" onclick="rimuoviTerreno(${option.value})">
+                        <i class="fas fa-times"></i>
+                    </button>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>${terrenoData.nome}</strong>
+                            <small class="text-muted d-block">Cascina: ${terrenoData.cascina_nome}</small>
+                        </div>
+                        <div class="superficie-info">
+                            <i class="fas fa-map"></i> ${terrenoData.superficie} ha
+                        </div>
+                    </div>
+                    <input type="hidden" name="terreni_selezionati" value="${option.value}">
+                `;
+                
+                terreniList.appendChild(terrenoDiv);
+            }
+        });
+        
+        // Reset della selezione
+        terreniSelect.selectedIndex = -1;
+    }
+    
+    function rimuoviTerreno(id) {
+        document.getElementById(`terreno-selected-${id}`).remove();
+        
+        // Nascondi la sezione se non ci sono più terreni
+        const terreniList = document.getElementById('terreniList');
+        if (terreniList.children.length === 0) {
+            document.getElementById('terreniSection').style.display = 'none';
+        }
+    }
+    
+    function salvaTrattamento() {
+        const form = document.getElementById('nuovoTrattamentoForm');
+        const formData = new FormData(form);
+        
+        // Validazione base
+        const cliente = formData.get('cliente');
+        
+        if (!cliente) {
+            alert('Cliente è obbligatorio');
+            return;
+        }
+        
+        // Determina il livello di applicazione
+        const cascina = formData.get('cascina');
+        const terreniSelezionati = formData.getAll('terreni_selezionati');
+        
+        let livelloApplicazione = 'cliente';
+        if (terreniSelezionati.length > 0) {
+            livelloApplicazione = 'terreno';
+            formData.set('livello_applicazione', 'terreno');
+        } else if (cascina) {
+            livelloApplicazione = 'cascina';
+            formData.set('livello_applicazione', 'cascina');
+        } else {
+            formData.set('livello_applicazione', 'cliente');
+        }
+        
+        // Raccogli i dati dei prodotti
+        const prodotti = [];
+        for (let i = 1; i <= prodottoCounter; i++) {
+            const prodottoSelect = document.querySelector(`select[name="prodotto_${i}"]`);
+            const quantitaInput = document.querySelector(`input[name="quantita_${i}"]`);
+            
+            if (prodottoSelect && quantitaInput && prodottoSelect.value && quantitaInput.value) {
+                prodotti.push({
+                    prodotto_id: prodottoSelect.value,
+                    quantita: quantitaInput.value
+                });
+            }
+        }
+        
+        if (prodotti.length === 0) {
+            alert('Aggiungi almeno un prodotto al trattamento');
+            return;
+        }
+        
+        formData.set('prodotti_data', JSON.stringify(prodotti));
+        
+        // Invia la richiesta
+        fetch('/api/trattamenti/', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Chiudi il modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('nuovoTrattamentoModal'));
+                modal.hide();
+                
+                // Reset del form
+                resetForm();
+                
+                // Ricarica la pagina o aggiorna la lista
+                location.reload();
+            } else {
+                alert('Errore nel salvare il trattamento: ' + (data.error || 'Errore sconosciuto'));
+            }
+        })
+        .catch(error => {
+            console.error('Errore:', error);
+            alert('Errore di connessione');
+        });
+    }
+    
+    function resetForm() {
+        document.getElementById('nuovoTrattamentoForm').reset();
+        document.getElementById('prodottiList').innerHTML = '';
+        document.getElementById('terreniList').innerHTML = '';
+        document.getElementById('terreniSection').style.display = 'none';
+        prodottoCounter = 0;
+        terreniData = [];
+    }
+    
+    // Reset del form quando il modal viene chiuso
+    document.getElementById('nuovoTrattamentoModal').addEventListener('hidden.bs.modal', function () {
+        resetForm();
+    });
+    
+    // Aggiungi un prodotto di default quando si apre il modal
+    document.getElementById('nuovoTrattamentoModal').addEventListener('shown.bs.modal', function () {
+        if (document.getElementById('prodottiList').children.length === 0) {
+            aggiungiProdotto();
+        }
+    });
+</script>
