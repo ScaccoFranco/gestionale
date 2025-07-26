@@ -1,5 +1,1058 @@
 {% extends 'base.html' %}
 
+
+{% block extra_js %}
+<script>
+    // === VARIABILI GLOBALI ===
+    let currentStep = 1;
+    let maxSteps = 4;
+    let selectedTarget = null;
+    let products = [];
+    let productCounter = 0;
+    
+    // Variabili globali per selezioni multiple
+    let selectedData = {
+        clienti: [],
+        cascine: [],
+        terreni: [],
+        contoterzisti: []
+    };
+    
+    // Debug per aiutare lo sviluppo
+    console.log('Form inizializzato con clienti:', {{ clienti|length }});
+    console.log('Form inizializzato con prodotti:', {{ prodotti|length }});
+    
+    // === TARGET SELECTION ===
+    function selectTarget(target) {
+        selectedTarget = target;
+        console.log('Target selezionato:', target);
+        
+        // Update selection cards
+        document.querySelectorAll('.selection-card').forEach(card => {
+            card.classList.remove('selected');
+        });
+        event.currentTarget.classList.add('selected');
+        
+        // Show appropriate form
+        document.querySelectorAll('.target-form').forEach(form => {
+            form.style.display = 'none';
+        });
+        document.getElementById(target + '-selection').style.display = 'block';
+        
+        // Reset contoterzista info e selezioni
+        document.getElementById('contoterzista-info').classList.add('hidden');
+        resetSelections();
+    }
+    
+    function resetSelections() {
+        selectedData = {
+            clienti: [],
+            cascine: [],
+            terreni: [],
+            contoterzisti: []
+        };
+        
+        // Reset UI
+        document.querySelectorAll('.selected-summary').forEach(summary => {
+            summary.style.display = 'none';
+        });
+        
+        // Reset selection cards
+        document.querySelectorAll('.cliente-card, .cascina-card, .terreno-card').forEach(card => {
+            card.classList.remove('selected');
+            card.removeAttribute('data-selection-number');
+        });
+    }
+    
+    // === GESTIONE CLIENTI MULTIPLI ===
+    function toggleCliente(clienteId, cardElement) {
+        console.log('Toggle cliente:', clienteId);
+        
+        const clienteIndex = selectedData.clienti.findIndex(c => c.id === clienteId);
+        const clienteName = cardElement.querySelector('.selection-title').textContent;
+        
+        if (clienteIndex >= 0) {
+            // Rimuovi dalla selezione
+            selectedData.clienti.splice(clienteIndex, 1);
+            cardElement.classList.remove('selected');
+            cardElement.removeAttribute('data-selection-number');
+        } else {
+            // Aggiungi alla selezione
+            selectedData.clienti.push({
+                id: clienteId,
+                nome: clienteName
+            });
+            cardElement.classList.add('selected');
+        }
+        
+        // Aggiorna i numeri di selezione
+        updateSelectionNumbers('.cliente-card');
+        
+        // Aggiorna il riepilogo
+        updateClientiSummary();
+        
+        // Aggiorna info contoterzista
+        updateContoterzastaForMultipleClients();
+        
+        console.log('Clienti selezionati:', selectedData.clienti);
+    }
+    
+    function updateClientiSummary() {
+        const summary = document.getElementById('clienti-selected-summary');
+        const list = document.getElementById('clienti-selected-list');
+        
+        if (selectedData.clienti.length === 0) {
+            summary.style.display = 'none';
+            return;
+        }
+        
+        summary.style.display = 'block';
+        list.innerHTML = '';
+        
+        selectedData.clienti.forEach((cliente, index) => {
+            const item = document.createElement('div');
+            item.className = 'selected-item';
+            item.innerHTML = `
+                <div class="selected-item-info">
+                    <div class="selected-item-name">${cliente.nome}</div>
+                    <div class="selected-item-details">Tutte le cascine e terreni</div>
+                </div>
+                <button type="button" class="selected-item-remove" onclick="removeSelectedCliente(${cliente.id})">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            list.appendChild(item);
+        });
+    }
+    
+    function removeSelectedCliente(clienteId) {
+        // Trova e deseleziona la card
+        const card = document.querySelector(`[data-cliente-id="${clienteId}"]`);
+        if (card) {
+            toggleCliente(clienteId, card);
+        }
+    }
+    
+    function updateContoterzastaForMultipleClients() {
+        if (selectedData.clienti.length === 0) {
+            document.getElementById('contoterzista-info').classList.add('hidden');
+        } else if (selectedData.clienti.length === 1) {
+            showContoterzastaInfo(`Contoterzista assegnato automaticamente per ${selectedData.clienti[0].nome}`);
+        } else {
+            showContoterzastaInfo(`Contoterzisti assegnati automaticamente per ${selectedData.clienti.length} aziende`);
+        }
+    }
+    
+    // === GESTIONE CASCINE MULTIPLE ===
+    function loadCascineForSelection() {
+        const clienteId = document.getElementById('cascina-cliente-select').value;
+        const cascineList = document.getElementById('cascine-list');
+        const container = document.getElementById('cascine-selection-container');
+        
+        console.log('Caricamento cascine per cliente:', clienteId);
+        
+        // Reset
+        cascineList.innerHTML = '';
+        container.style.display = 'none';
+        selectedData.cascine = [];
+        updateCascineSummary();
+        
+        if (clienteId) {
+            // Mostra loading
+            cascineList.innerHTML = '<div class="text-center p-3">Caricamento cascine...</div>';
+            container.style.display = 'block';
+            
+            fetch(`/api/cascine/${clienteId}/`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Cascine caricate:', data);
+                    cascineList.innerHTML = '';
+                    
+                    if (data.length === 0) {
+                        cascineList.innerHTML = '<div class="alert alert-warning">Nessuna cascina trovata per questa azienda.</div>';
+                        return;
+                    }
+                    
+                    data.forEach(cascina => {
+                        const cascinaCard = document.createElement('div');
+                        cascinaCard.className = 'selection-card cascina-card';
+                        cascinaCard.setAttribute('data-cascina-id', cascina.id);
+                        cascinaCard.onclick = () => toggleCascina(cascina.id, cascinaCard, cascina);
+                        cascinaCard.innerHTML = `
+                            <div class="selection-icon">
+                                <i class="fas fa-home"></i>
+                            </div>
+                            <div class="selection-title">${cascina.nome}</div>
+                            <div class="selection-description">
+                                ${cascina.superficie_totale ? cascina.superficie_totale.toFixed(2) + ' ha' : 'Superficie non specificata'}
+                                ${cascina.contoterzista ? '<br><small>Contoterzista: ' + cascina.contoterzista + '</small>' : ''}
+                            </div>
+                        `;
+                        cascineList.appendChild(cascinaCard);
+                    });
+                })
+                .catch(error => {
+                    console.error('Errore nel caricamento cascine:', error);
+                    cascineList.innerHTML = '<div class="alert alert-danger">Errore nel caricamento delle cascine. Riprova.</div>';
+                });
+        }
+    }
+    
+    function toggleCascina(cascinaId, cardElement, cascinaData) {
+        console.log('Toggle cascina:', cascinaId, cascinaData);
+        
+        const cascinaIndex = selectedData.cascine.findIndex(c => c.id === cascinaId);
+        
+        if (cascinaIndex >= 0) {
+            // Rimuovi dalla selezione
+            selectedData.cascine.splice(cascinaIndex, 1);
+            cardElement.classList.remove('selected');
+            cardElement.removeAttribute('data-selection-number');
+        } else {
+            // Aggiungi alla selezione
+            selectedData.cascine.push({
+                id: cascinaId,
+                nome: cascinaData.nome,
+                superficie_totale: cascinaData.superficie_totale,
+                contoterzista: cascinaData.contoterzista,
+                cliente_id: document.getElementById('cascina-cliente-select').value
+            });
+            cardElement.classList.add('selected');
+        }
+        
+        // Aggiorna i numeri di selezione
+        updateSelectionNumbers('.cascina-card');
+        
+        // Aggiorna il riepilogo
+        updateCascineSummary();
+        
+        // Aggiorna info contoterzista
+        updateContoterzastaForMultipleCascine();
+        
+        console.log('Cascine selezionate:', selectedData.cascine);
+    }
+    
+    function updateCascineSummary() {
+        const summary = document.getElementById('cascine-selected-summary');
+        const list = document.getElementById('cascine-selected-list');
+        
+        if (selectedData.cascine.length === 0) {
+            summary.style.display = 'none';
+            return;
+        }
+        
+        summary.style.display = 'block';
+        list.innerHTML = '';
+        
+        selectedData.cascine.forEach((cascina, index) => {
+            const item = document.createElement('div');
+            item.className = 'selected-item';
+            item.innerHTML = `
+                <div class="selected-item-info">
+                    <div class="selected-item-name">${cascina.nome}</div>
+                    <div class="selected-item-details">
+                        ${cascina.superficie_totale ? cascina.superficie_totale.toFixed(2) + ' ha' : 'Superficie non specificata'}
+                        ${cascina.contoterzista ? ' • ' + cascina.contoterzista : ' • Nessun contoterzista'}
+                    </div>
+                </div>
+                <button type="button" class="selected-item-remove" onclick="removeSelectedCascina(${cascina.id})">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            list.appendChild(item);
+        });
+    }
+    
+    function removeSelectedCascina(cascinaId) {
+        // Trova e deseleziona la card
+        const card = document.querySelector(`[data-cascina-id="${cascinaId}"]`);
+        if (card) {
+            const cascinaData = selectedData.cascine.find(c => c.id === cascinaId);
+            if (cascinaData) {
+                toggleCascina(cascinaId, card, cascinaData);
+            }
+        }
+    }
+    
+    function updateContoterzastaForMultipleCascine() {
+        if (selectedData.cascine.length === 0) {
+            document.getElementById('contoterzista-info').classList.add('hidden');
+        } else {
+            const contoterzisti = [...new Set(selectedData.cascine.map(c => c.contoterzista).filter(Boolean))];
+            if (contoterzisti.length === 0) {
+                showContoterzastaInfo('Nessun contoterzista assegnato alle cascine selezionate');
+            } else if (contoterzisti.length === 1) {
+                showContoterzastaInfo(`Contoterzista: ${contoterzisti[0]}`);
+            } else {
+                showContoterzastaInfo(`${contoterzisti.length} contoterzisti coinvolti: ${contoterzisti.join(', ')}`);
+            }
+        }
+    }
+    
+    // === GESTIONE TERRENI MULTIPLI ===
+    function loadCascineForTerreni() {
+        const clienteId = document.getElementById('terreno-cliente-select').value;
+        const cascinaSelect = document.getElementById('terreno-cascina-select');
+        
+        console.log('Caricamento cascine per terreni, cliente:', clienteId);
+        
+        cascinaSelect.innerHTML = '<option value="">Caricamento...</option>';
+        
+        // Reset terreni
+        selectedData.terreni = [];
+        updateTerreniSummary();
+        document.getElementById('terreni-selection-container').style.display = 'none';
+        
+        if (clienteId) {
+            fetch(`/api/cascine/${clienteId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Cascine caricate per terreni:', data);
+                    cascinaSelect.innerHTML = '<option value="">Seleziona una cascina...</option>';
+                    data.forEach(cascina => {
+                        const option = document.createElement('option');
+                        option.value = cascina.id;
+                        option.textContent = cascina.nome;
+                        cascinaSelect.appendChild(option);
+                    });
+                })
+                .catch(error => {
+                    console.error('Errore nel caricamento cascine:', error);
+                    cascinaSelect.innerHTML = '<option value="">Errore nel caricamento</option>';
+                });
+        } else {
+            cascinaSelect.innerHTML = '<option value="">Prima seleziona un\'azienda...</option>';
+        }
+    }
+    
+    function loadTerreniForCascina() {
+        const cascinaId = document.getElementById('terreno-cascina-select').value;
+        const terreniList = document.getElementById('terreni-list');
+        const container = document.getElementById('terreni-selection-container');
+        
+        console.log('Caricamento terreni per cascina:', cascinaId);
+        
+        terreniList.innerHTML = '';
+        container.style.display = 'none';
+        selectedData.terreni = [];
+        updateTerreniSummary();
+        
+        if (cascinaId) {
+            terreniList.innerHTML = '<div class="text-center p-3">Caricamento terreni...</div>';
+            container.style.display = 'block';
+            
+            fetch(`/api/terreni/${cascinaId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Terreni caricati:', data);
+                    terreniList.innerHTML = '';
+                    
+                    if (data.length === 0) {
+                        terreniList.innerHTML = '<div class="alert alert-warning">Nessun terreno trovato per questa cascina.</div>';
+                        return;
+                    }
+                    
+                    data.forEach(terreno => {
+                        const terrenoCard = document.createElement('div');
+                        terrenoCard.className = 'selection-card terreno-card';
+                        terrenoCard.setAttribute('data-terreno-id', terreno.id);
+                        terrenoCard.onclick = () => toggleTerreno(terreno.id, terrenoCard, terreno);
+                        terrenoCard.innerHTML = `
+                            <div class="selection-icon">
+                                <i class="fas fa-seedling"></i>
+                            </div>
+                            <div class="selection-title">${terreno.nome}</div>
+                            <div class="selection-description">${terreno.superficie} ha</div>
+                        `;
+                        terreniList.appendChild(terrenoCard);
+                    });
+                    
+                    // Carica info contoterzista per la cascina
+                    loadContoterzastaForCascina(cascinaId);
+                })
+                .catch(error => {
+                    console.error('Errore nel caricamento terreni:', error);
+                    terreniList.innerHTML = '<div class="alert alert-danger">Errore nel caricamento dei terreni. Riprova.</div>';
+                });
+        }
+    }
+    
+    function toggleTerreno(terrenoId, cardElement, terrenoData) {
+        console.log('Toggle terreno:', terrenoId, terrenoData);
+        
+        const terrenoIndex = selectedData.terreni.findIndex(t => t.id === terrenoId);
+        
+        if (terrenoIndex >= 0) {
+            // Rimuovi dalla selezione
+            selectedData.terreni.splice(terrenoIndex, 1);
+            cardElement.classList.remove('selected');
+            cardElement.removeAttribute('data-selection-number');
+        } else {
+            // Aggiungi alla selezione
+            selectedData.terreni.push({
+                id: terrenoId,
+                nome: terrenoData.nome,
+                superficie: terrenoData.superficie,
+                cascina_nome: terrenoData.cascina_nome,
+                cascina_id: document.getElementById('terreno-cascina-select').value,
+                cliente_id: document.getElementById('terreno-cliente-select').value
+            });
+            cardElement.classList.add('selected');
+        }
+        
+        // Aggiorna i numeri di selezione
+        updateSelectionNumbers('.terreno-card');
+        
+        // Aggiorna il riepilogo
+        updateTerreniSummary();
+        
+        console.log('Terreni selezionati:', selectedData.terreni);
+    }
+    
+    function updateTerreniSummary() {
+        const summary = document.getElementById('terreni-selected-summary');
+        const list = document.getElementById('terreni-selected-list');
+        
+        if (selectedData.terreni.length === 0) {
+            summary.style.display = 'none';
+            return;
+        }
+        
+        summary.style.display = 'block';
+        list.innerHTML = '';
+        
+        const totalSuperficie = selectedData.terreni.reduce((sum, terreno) => sum + parseFloat(terreno.superficie), 0);
+        
+        selectedData.terreni.forEach((terreno, index) => {
+            const item = document.createElement('div');
+            item.className = 'selected-item';
+            item.innerHTML = `
+                <div class="selected-item-info">
+                    <div class="selected-item-name">${terreno.nome}</div>
+                    <div class="selected-item-details">
+                        ${terreno.superficie} ha • ${terreno.cascina_nome}
+                    </div>
+                </div>
+                <button type="button" class="selected-item-remove" onclick="removeSelectedTerreno(${terreno.id})">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            list.appendChild(item);
+        });
+        
+        // Aggiungi totale superficie
+        if (selectedData.terreni.length > 1) {
+            const totalItem = document.createElement('div');
+            totalItem.className = 'selected-item';
+            totalItem.style.background = '#e8f5e8';
+            totalItem.innerHTML = `
+                <div class="selected-item-info">
+                    <div class="selected-item-name"><strong>Totale Superficie</strong></div>
+                    <div class="selected-item-details">${totalSuperficie.toFixed(2)} ha</div>
+                </div>
+            `;
+            list.appendChild(totalItem);
+        }
+    }
+    
+    function removeSelectedTerreno(terrenoId) {
+        // Trova e deseleziona la card
+        const card = document.querySelector(`[data-terreno-id="${terrenoId}"]`);
+        if (card) {
+            const terrenoData = selectedData.terreni.find(t => t.id === terrenoId);
+            if (terrenoData) {
+                toggleTerreno(terrenoId, card, terrenoData);
+            }
+        }
+    }
+    
+    function loadContoterzastaForCascina(cascinaId) {
+        fetch(`/api/cascina/${cascinaId}/contoterzista/`)
+            .then(response => response.json())
+            .then(data => {
+                console.log('Contoterzista caricato:', data);
+                if (data.contoterzista) {
+                    showContoterzastaInfo(data.contoterzista.nome);
+                } else {
+                    showContoterzastaInfo('Nessun contoterzista assegnato');
+                }
+            })
+            .catch(error => {
+                console.error('Errore nel caricamento contoterzista:', error);
+                showContoterzastaInfo('Errore nel caricamento contoterzista');
+            });
+    }
+    
+    // === FUNZIONI DI UTILITÀ ===
+    function updateSelectionNumbers(selector) {
+        const selectedCards = document.querySelectorAll(`${selector}.selected`);
+        selectedCards.forEach((card, index) => {
+            card.setAttribute('data-selection-number', index + 1);
+        });
+    }
+    
+    function showContoterzastaInfo(info) {
+        const container = document.getElementById('contoterzista-details');
+        container.innerHTML = `
+            <div class="summary-item">
+                <span class="summary-label">Informazioni:</span>
+                <span class="summary-value">${info}</span>
+            </div>
+        `;
+        document.getElementById('contoterzista-info').classList.remove('hidden');
+    }
+    
+    // === NAVIGATION E STEPS ===
+    function nextStep() {
+        if (validateCurrentStep()) {
+            if (currentStep < maxSteps) {
+                currentStep++;
+                updateStepDisplay();
+                if (currentStep === 4) {
+                    generateSummary();
+                }
+            }
+        }
+    }
+    
+    function previousStep() {
+        if (currentStep > 1) {
+            currentStep--;
+            updateStepDisplay();
+        }
+    }
+    
+    function updateStepDisplay() {
+        // Update step indicator
+        document.querySelectorAll('.step').forEach((step, index) => {
+            const stepNum = index + 1;
+            step.classList.remove('active', 'completed');
+            
+            if (stepNum < currentStep) {
+                step.classList.add('completed');
+            } else if (stepNum === currentStep) {
+                step.classList.add('active');
+            }
+        });
+        
+        // Update form steps
+        document.querySelectorAll('.form-step').forEach((step, index) => {
+            step.classList.remove('active');
+            if (index + 1 === currentStep) {
+                step.classList.add('active');
+            }
+        });
+        
+        // Update navigation buttons
+        document.getElementById('prev-btn').style.display = currentStep > 1 ? 'inline-flex' : 'none';
+        document.getElementById('next-btn').style.display = currentStep < maxSteps ? 'inline-flex' : 'none';
+        document.getElementById('submit-btn').style.display = currentStep === maxSteps ? 'inline-flex' : 'none';
+    }
+    
+    // === GESTIONE PRODOTTI ===
+    function addProduct() {
+        productCounter++;
+        console.log('Aggiunta prodotto #', productCounter);
+        
+        const productItem = document.createElement('div');
+        productItem.className = 'product-item';
+        productItem.id = `product-${productCounter}`;
+        productItem.innerHTML = `
+            <button type="button" class="product-remove" onclick="removeProduct(${productCounter})">
+                <i class="fas fa-times"></i>
+            </button>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label required">Prodotto</label>
+                    <select class="form-select product-select" data-product-id="${productCounter}" onchange="updateProductInfo(${productCounter})">
+                        <option value="">Seleziona un prodotto...</option>
+                        {% for prodotto in prodotti %}
+                        <option value="{{ prodotto.id }}" data-unita="{{ prodotto.unita_misura }}">{{ prodotto.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label required">Quantità</label>
+                    <div class="input-group">
+                        <input type="number" class="form-control quantity-input" step="0.001" min="0.001" placeholder="0.000">
+                        <span class="input-group-text" id="unit-${productCounter}">-</span>
+                    </div>
+                </div>
+            </div>
+            <div class="product-info" id="product-info-${productCounter}">
+                <!-- Info prodotto verranno mostrate qui -->
+            </div>
+        `;
+        
+        document.getElementById('products-container').appendChild(productItem);
+    }
+    
+    function removeProduct(productId) {
+        console.log('Rimozione prodotto #', productId);
+        const element = document.getElementById(`product-${productId}`);
+        if (element) {
+            element.remove();
+        }
+        products = products.filter(p => p.id !== productId);
+    }
+    
+    function updateProductInfo(productId) {
+        const select = document.querySelector(`[data-product-id="${productId}"]`);
+        const productInfo = document.getElementById(`product-info-${productId}`);
+        const unitSpan = document.getElementById(`unit-${productId}`);
+        
+        if (select.value) {
+            const selectedOption = select.options[select.selectedIndex];
+            const unita = selectedOption.getAttribute('data-unita') || 'L';
+            
+            // Aggiorna l'unità di misura
+            unitSpan.textContent = unita + '/ha';
+            
+            // Mostra info prodotto
+            productInfo.innerHTML = `
+                <div class="mt-3 p-3 bg-light rounded">
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Unità di misura: ${unita}
+                    </small>
+                </div>
+            `;
+        } else {
+            unitSpan.textContent = '-';
+            productInfo.innerHTML = '';
+        }
+    }
+    
+    // === VALIDAZIONE ===
+    function validateCurrentStep() {
+        console.log('Validazione step:', currentStep);
+        console.log('Selected target:', selectedTarget);
+        console.log('Selected data:', selectedData);
+        
+        if (currentStep === 1) {
+            if (!selectedTarget) {
+                alert('Seleziona il tipo di target per il trattamento');
+                return false;
+            }
+            
+            if (selectedTarget === 'cliente') {
+                console.log('Validazione clienti:', selectedData.clienti);
+                if (!selectedData.clienti || selectedData.clienti.length === 0) {
+                    alert('Seleziona almeno un\'azienda');
+                    return false;
+                }
+                console.log('✅ Validazione clienti OK:', selectedData.clienti.length, 'clienti selezionati');
+            } else if (selectedTarget === 'cascina') {
+                const cliente = document.getElementById('cascina-cliente-select').value;
+                console.log('Validazione cascine - cliente:', cliente, 'cascine:', selectedData.cascine);
+                if (!cliente) {
+                    alert('Seleziona un\'azienda');
+                    return false;
+                }
+                if (!selectedData.cascine || selectedData.cascine.length === 0) {
+                    alert('Seleziona almeno una cascina');
+                    return false;
+                }
+                console.log('✅ Validazione cascine OK:', selectedData.cascine.length, 'cascine selezionate');
+            } else if (selectedTarget === 'terreno') {
+                const cliente = document.getElementById('terreno-cliente-select').value;
+                const cascina = document.getElementById('terreno-cascina-select').value;
+                console.log('Validazione terreni - cliente:', cliente, 'cascina:', cascina, 'terreni:', selectedData.terreni);
+                if (!cliente) {
+                    alert('Seleziona un\'azienda');
+                    return false;
+                }
+                if (!cascina) {
+                    alert('Seleziona una cascina');
+                    return false;
+                }
+                if (!selectedData.terreni || selectedData.terreni.length === 0) {
+                    alert('Seleziona almeno un terreno');
+                    return false;
+                }
+                console.log('✅ Validazione terreni OK:', selectedData.terreni.length, 'terreni selezionati');
+            }
+        } else if (currentStep === 2) {
+            const productItems = document.querySelectorAll('.product-item');
+            console.log('Validazione prodotti:', productItems.length, 'prodotti');
+            if (productItems.length === 0) {
+                alert('Aggiungi almeno un prodotto');
+                return false;
+            }
+            
+            let valid = true;
+            productItems.forEach((item, index) => {
+                const select = item.querySelector('.product-select');
+                const quantity = item.querySelector('.quantity-input');
+                
+                console.log(`Prodotto ${index + 1}:`, {
+                    selected: select.value,
+                    quantity: quantity.value
+                });
+                
+                if (!select.value || !quantity.value || quantity.value <= 0) {
+                    valid = false;
+                }
+            });
+            
+            if (!valid) {
+                alert('Completa tutti i campi dei prodotti con quantità valide');
+                return false;
+            }
+            console.log('✅ Validazione prodotti OK');
+        }
+        
+        console.log('✅ Validazione completata con successo');
+        return true;
+    }
+    
+    // === RIEPILOGO ===
+    function generateSummary() {
+        console.log('Generazione riepilogo...');
+        const summaryContainer = document.getElementById('final-summary');
+        let summaryHTML = '';
+        
+        // Target info
+        if (selectedTarget === 'cliente') {
+            summaryHTML += `
+                <div class="summary-item">
+                    <span class="summary-label">Target:</span>
+                    <span class="summary-value">Aziende Multiple (${selectedData.clienti.length})</span>
+                </div>
+            `;
+            selectedData.clienti.forEach(cliente => {
+                summaryHTML += `
+                    <div class="summary-item">
+                        <span class="summary-label">  • ${cliente.nome}:</span>
+                        <span class="summary-value">Tutte le cascine e terreni</span>
+                    </div>
+                `;
+            });
+        } else if (selectedTarget === 'cascina') {
+            const clienteSelect = document.getElementById('cascina-cliente-select');
+            const clienteNome = clienteSelect.options[clienteSelect.selectedIndex].text;
+            summaryHTML += `
+                <div class="summary-item">
+                    <span class="summary-label">Target:</span>
+                    <span class="summary-value">Cascine Multiple (${selectedData.cascine.length}) - ${clienteNome}</span>
+                </div>
+            `;
+            selectedData.cascine.forEach(cascina => {
+                summaryHTML += `
+                    <div class="summary-item">
+                        <span class="summary-label">  • ${cascina.nome}:</span>
+                        <span class="summary-value">${cascina.superficie_totale ? cascina.superficie_totale.toFixed(2) + ' ha' : 'N/A'}</span>
+                    </div>
+                `;
+            });
+        } else if (selectedTarget === 'terreno') {
+            const totalSuperficie = selectedData.terreni.reduce((sum, terreno) => sum + parseFloat(terreno.superficie), 0);
+            summaryHTML += `
+                <div class="summary-item">
+                    <span class="summary-label">Target:</span>
+                    <span class="summary-value">Terreni Multipli (${selectedData.terreni.length}) - ${totalSuperficie.toFixed(2)} ha</span>
+                </div>
+            `;
+            selectedData.terreni.forEach(terreno => {
+                summaryHTML += `
+                    <div class="summary-item">
+                        <span class="summary-label">  • ${terreno.nome}:</span>
+                        <span class="summary-value">${terreno.superficie} ha (${terreno.cascina_nome})</span>
+                    </div>
+                `;
+            });
+        }
+        
+        // Products info
+        const productItems = document.querySelectorAll('.product-item');
+        summaryHTML += `
+            <div class="summary-item">
+                <span class="summary-label">Prodotti:</span>
+                <span class="summary-value">${productItems.length} prodotti</span>
+            </div>
+        `;
+        
+        // Products details
+        productItems.forEach((item, index) => {
+            const select = item.querySelector('.product-select');
+            const quantity = item.querySelector('.quantity-input');
+            const unit = item.querySelector('.input-group-text');
+            
+            if (select.value && quantity.value) {
+                summaryHTML += `
+                    <div class="summary-item">
+                        <span class="summary-label">  • ${select.options[select.selectedIndex].text}:</span>
+                        <span class="summary-value">${quantity.value} ${unit.textContent}</span>
+                    </div>
+                `;
+            }
+        });
+        
+        // Date info
+        const dataEsecuzione = document.getElementById('data-esecuzione').value;
+        if (dataEsecuzione) {
+            summaryHTML += `
+                <div class="summary-item">
+                    <span class="summary-label">Data Esecuzione:</span>
+                    <span class="summary-value">${new Date(dataEsecuzione).toLocaleDateString('it-IT')}</span>
+                </div>git 
+            `;
+        }
+        
+        // Notes
+        const note = document.getElementById('note').value;
+        if (note) {
+            summaryHTML += `
+                <div class="summary-item">
+                    <span class="summary-label">Note:</span>
+                    <span class="summary-value">${note.substring(0, 100)}${note.length > 100 ? '...' : ''}</span>
+                </div>
+            `;
+        }
+        
+        summaryHTML += `
+            <div class="summary-item">
+                <span class="summary-label">Stato:</span>
+                <span class="summary-value">Programmato</span>
+            </div>
+        `;
+        
+        summaryContainer.innerHTML = summaryHTML;
+    }
+    
+    // === SUBMIT FORM ===
+    function submitForm() {
+        console.log('Invio form con selezioni multiple...');
+        if (!validateCurrentStep()) return;
+        
+        document.getElementById('loading').classList.add('show');
+        document.getElementById('submit-btn').disabled = true;
+        
+        // Preparazione dati prodotti
+        const productItems = document.querySelectorAll('.product-item');
+        const prodottiData = [];
+        productItems.forEach(item => {
+            const select = item.querySelector('.product-select');
+            const quantity = item.querySelector('.quantity-input');
+            
+            if (select.value && quantity.value) {
+                prodottiData.push({
+                    prodotto_id: select.value,
+                    quantita: quantity.value
+                });
+            }
+        });
+        
+        const dataEsecuzione = document.getElementById('data-esecuzione').value;
+        const note = document.getElementById('note').value;
+        
+        // Strategia: Creare trattamenti multipli in base al tipo di selezione
+        let trattamentiDaCreare = [];
+        
+        if (selectedTarget === 'cliente') {
+            // Un trattamento per ogni cliente selezionato
+            selectedData.clienti.forEach(cliente => {
+                trattamentiDaCreare.push({
+                    livello_applicazione: 'cliente',
+                    cliente: cliente.id,
+                    cascina: null,
+                    terreni_selezionati: [],
+                    prodotti_data: JSON.stringify(prodottiData),
+                    data_esecuzione_prevista: dataEsecuzione || null,
+                    note: note + ` [Auto-generato per ${cliente.nome}]`
+                });
+            });
+        } else if (selectedTarget === 'cascina') {
+            // Un trattamento per ogni cascina selezionata
+            selectedData.cascine.forEach(cascina => {
+                trattamentiDaCreare.push({
+                    livello_applicazione: 'cascina',
+                    cliente: cascina.cliente_id,
+                    cascina: cascina.id,
+                    terreni_selezionati: [],
+                    prodotti_data: JSON.stringify(prodottiData),
+                    data_esecuzione_prevista: dataEsecuzione || null,
+                    note: note + ` [Auto-generato per ${cascina.nome}]`
+                });
+            });
+        } else if (selectedTarget === 'terreno') {
+            // Un singolo trattamento con tutti i terreni selezionati
+            trattamentiDaCreare.push({
+                livello_applicazione: 'terreno',
+                cliente: selectedData.terreni[0].cliente_id,
+                cascina: selectedData.terreni[0].cascina_id,
+                terreni_selezionati: selectedData.terreni.map(t => t.id),
+                prodotti_data: JSON.stringify(prodottiData),
+                data_esecuzione_prevista: dataEsecuzione || null,
+                note: note + ` [${selectedData.terreni.length} terreni selezionati]`
+            });
+        }
+        
+        console.log('Trattamenti da creare:', trattamentiDaCreare);
+        
+        // Invio sequenziale dei trattamenti
+        createTrattamentiSequentially(trattamentiDaCreare);
+    }
+    
+    function createTrattamentiSequentially(trattamentiDaCreare) {
+        let createdCount = 0;
+        let errors = [];
+        
+        function createNext(index) {
+            if (index >= trattamentiDaCreare.length) {
+                // Tutti i trattamenti processati
+                document.getElementById('loading').classList.remove('show');
+                document.getElementById('submit-btn').disabled = false;
+                
+                if (errors.length === 0) {
+                    alert(`${createdCount} trattamenti creati con successo!`);
+                    window.location.href = '{% url "trattamenti" %}';
+                } else {
+                    alert(`${createdCount} trattamenti creati, ${errors.length} errori:\n${errors.join('\n')}`);
+                }
+                return;
+            }
+            
+            const trattamento = trattamentiDaCreare[index];
+            const formData = new FormData();
+            
+            // Prepara FormData
+            formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+            Object.keys(trattamento).forEach(key => {
+                if (key === 'terreni_selezionati') {
+                    trattamento[key].forEach(terrenoId => {
+                        formData.append('terreni_selezionati', terrenoId);
+                    });
+                } else if (trattamento[key] !== null) {
+                    formData.append(key, trattamento[key]);
+                }
+            });
+            
+            // Invio richiesta
+            fetch('/api/trattamenti/', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    createdCount++;
+                    console.log(`Trattamento ${index + 1} creato con successo: ID ${data.trattamento_id}`);
+                } else {
+                    errors.push(`Trattamento ${index + 1}: ${data.error || 'Errore sconosciuto'}`);
+                }
+                
+                // Procedi al prossimo
+                setTimeout(() => createNext(index + 1), 200); // Piccola pausa tra le richieste
+            })
+            .catch(error => {
+                console.error(`Errore trattamento ${index + 1}:`, error);
+                errors.push(`Trattamento ${index + 1}: Errore di connessione`);
+                
+                // Procedi al prossimo
+                setTimeout(() => createNext(index + 1), 200);
+            });
+        }
+        
+        // Inizia la creazione
+        createNext(0);
+    }
+    
+    // === FUNZIONI DI DEBUG ===
+    function debugCurrentState() {
+        console.log('=== DEBUG STATE ===');
+        console.log('Current Step:', currentStep);
+        console.log('Selected Target:', selectedTarget);
+        console.log('Selected Data:', selectedData);
+        
+        // Mostra alert con info di debug
+        let debugInfo = `
+=== DEBUG INFO ===
+Step Corrente: ${currentStep}
+Target Selezionato: ${selectedTarget || 'NESSUNO'}
+
+SELEZIONI:
+• Clienti: ${selectedData.clienti ? selectedData.clienti.length : 0}
+• Cascine: ${selectedData.cascine ? selectedData.cascine.length : 0}  
+• Terreni: ${selectedData.terreni ? selectedData.terreni.length : 0}
+
+DETTAGLI CLIENTI:
+${selectedData.clienti ? selectedData.clienti.map(c => `- ${c.nome} (ID: ${c.id})`).join('\n') : 'Nessuno'}
+
+DETTAGLI CASCINE:
+${selectedData.cascine ? selectedData.cascine.map(c => `- ${c.nome} (ID: ${c.id})`).join('\n') : 'Nessune'}
+
+DETTAGLI TERRENI:
+${selectedData.terreni ? selectedData.terreni.map(t => `- ${t.nome} (${t.superficie} ha)`).join('\n') : 'Nessuno'}
+        `;
+        
+        alert(debugInfo);
+        
+        // Test validazione
+        console.log('Test validazione step corrente:', validateCurrentStep());
+        
+        // Verifica elementi DOM
+        console.log('Cards selezionate clienti:', document.querySelectorAll('.cliente-card.selected').length);
+        console.log('Cards selezionate cascine:', document.querySelectorAll('.cascina-card.selected').length);
+        console.log('Cards selezionate terreni:', document.querySelectorAll('.terreno-card.selected').length);
+        
+        // Verifica dropdowns
+        if (selectedTarget === 'cascina') {
+            const clienteSelect = document.getElementById('cascina-cliente-select');
+            console.log('Dropdown cliente cascina:', clienteSelect.value);
+        }
+        
+        if (selectedTarget === 'terreno') {
+            const clienteSelect = document.getElementById('terreno-cliente-select');
+            const cascinaSelect = document.getElementById('terreno-cascina-select');
+            console.log('Dropdown cliente terreno:', clienteSelect.value);
+            console.log('Dropdown cascina terreno:', cascinaSelect.value);
+        }
+    }
+    
+    // Funzione per forzare il passaggio al prossimo step (solo per debug)
+    function forceNextStep() {
+        console.log('🚀 FORCE NEXT STEP');
+        if (currentStep < maxSteps) {
+            currentStep++;
+            updateStepDisplay();
+            if (currentStep === 4) {
+                generateSummary();
+            }
+        }
+    }
+    
+    // === INIZIALIZZAZIONE ===
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Inizializzazione form inserisci con selezioni multiple...');
+        
+        // Add first product by default
+        addProduct();
+        
+        // Set minimum date to today
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('data-esecuzione').min = today;
+        
+        // Debug iniziale
+        console.log('Clienti disponibili:', {{ clienti|length }});
+        console.log('Prodotti disponibili:', {{ prodotti|length }});
+        
+        // Aggiungi shortcuts per debug (rimuovi in produzione)
+        window.debugState = debugCurrentState;
+        window.forceNext = forceNextStep;
+        window.selectedData = selectedData;
+        
+        console.log('Form pronto con selezioni multiple!');
+        console.log('💡 Per debug usa: debugState() o forceNext()');
+    });
+</script>
+{% endblock %}
+
 {% block page_title %}Inserisci Nuovo Trattamento{% endblock %}
 {% block page_icon %}<i class="fas fa-plus-circle"></i>{% endblock %}
 
@@ -212,6 +1265,40 @@
         outline: none;
     }
 
+    /* Input Group Styling */
+    .input-group {
+        display: flex;
+        position: relative;
+    }
+
+    .input-group .form-control {
+        border-top-right-radius: 0;
+        border-bottom-right-radius: 0;
+        border-right: 0;
+    }
+
+    .input-group-text {
+        border: 2px solid #e9ecef;
+        border-left: 0;
+        border-top-left-radius: 0;
+        border-bottom-left-radius: 0;
+        border-top-right-radius: 10px;
+        border-bottom-right-radius: 10px;
+        background: #f8f9fa;
+        padding: 0.75rem 1rem;
+        font-size: 1rem;
+        color: #6c757d;
+        font-weight: 500;
+        min-width: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .input-group .form-control:focus + .input-group-text {
+        border-color: var(--primary-color);
+    }
+
     .form-row {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -268,6 +1355,23 @@
         font-size: 0.9rem;
     }
 
+    .selection-card.selected::after {
+        content: attr(data-selection-number);
+        position: absolute;
+        top: 10px;
+        left: 15px;
+        background: #007bff;
+        color: white;
+        width: 25px;
+        height: 25px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 0.9rem;
+    }
+
     .selection-icon {
         font-size: 2.5rem;
         color: var(--primary-color);
@@ -283,6 +1387,78 @@
     .selection-description {
         color: #666;
         font-size: 0.9rem;
+    }
+
+    /* Selected Summary */
+    .selected-summary {
+        background: #f8fff9;
+        border: 1px solid #28a745;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-top: 2rem;
+    }
+
+    .selected-summary .summary-title {
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+    }
+
+    .selected-summary .summary-title i {
+        margin-right: 0.5rem;
+        color: #28a745;
+    }
+
+    .selected-item {
+        background: white;
+        border: 1px solid #28a745;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 0.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .selected-item:last-child {
+        margin-bottom: 0;
+    }
+
+    .selected-item-info {
+        flex: 1;
+    }
+
+    .selected-item-name {
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 0.25rem;
+    }
+
+    .selected-item-details {
+        font-size: 0.9rem;
+        color: #666;
+    }
+
+    .selected-item-remove {
+        background: #dc3545;
+        color: white;
+        border: none;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin-left: 1rem;
+    }
+
+    .selected-item-remove:hover {
+        background: #c82333;
+        transform: scale(1.1);
     }
 
     /* Product List */
@@ -311,13 +1487,6 @@
 
     .product-item:last-child {
         margin-bottom: 0;
-    }
-
-    .product-header {
-        display: flex;
-        justify-content: between;
-        align-items: center;
-        margin-bottom: 1rem;
     }
 
     .product-remove {
@@ -421,6 +1590,16 @@
         transform: translateY(-2px);
     }
 
+    .btn-warning {
+        background: #ffc107;
+        color: #212529;
+    }
+
+    .btn-warning:hover {
+        background: #e0a800;
+        transform: translateY(-2px);
+    }
+
     /* Summary Box */
     .summary-box {
         background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
@@ -466,32 +1645,17 @@
         color: #333;
     }
 
-    /* Responsive */
-    @media (max-width: 768px) {
-        .form-content {
-            padding: 1.5rem;
-        }
-        
-        .form-row {
-            grid-template-columns: 1fr;
-        }
-        
-        .selection-cards {
-            grid-template-columns: 1fr;
-        }
-        
-        .step-indicator {
-            flex-wrap: wrap;
-            gap: 1rem;
-        }
-        
-        .step {
-            flex: none;
-        }
-        
-        .step-connector {
-            display: none;
-        }
+    /* Contoterzista Info */
+    .contoterzista-info {
+        background: #e8f5e8;
+        border: 1px solid #28a745;
+        border-radius: 10px;
+        padding: 1rem;
+        margin-top: 1rem;
+    }
+
+    .contoterzista-info.hidden {
+        display: none;
     }
 
     /* Loading Animation */
@@ -518,6 +1682,53 @@
     @keyframes spin {
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
+    }
+
+    /* Alert styles */
+    .alert {
+        padding: 1rem;
+        margin-bottom: 1rem;
+        border-radius: 8px;
+    }
+
+    .alert-warning {
+        background-color: #fff3cd;
+        border: 1px solid #ffeaa7;
+        color: #856404;
+    }
+
+    .alert-success {
+        background-color: #d4edda;
+        border: 1px solid #c3e6cb;
+        color: #155724;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .form-content {
+            padding: 1.5rem;
+        }
+        
+        .form-row {
+            grid-template-columns: 1fr;
+        }
+        
+        .selection-cards {
+            grid-template-columns: 1fr;
+        }
+        
+        .step-indicator {
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        
+        .step {
+            flex: none;
+        }
+        
+        .step-connector {
+            display: none;
+        }
     }
 </style>
 {% endblock %}
@@ -613,6 +1824,15 @@
                             {% endfor %}
                         </div>
                     </div>
+                    
+                    <!-- Riepilogo selezioni clienti -->
+                    <div id="clienti-selected-summary" class="selected-summary" style="display: none;">
+                        <div class="summary-title">
+                            <i class="fas fa-check-circle text-success"></i>
+                            Aziende Selezionate
+                        </div>
+                        <div id="clienti-selected-list"></div>
+                    </div>
                 </div>
 
                 <div id="cascina-selection" class="target-form" style="display: none;">
@@ -632,6 +1852,15 @@
                         <div id="cascine-list" class="selection-cards">
                             <!-- Le cascine verranno caricate dinamicamente -->
                         </div>
+                    </div>
+                    
+                    <!-- Riepilogo selezioni cascine -->
+                    <div id="cascine-selected-summary" class="selected-summary" style="display: none;">
+                        <div class="summary-title">
+                            <i class="fas fa-check-circle text-success"></i>
+                            Cascine Selezionate
+                        </div>
+                        <div id="cascine-selected-list"></div>
                     </div>
                 </div>
 
@@ -660,18 +1889,25 @@
                             <!-- I terreni verranno caricati dinamicamente -->
                         </div>
                     </div>
+                    
+                    <!-- Riepilogo selezioni terreni -->
+                    <div id="terreni-selected-summary" class="selected-summary" style="display: none;">
+                        <div class="summary-title">
+                            <i class="fas fa-check-circle text-success"></i>
+                            Terreni Selezionati
+                        </div>
+                        <div id="terreni-selected-list"></div>
+                    </div>
                 </div>
 
                 <!-- Contoterzista Info -->
-                <div id="contoterzista-info" style="display: none;">
-                    <div class="summary-box">
-                        <div class="summary-title">
-                            <i class="fas fa-user-tie"></i>
-                            Contoterzista Assegnato
-                        </div>
-                        <div id="contoterzista-details">
-                            <!-- Verrà popolato dinamicamente -->
-                        </div>
+                <div id="contoterzista-info" class="contoterzista-info hidden">
+                    <div class="summary-title">
+                        <i class="fas fa-user-tie"></i>
+                        Contoterzista Assegnato
+                    </div>
+                    <div id="contoterzista-details">
+                        <!-- Verrà popolato dinamicamente -->
                     </div>
                 </div>
             </div>
@@ -745,6 +1981,11 @@
                     <i class="fas fa-arrow-left"></i> Indietro
                 </button>
                 
+                <!-- Debug button (rimuovi in produzione) -->
+                <button type="button" class="btn btn-warning" id="debug-btn" onclick="debugCurrentState()" style="display: inline-flex;">
+                    <i class="fas fa-bug"></i> Debug
+                </button>
+                
                 <div></div> <!-- Spacer -->
                 
                 <button type="button" class="btn btn-primary" id="next-btn" onclick="nextStep()">
@@ -760,486 +2001,3 @@
 </div>
 
 {% endblock %}
-
-{% block extra_js %}
-<script>
-    let currentStep = 1;
-    let maxSteps = 4;
-    let selectedTarget = null;
-    let selectedData = {};
-    let products = [];
-    let productCounter = 0;
-    
-    // Step Navigation
-    function nextStep() {
-        if (validateCurrentStep()) {
-            if (currentStep < maxSteps) {
-                currentStep++;
-                updateStepDisplay();
-                if (currentStep === 4) {
-                    generateSummary();
-                }
-            }
-        }
-    }
-    
-    function previousStep() {
-        if (currentStep > 1) {
-            currentStep--;
-            updateStepDisplay();
-        }
-    }
-    
-    function updateStepDisplay() {
-        // Update step indicator
-        document.querySelectorAll('.step').forEach((step, index) => {
-            const stepNum = index + 1;
-            step.classList.remove('active', 'completed');
-            
-            if (stepNum < currentStep) {
-                step.classList.add('completed');
-            } else if (stepNum === currentStep) {
-                step.classList.add('active');
-            }
-        });
-        
-        // Update form steps
-        document.querySelectorAll('.form-step').forEach((step, index) => {
-            step.classList.remove('active');
-            if (index + 1 === currentStep) {
-                step.classList.add('active');
-            }
-        });
-        
-        // Update navigation buttons
-        document.getElementById('prev-btn').style.display = currentStep > 1 ? 'inline-flex' : 'none';
-        document.getElementById('next-btn').style.display = currentStep < maxSteps ? 'inline-flex' : 'none';
-        document.getElementById('submit-btn').style.display = currentStep === maxSteps ? 'inline-flex' : 'none';
-    }
-    
-    // Target Selection
-    function selectTarget(target) {
-        selectedTarget = target;
-        
-        // Update selection cards
-        document.querySelectorAll('.selection-card').forEach(card => {
-            card.classList.remove('selected');
-        });
-        event.currentTarget.classList.add('selected');
-        
-        // Show appropriate form
-        document.querySelectorAll('.target-form').forEach(form => {
-            form.style.display = 'none';
-        });
-        document.getElementById(target + '-selection').style.display = 'block';
-        
-        // Reset contoterzista info
-        document.getElementById('contoterzista-info').style.display = 'none';
-    }
-    
-    // Dynamic loading functions
-    function loadCascineForCliente() {
-        const clienteId = document.getElementById('cascina-cliente-select').value;
-        const cascinaSelect = document.getElementById('cascina-select');
-        
-        cascinaSelect.innerHTML = '<option value="">Caricamento...</option>';
-        
-        if (clienteId) {
-            fetch(`/api/cascine/${clienteId}/`)
-                .then(response => response.json())
-                .then(data => {
-                    cascinaSelect.innerHTML = '<option value="">Seleziona una cascina...</option>';
-                    data.forEach(cascina => {
-                        const option = document.createElement('option');
-                        option.value = cascina.id;
-                        option.textContent = cascina.nome;
-                        cascinaSelect.appendChild(option);
-                    });
-                })
-                .catch(() => {
-                    cascinaSelect.innerHTML = '<option value="">Errore nel caricamento</option>';
-                });
-        }
-    }
-    
-    function loadTerreniForCascina() {
-        const cascinaId = document.getElementById('terreno-cascina-select').value;
-        const terreniList = document.getElementById('terreni-list');
-        
-        terreniList.innerHTML = '<div class="text-center">Caricamento terreni...</div>';
-        
-        if (cascinaId) {
-            fetch(`/api/terreni/${cascinaId}/`)
-                .then(response => response.json())
-                .then(data => {
-                    terreniList.innerHTML = '';
-                    data.forEach(terreno => {
-                        const terrenaCard = document.createElement('div');
-                        terrenaCard.className = 'selection-card terreno-card';
-                        terrenaCard.onclick = () => toggleTerreno(terreno.id, terrenaCard);
-                        terrenaCard.innerHTML = `
-                            <div class="selection-icon">
-                                <i class="fas fa-seedling"></i>
-                            </div>
-                            <div class="selection-title">${terreno.nome}</div>
-                            <div class="selection-description">${terreno.superficie} ha</div>
-                        `;
-                        terreniList.appendChild(terrenaCard);
-                    });
-                })
-                .catch(() => {
-                    terreniList.innerHTML = '<div class="text-center text-danger">Errore nel caricamento terreni</div>';
-                });
-        }
-    }
-    
-    function toggleTerreno(terrenoId, cardElement) {
-        cardElement.classList.toggle('selected');
-        
-        if (cardElement.classList.contains('selected')) {
-            if (!selectedData.terreni) selectedData.terreni = [];
-            selectedData.terreni.push(terrenoId);
-        } else {
-            selectedData.terreni = selectedData.terreni.filter(id => id !== terrenoId);
-        }
-    }
-    
-    function updateContoterzista() {
-        let cascinaId = null;
-        
-        if (selectedTarget === 'cliente') {
-            const clienteId = document.getElementById('cliente-select').value;
-            selectedData.cliente = clienteId;
-            if (clienteId) {
-                // Per ora mostriamo info generica, in una implementazione reale 
-                // dovresti fare una chiamata API per ottenere il contoterzista
-                showContoterzastaInfo('Contoterzista sarà assegnato automaticamente');
-            }
-        } else if (selectedTarget === 'cascina') {
-            cascinaId = document.getElementById('cascina-select').value;
-            selectedData.cascina = cascinaId;
-        }
-        
-        if (cascinaId) {
-            fetch(`/api/cascina/${cascinaId}/contoterzista/`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.contoterzista) {
-                        showContoterzastaInfo(data.contoterzista.nome);
-                    } else {
-                        showContoterzastaInfo('Nessun contoterzista assegnato');
-                    }
-                })
-                .catch(() => {
-                    showContoterzastaInfo('Errore nel caricamento contoterzista');
-                });
-        }
-    }
-    
-    function showContoterzastaInfo(nome) {
-        const container = document.getElementById('contoterzista-details');
-        container.innerHTML = `
-            <div class="summary-item">
-                <span class="summary-label">Nome:</span>
-                <span class="summary-value">${nome}</span>
-            </div>
-        `;
-        document.getElementById('contoterzista-info').style.display = 'block';
-    }
-    
-    // Product Management
-    function addProduct() {
-        productCounter++;
-        
-        const productItem = document.createElement('div');
-        productItem.className = 'product-item';
-        productItem.id = `product-${productCounter}`;
-        productItem.innerHTML = `
-            <button type="button" class="product-remove" onclick="removeProduct(${productCounter})">
-                <i class="fas fa-times"></i>
-            </button>
-            <div class="form-row">
-                <div class="form-group">
-                    <label class="form-label required">Prodotto</label>
-                    <select class="form-select product-select" data-product-id="${productCounter}" onchange="updateProductInfo(${productCounter})">
-                        <option value="">Seleziona un prodotto...</option>
-                        {% for prodotto in prodotti %}
-                        <option value="{{ prodotto.id }}">{{ prodotto.nome }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label class="form-label required">Quantità</label>
-                    <div class="input-group">
-                        <input type="number" class="form-control" step="0.01" min="0.01" placeholder="0.00">
-                        <span class="input-group-text" id="unit-${productCounter}">L</span>
-                    </div>
-                </div>
-            </div>
-            <div class="product-info" id="product-info-${productCounter}">
-                <!-- Info prodotto verranno mostrate qui -->
-            </div>
-        `;
-        
-        document.getElementById('products-container').appendChild(productItem);
-    }
-    
-    function removeProduct(productId) {
-        document.getElementById(`product-${productId}`).remove();
-        products = products.filter(p => p.id !== productId);
-    }
-    
-    function updateProductInfo(productId) {
-        const select = document.querySelector(`[data-product-id="${productId}"]`);
-        const productInfo = document.getElementById(`product-info-${productId}`);
-        
-        if (select.value) {
-            // In una implementazione reale, faresti una chiamata API per ottenere le info del prodotto
-            productInfo.innerHTML = `
-                <div class="mt-3 p-3 bg-light rounded">
-                    <small class="text-muted">
-                        <i class="fas fa-info-circle me-1"></i>
-                        Informazioni prodotto caricate automaticamente
-                    </small>
-                </div>
-            `;
-        } else {
-            productInfo.innerHTML = '';
-        }
-    }
-    
-    // Form Validation
-    function validateCurrentStep() {
-        if (currentStep === 1) {
-            if (!selectedTarget) {
-                alert('Seleziona il tipo di target per il trattamento');
-                return false;
-            }
-            
-            if (selectedTarget === 'cliente') {
-                const cliente = document.getElementById('cliente-select').value;
-                if (!cliente) {
-                    alert('Seleziona un\'azienda');
-                    return false;
-                }
-            } else if (selectedTarget === 'cascina') {
-                const cascina = document.getElementById('cascina-select').value;
-                if (!cascina) {
-                    alert('Seleziona una cascina');
-                    return false;
-                }
-            } else if (selectedTarget === 'terreno') {
-                if (!selectedData.terreni || selectedData.terreni.length === 0) {
-                    alert('Seleziona almeno un terreno');
-                    return false;
-                }
-            }
-        } else if (currentStep === 2) {
-            const productItems = document.querySelectorAll('.product-item');
-            if (productItems.length === 0) {
-                alert('Aggiungi almeno un prodotto');
-                return false;
-            }
-            
-            let valid = true;
-            productItems.forEach(item => {
-                const select = item.querySelector('.product-select');
-                const quantity = item.querySelector('input[type="number"]');
-                
-                if (!select.value || !quantity.value || quantity.value <= 0) {
-                    valid = false;
-                }
-            });
-            
-            if (!valid) {
-                alert('Completa tutti i campi dei prodotti');
-                return false;
-            }
-        }
-        
-        return true;
-    }
-    
-    // Generate Summary
-    function generateSummary() {
-        const summaryContainer = document.getElementById('final-summary');
-        let summaryHTML = '';
-        
-        // Target info
-        if (selectedTarget === 'cliente') {
-            const clienteSelect = document.getElementById('cliente-select');
-            summaryHTML += `
-                <div class="summary-item">
-                    <span class="summary-label">Target:</span>
-                    <span class="summary-value">Intera Azienda - ${clienteSelect.options[clienteSelect.selectedIndex].text}</span>
-                </div>
-            `;
-        } else if (selectedTarget === 'cascina') {
-            const cascinaSelect = document.getElementById('cascina-select');
-            summaryHTML += `
-                <div class="summary-item">
-                    <span class="summary-label">Target:</span>
-                    <span class="summary-value">Cascina - ${cascinaSelect.options[cascinaSelect.selectedIndex].text}</span>
-                </div>
-            `;
-        } else if (selectedTarget === 'terreno') {
-            const selectedTerreni = document.querySelectorAll('.terreno-card.selected');
-            summaryHTML += `
-                <div class="summary-item">
-                    <span class="summary-label">Target:</span>
-                    <span class="summary-value">${selectedTerreni.length} terreni selezionati</span>
-                </div>
-            `;
-        }
-        
-        // Products info
-        const productItems = document.querySelectorAll('.product-item');
-        summaryHTML += `
-            <div class="summary-item">
-                <span class="summary-label">Prodotti:</span>
-                <span class="summary-value">${productItems.length} prodotti</span>
-            </div>
-        `;
-        
-        // Date info
-        const dataEsecuzione = document.getElementById('data-esecuzione').value;
-        if (dataEsecuzione) {
-            summaryHTML += `
-                <div class="summary-item">
-                    <span class="summary-label">Data Esecuzione:</span>
-                    <span class="summary-value">${new Date(dataEsecuzione).toLocaleDateString('it-IT')}</span>
-                </div>
-            `;
-        }
-        
-        // Notes
-        const note = document.getElementById('note').value;
-        if (note) {
-            summaryHTML += `
-                <div class="summary-item">
-                    <span class="summary-label">Note:</span>
-                    <span class="summary-value">${note.substring(0, 100)}${note.length > 100 ? '...' : ''}</span>
-                </div>
-            `;
-        }
-        
-        summaryHTML += `
-            <div class="summary-item">
-                <span class="summary-label">Stato:</span>
-                <span class="summary-value">Programmato</span>
-            </div>
-        `;
-        
-        summaryContainer.innerHTML = summaryHTML;
-    }
-    
-    
-    // Submit Form
-    function submitForm() {
-        if (!validateCurrentStep()) return;
-        
-        document.getElementById('loading').classList.add('show');
-        document.getElementById('submit-btn').disabled = true;
-        
-        // Raccoglio tutti i dati del form
-        const formData = new FormData();
-        formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
-        
-        // Target data
-        formData.append('livello_applicazione', selectedTarget);
-        if (selectedTarget === 'cliente') {
-            formData.append('cliente', document.getElementById('cliente-select').value);
-        } else if (selectedTarget === 'cascina') {
-            formData.append('cliente', document.getElementById('cascina-cliente-select').value);
-            formData.append('cascina', document.getElementById('cascina-select').value);
-        } else if (selectedTarget === 'terreno') {
-            formData.append('cliente', document.getElementById('terreno-cliente-select').value);
-            formData.append('cascina', document.getElementById('terreno-cascina-select').value);
-            selectedData.terreni.forEach(terrenoId => {
-                formData.append('terreni_selezionati', terrenoId);
-            });
-        }
-        
-        // Products data
-        const productItems = document.querySelectorAll('.product-item');
-        const prodottiData = [];
-        productItems.forEach(item => {
-            const select = item.querySelector('.product-select');
-            const quantity = item.querySelector('input[type="number"]');
-            
-            if (select.value && quantity.value) {
-                prodottiData.push({
-                    prodotto_id: select.value,
-                    quantita: quantity.value
-                });
-            }
-        });
-        formData.append('prodotti_data', JSON.stringify(prodottiData));
-        
-        // Additional data
-        const dataEsecuzione = document.getElementById('data-esecuzione').value;
-        if (dataEsecuzione) {
-            formData.append('data_esecuzione_prevista', dataEsecuzione);
-        }
-        formData.append('note', document.getElementById('note').value);
-        
-        // Invia alla tua API esistente
-        fetch('/api/trattamenti/', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert('Trattamento creato con successo!');
-                window.location.href = '{% url "trattamenti" %}';
-            } else {
-                alert('Errore nel salvare il trattamento: ' + (data.error || 'Errore sconosciuto'));
-            }
-        })
-        .catch(error => {
-            console.error('Errore:', error);
-            alert('Errore di connessione');
-        })
-        .finally(() => {
-            document.getElementById('loading').classList.remove('show');
-            document.getElementById('submit-btn').disabled = false;
-        });
-    }
-    
-    // Initialize
-    document.addEventListener('DOMContentLoaded', function() {
-        // Add first product by default
-        addProduct();
-        
-        // Set minimum date to today
-        const today = new Date().toISOString().split('T')[0];
-        document.getElementById('data-esecuzione').min = today;
-    });
-
-    function loadCascineForTerreni() {
-        const clienteId = document.getElementById('terreno-cliente-select').value;
-        const cascinaSelect = document.getElementById('terreno-cascina-select');
-        
-        cascinaSelect.innerHTML = '<option value="">Caricamento...</option>';
-        
-        if (clienteId) {
-            fetch(`/api/cascine/${clienteId}/`)
-                .then(response => response.json())
-                .then(data => {
-                    cascinaSelect.innerHTML = '<option value="">Seleziona una cascina...</option>';
-                    data.forEach(cascina => {
-                        const option = document.createElement('option');
-                        option.value = cascina.id;
-                        option.textContent = cascina.nome;
-                        cascinaSelect.appendChild(option);
-                    });
-                })
-                .catch(() => {
-                    cascinaSelect.innerHTML = '<option value="">Errore nel caricamento</option>';
-                });
-        }
-    }
-    </script>
-{% endblock %}
-    

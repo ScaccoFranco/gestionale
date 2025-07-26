@@ -357,10 +357,58 @@
             margin-bottom: 0;
         }
     }
+
+    /* Overlay di caricamento */
+    .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+    }
+
+    .loading-overlay.show {
+        display: flex;
+    }
+
+    .loading-spinner {
+        background: white;
+        padding: 2rem;
+        border-radius: 10px;
+        text-align: center;
+    }
+
+    .spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid var(--primary-color);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 1rem;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
 </style>
 {% endblock %}
 
 {% block content %}
+<!-- Overlay di caricamento -->
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-spinner">
+        <div class="spinner"></div>
+        <p>Caricamento...</p>
+    </div>
+</div>
+
 <!-- Filtri e ricerca -->
 <div class="search-filters">
     <div class="row align-items-end">
@@ -411,7 +459,7 @@
         <div class="label">Terreni</div>
     </div>
     <div class="summary-card">
-        <div class="number">{{ aziende_tree|total_superficie }} ha</div>
+        <div class="number">{{ aziende_tree|total_superficie|floatformat:1 }} ha</div>
         <div class="label">Superficie Totale</div>
     </div>
 </div>
@@ -421,7 +469,11 @@
 <div class="aziende-container" id="aziendeContainer">
     {% if aziende_tree %}
         {% for cliente in aziende_tree %}
-        <div class="azienda-card" data-azienda="{{ cliente.nome|lower }}" data-programmati="{{ cliente.trattamenti_programmati }}" data-comunicati="{{ cliente.trattamenti_comunicati }}">
+        <div class="azienda-card" 
+             data-azienda="{{ cliente.nome|lower }}" 
+             data-programmati="{{ cliente.trattamenti_programmati }}" 
+             data-comunicati="{{ cliente.trattamenti_comunicati }}">
+            
             <!-- Header Azienda -->
             <div class="azienda-header" onclick="toggleAzienda({{ cliente.id }})">
                 <div class="azienda-title">
@@ -530,12 +582,15 @@
         </div>
     {% endif %}
 </div>
-</div>
 
 {% endblock %}
 
 {% block extra_js %}
 <script>
+    // Variabili globali
+    let expandedStates = new Set();
+    
+    // Funzioni di toggle
     function toggleAzienda(clienteId) {
         const cascineContainer = document.getElementById(`cascine-${clienteId}`);
         const icon = document.getElementById(`icon-${clienteId}`);
@@ -543,15 +598,19 @@
         if (cascineContainer.classList.contains('expanded')) {
             cascineContainer.classList.remove('expanded');
             icon.classList.remove('expanded');
+            expandedStates.delete(clienteId);
         } else {
             cascineContainer.classList.add('expanded');
             icon.classList.add('expanded');
+            expandedStates.add(clienteId);
         }
     }
     
     function expandAll() {
         document.querySelectorAll('.cascine-container').forEach(container => {
             container.classList.add('expanded');
+            const clienteId = container.id.replace('cascine-', '');
+            expandedStates.add(parseInt(clienteId));
         });
         document.querySelectorAll('.expand-icon').forEach(icon => {
             icon.classList.add('expanded');
@@ -561,12 +620,15 @@
     function collapseAll() {
         document.querySelectorAll('.cascine-container').forEach(container => {
             container.classList.remove('expanded');
+            const clienteId = container.id.replace('cascine-', '');
+            expandedStates.delete(parseInt(clienteId));
         });
         document.querySelectorAll('.expand-icon').forEach(icon => {
             icon.classList.remove('expanded');
         });
     }
     
+    // Funzione di filtro
     function filterAziende() {
         const searchTerm = document.getElementById('searchInput').value.toLowerCase();
         const statusFilter = document.getElementById('statusFilter').value;
@@ -598,16 +660,104 @@
                 }
             }
             
+            // Mostra/nasconde la card
             card.style.display = shouldShow ? 'block' : 'none';
         });
+        
+        // Aggiorna il conteggio
+        updateFilterCount();
     }
     
-    // Auto-espandi se ci sono poche aziende
+    function updateFilterCount() {
+        const visibleCards = document.querySelectorAll('.azienda-card[style="display: block"], .azienda-card:not([style*="display: none"])').length;
+        const totalCards = document.querySelectorAll('.azienda-card').length;
+        
+        console.log(`Mostrate ${visibleCards} di ${totalCards} aziende`);
+    }
+    
+    // Utility per mostrare/nascondere loading
+    function showLoading() {
+        document.getElementById('loadingOverlay').classList.add('show');
+    }
+    
+    function hideLoading() {
+        document.getElementById('loadingOverlay').classList.remove('show');
+    }
+    
+    // Funzioni di gestione errori
+    function handleApiError(error, context = '') {
+        console.error(`Errore API ${context}:`, error);
+        
+        // Mostra un messaggio di errore all'utente
+        const errorMsg = document.createElement('div');
+        errorMsg.className = 'alert alert-danger alert-dismissible fade show';
+        errorMsg.style.position = 'fixed';
+        errorMsg.style.top = '20px';
+        errorMsg.style.right = '20px';
+        errorMsg.style.zIndex = '10000';
+        errorMsg.innerHTML = `
+            <strong>Errore!</strong> ${context}: ${error.message || 'Errore sconosciuto'}
+            <button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>
+        `;
+        
+        document.body.appendChild(errorMsg);
+        
+        // Rimuovi automaticamente dopo 5 secondi
+        setTimeout(() => {
+            if (errorMsg.parentElement) {
+                errorMsg.remove();
+            }
+        }, 5000);
+    }
+    
+    // Event listeners
     document.addEventListener('DOMContentLoaded', function() {
+        console.log('Pagina aziende caricata correttamente');
+        
+        // Auto-espandi se ci sono poche aziende
         const aziendeCount = document.querySelectorAll('.azienda-card').length;
-        if (aziendeCount <= 3) {
+        console.log(`Trovate ${aziendeCount} aziende`);
+        
+        if (aziendeCount <= 3 && aziendeCount > 0) {
+            console.log('Auto-espansione attiva (poche aziende)');
             expandAll();
         }
+        
+        // Test delle API endpoints
+        testApiEndpoints();
+    });
+    
+    // Funzione di test per verificare che le API funzionino
+    function testApiEndpoints() {
+        // Test base - non bloccante
+        fetch('/api/statistics/')
+            .then(response => {
+                if (response.ok) {
+                    console.log('✅ API endpoints disponibili');
+                } else {
+                    console.warn('⚠️ Problemi con le API endpoints');
+                }
+            })
+            .catch(error => {
+                console.warn('⚠️ API non raggiungibili:', error);
+            });
+    }
+    
+    // Funzioni per debug (puoi rimuoverle in produzione)
+    window.debugAziende = {
+        expandedStates: () => expandedStates,
+        getVisibleCards: () => document.querySelectorAll('.azienda-card:not([style*="display: none"])'),
+        testFilter: (term) => {
+            document.getElementById('searchInput').value = term;
+            filterAziende();
+        }
+    };
+    
+    // Ottimizzazione performance: debounce per la ricerca
+    let searchTimeout;
+    document.getElementById('searchInput').addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(filterAziende, 300);
     });
 </script>
 {% endblock %}

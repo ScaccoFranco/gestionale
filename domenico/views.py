@@ -179,16 +179,29 @@ def database(request):
     
     return render(request, 'database.html', context)
 
-# API Views
+# ============ API ENDPOINTS ============
 
 def api_cascine_by_cliente(request, cliente_id):
     """API per ottenere le cascine di un cliente"""
     try:
-        cascine = Cascina.objects.filter(cliente_id=cliente_id).values(
-            'id', 'nome'
+        cascine = Cascina.objects.filter(cliente_id=cliente_id).select_related('contoterzista').values(
+            'id', 'nome', 'contoterzista__nome'
         ).order_by('nome')
         
-        return JsonResponse(list(cascine), safe=False)
+        # Calcola superficie per ogni cascina
+        data = []
+        for cascina in cascine:
+            cascina_obj = Cascina.objects.get(id=cascina['id'])
+            superficie_totale = sum(terreno.superficie for terreno in cascina_obj.terreni.all())
+            
+            data.append({
+                'id': cascina['id'],
+                'nome': cascina['nome'],
+                'superficie_totale': float(superficie_totale),
+                'contoterzista': cascina['contoterzista__nome']
+            })
+        
+        return JsonResponse(data, safe=False)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
 
@@ -233,7 +246,7 @@ def api_cascina_contoterzista(request, cascina_id):
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_create_trattamento(request):
-    """API per creare un nuovo trattamento"""
+    """API per creare un nuovo trattamento (ora gestisce anche selezioni multiple)"""
     try:
         with transaction.atomic():
             # Parsing dei dati
@@ -275,25 +288,72 @@ def api_create_trattamento(request):
                 stato='programmato'
             )
             
-            # Aggiungi terreni se specificati
+            # Aggiungi terreni se specificati (per selezioni multiple di terreni)
             terreni_selezionati = request.POST.getlist('terreni_selezionati')
             if terreni_selezionati:
-                trattamento.terreni.set(terreni_selezionati)
+                # Verifica che tutti i terreni esistano e appartengano alla cascina corretta
+                terreni_validi = Terreno.objects.filter(
+                    id__in=terreni_selezionati
+                )
+                
+                # Se è specificata una cascina, verifica che i terreni appartengano a quella cascina
+                if cascina_id:
+                    terreni_validi = terreni_validi.filter(cascina_id=cascina_id)
+                
+                if terreni_validi.count() != len(terreni_selezionati):
+                    return JsonResponse({
+                        'success': False, 
+                        'error': 'Alcuni terreni selezionati non sono validi'
+                    }, status=400)
+                
+                trattamento.terreni.set(terreni_validi)
             
             # Aggiungi prodotti
             for prodotto_data in prodotti_data:
-                TrattamentoProdotto.objects.create(
-                    trattamento=trattamento,
-                    prodotto_id=prodotto_data['prodotto_id'],
-                    quantita=prodotto_data['quantita']
-                )
+                try:
+                    TrattamentoProdotto.objects.create(
+                        trattamento=trattamento,
+                        prodotto_id=prodotto_data['prodotto_id'],
+                        quantita=prodotto_data['quantita']
+                    )
+                except KeyError as e:
+                    return JsonResponse({
+                        'success': False, 
+                        'error': f'Dati prodotto incompleti: manca {str(e)}'
+                    }, status=400)
+                except Exception as e:
+                    return JsonResponse({
+                        'success': False, 
+                        'error': f'Errore nell\'aggiunta del prodotto: {str(e)}'
+                    }, status=400)
+            
+            # Calcola informazioni aggiuntive per la risposta
+            superficie_interessata = trattamento.get_superficie_interessata()
+            contoterzista = trattamento.get_contoterzista()
             
             return JsonResponse({
                 'success': True, 
                 'trattamento_id': trattamento.id,
-                'message': 'Trattamento creato con successo'
+                'message': 'Trattamento creato con successo',
+                'dettagli': {
+                    'livello_applicazione': trattamento.livello_applicazione,
+                    'superficie_interessata': float(superficie_interessata),
+                    'contoterzista': contoterzista.nome if contoterzista else None,
+                    'prodotti_count': trattamento.trattamentoprodotto_set.count(),
+                    'terreni_count': trattamento.terreni.count() if livello_applicazione == 'terreno' else 0
+                }
             })
             
+    except Cliente.DoesNotExist:
+        return JsonResponse({
+            'success': False, 
+            'error': 'Cliente non trovato'
+        }, status=404)
+    except Cascina.DoesNotExist:
+        return JsonResponse({
+            'success': False, 
+            'error': 'Cascina non trovata'
+        }, status=404)
     except Exception as e:
         return JsonResponse({
             'success': False, 
