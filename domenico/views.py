@@ -28,11 +28,12 @@ def home(request):
         'trattamenti_oggi': Trattamento.objects.filter(
             data_esecuzione_prevista=timezone.now().date()
         ).count(),
+        'trattamenti_totali': Trattamento.objects.count(),
     }
     
-    # Trattamenti recenti
+    # Trattamenti recenti (ultimi 5) - corretto senza contoterzista
     trattamenti_recenti = Trattamento.objects.select_related(
-        'cliente', 'cascina', 'contoterzista'
+        'cliente', 'cascina', 'cascina__contoterzista'
     ).prefetch_related('terreni', 'prodotti').order_by('-data_inserimento')[:5]
     
     context = {
@@ -43,7 +44,7 @@ def home(request):
     return render(request, 'home.html', context)
 
 def aziende(request):
-    """Vista per la pagina delle aziende con struttura ad albero"""
+    """Vista per la pagina delle aziende con struttura a rettangoli"""
     
     # Carica tutti i clienti con le relative cascine e terreni
     clienti = Cliente.objects.prefetch_related(
@@ -60,9 +61,9 @@ def aziende(request):
             'trattamenti', 
             filter=Q(trattamenti__stato='comunicato')
         )
-    )
+    ).order_by('nome')
     
-    # Struttura dati per l'albero
+    # Struttura dati per l'interfaccia a rettangoli
     aziende_tree = []
     for cliente in clienti:
         cliente_data = {
@@ -75,33 +76,23 @@ def aziende(request):
         }
         
         for cascina in cliente.cascine.all():
+            # Calcola i trattamenti per questa specifica cascina
             cascina_trattamenti_prog = cascina.get_trattamenti_attivi().filter(stato='programmato').count()
             cascina_trattamenti_com = cascina.get_trattamenti_attivi().filter(stato='comunicato').count()
+            
+            # Calcola la superficie totale della cascina
+            superficie_cascina = sum(terreno.superficie for terreno in cascina.terreni.all())
             
             cascina_data = {
                 'id': cascina.id,
                 'nome': cascina.nome,
-                'superficie_totale': cascina.get_superficie_totale(),
-                'contoterzista': cascina.contoterzista.nome if cascina.contoterzista else 'Non assegnato',
+                'superficie_totale': superficie_cascina,
+                'contoterzista': cascina.contoterzista.nome if cascina.contoterzista else None,
                 'contoterzista_id': cascina.contoterzista.id if cascina.contoterzista else None,
                 'trattamenti_programmati': cascina_trattamenti_prog,
                 'trattamenti_comunicati': cascina_trattamenti_com,
-                'terreni': []
+                'terreni': list(cascina.terreni.all())
             }
-            
-            for terreno in cascina.terreni.all():
-                terreno_trattamenti_prog = terreno.get_trattamenti_attivi().filter(stato='programmato').count()
-                terreno_trattamenti_com = terreno.get_trattamenti_attivi().filter(stato='comunicato').count()
-                
-                terreno_data = {
-                    'id': terreno.id,
-                    'nome': terreno.nome,
-                    'superficie': terreno.superficie,
-                    'trattamenti_programmati': terreno_trattamenti_prog,
-                    'trattamenti_comunicati': terreno_trattamenti_com,
-                }
-                
-                cascina_data['terreni'].append(terreno_data)
             
             cliente_data['cascine'].append(cascina_data)
         

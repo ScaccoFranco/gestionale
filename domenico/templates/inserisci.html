@@ -1,0 +1,1245 @@
+{% extends 'base.html' %}
+
+{% block page_title %}Inserisci Nuovo Trattamento{% endblock %}
+{% block page_icon %}<i class="fas fa-plus-circle"></i>{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --primary-color: #007bff;
+        --success-color: #28a745;
+        --warning-color: #ffc107;
+        --info-color: #17a2b8;
+        --danger-color: #dc3545;
+        --light-bg: #f8f9fa;
+        --border-color: #dee2e6;
+        --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.15);
+        --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --gradient-success: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    }
+
+    .page-header {
+        background: var(--gradient-primary);
+        color: white;
+        padding: 2rem 0;
+        margin: -2rem -2rem 3rem -2rem;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .page-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 100" fill="white" opacity="0.1"><polygon points="1000,100 1000,0 0,100"/></svg>');
+        background-size: cover;
+    }
+
+    .page-header-content {
+        position: relative;
+        z-index: 2;
+    }
+
+    .page-header h1 {
+        font-size: 2.2rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+
+    .page-header p {
+        font-size: 1.1rem;
+        opacity: 0.9;
+        font-weight: 300;
+    }
+
+    /* Main Form Container */
+    .form-container {
+        background: white;
+        border-radius: 20px;
+        box-shadow: var(--shadow-lg);
+        overflow: hidden;
+        margin-bottom: 2rem;
+    }
+
+    .form-header {
+        background: var(--gradient-success);
+        color: white;
+        padding: 1.5rem 2rem;
+        text-align: center;
+    }
+
+    .form-header h2 {
+        margin: 0;
+        font-weight: 600;
+        font-size: 1.4rem;
+    }
+
+    .form-content {
+        padding: 2.5rem;
+    }
+
+    /* Step Indicator */
+    .step-indicator {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 3rem;
+        position: relative;
+    }
+
+    .step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        position: relative;
+        flex: 1;
+        max-width: 150px;
+    }
+
+    .step-number {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: #e9ecef;
+        color: #6c757d;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 1.1rem;
+        margin-bottom: 0.5rem;
+        transition: all 0.3s ease;
+        position: relative;
+        z-index: 2;
+    }
+
+    .step.active .step-number {
+        background: var(--primary-color);
+        color: white;
+        transform: scale(1.1);
+    }
+
+    .step.completed .step-number {
+        background: var(--success-color);
+        color: white;
+    }
+
+    .step-label {
+        font-size: 0.9rem;
+        color: #6c757d;
+        text-align: center;
+        font-weight: 500;
+    }
+
+    .step.active .step-label {
+        color: var(--primary-color);
+        font-weight: 600;
+    }
+
+    .step-connector {
+        position: absolute;
+        top: 25px;
+        left: 50%;
+        right: -50%;
+        height: 2px;
+        background: #e9ecef;
+        z-index: 1;
+    }
+
+    .step.completed .step-connector {
+        background: var(--success-color);
+    }
+
+    .step:last-child .step-connector {
+        display: none;
+    }
+
+    /* Form Steps */
+    .form-step {
+        display: none;
+        animation: fadeInRight 0.5s ease-out;
+    }
+
+    .form-step.active {
+        display: block;
+    }
+
+    @keyframes fadeInRight {
+        from {
+            opacity: 0;
+            transform: translateX(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    /* Form Styling */
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-label {
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+
+    .form-label.required::after {
+        content: ' *';
+        color: var(--danger-color);
+    }
+
+    .form-control, .form-select {
+        border: 2px solid #e9ecef;
+        border-radius: 10px;
+        padding: 0.75rem 1rem;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        background: white;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        outline: none;
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    /* Selection Cards */
+    .selection-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .selection-card {
+        border: 2px solid #e9ecef;
+        border-radius: 15px;
+        padding: 1.5rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background: white;
+        position: relative;
+    }
+
+    .selection-card:hover {
+        border-color: var(--primary-color);
+        transform: translateY(-5px);
+        box-shadow: var(--shadow);
+    }
+
+    .selection-card.selected {
+        border-color: var(--success-color);
+        background: #f8fff9;
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(40, 167, 69, 0.15);
+    }
+
+    .selection-card.selected::before {
+        content: '✓';
+        position: absolute;
+        top: 10px;
+        right: 15px;
+        background: var(--success-color);
+        color: white;
+        width: 25px;
+        height: 25px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 0.9rem;
+    }
+
+    .selection-icon {
+        font-size: 2.5rem;
+        color: var(--primary-color);
+        margin-bottom: 1rem;
+    }
+
+    .selection-title {
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 0.5rem;
+    }
+
+    .selection-description {
+        color: #666;
+        font-size: 0.9rem;
+    }
+
+    /* Product List */
+    .product-list {
+        border: 2px solid #e9ecef;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        background: #fafafa;
+    }
+
+    .product-item {
+        background: white;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        border: 1px solid #e9ecef;
+        position: relative;
+        transition: all 0.3s ease;
+    }
+
+    .product-item:hover {
+        box-shadow: var(--shadow);
+        transform: translateX(5px);
+    }
+
+    .product-item:last-child {
+        margin-bottom: 0;
+    }
+
+    .product-header {
+        display: flex;
+        justify-content: between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+
+    .product-remove {
+        position: absolute;
+        top: 10px;
+        right: 15px;
+        background: var(--danger-color);
+        color: white;
+        border: none;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .product-remove:hover {
+        background: #c82333;
+        transform: scale(1.1);
+    }
+
+    /* Add Product Button */
+    .add-product-btn {
+        border: 2px dashed var(--primary-color);
+        background: rgba(0, 123, 255, 0.05);
+        color: var(--primary-color);
+        border-radius: 15px;
+        padding: 2rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin-bottom: 2rem;
+    }
+
+    .add-product-btn:hover {
+        background: rgba(0, 123, 255, 0.1);
+        transform: translateY(-3px);
+    }
+
+    .add-product-btn i {
+        font-size: 2rem;
+        margin-bottom: 1rem;
+        display: block;
+    }
+
+    /* Navigation Buttons */
+    .form-navigation {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-top: 2rem;
+        border-top: 1px solid #e9ecef;
+        margin-top: 2rem;
+    }
+
+    .btn {
+        padding: 0.75rem 2rem;
+        border-radius: 50px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        border: none;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .btn-primary {
+        background: var(--gradient-primary);
+        color: white;
+        box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 123, 255, 0.4);
+    }
+
+    .btn-success {
+        background: var(--gradient-success);
+        color: white;
+        box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+    }
+
+    .btn-success:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+    }
+
+    .btn-secondary {
+        background: #6c757d;
+        color: white;
+    }
+
+    .btn-secondary:hover {
+        background: #5a6268;
+        transform: translateY(-2px);
+    }
+
+    /* Summary Box */
+    .summary-box {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-radius: 15px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        border: 1px solid #e9ecef;
+    }
+
+    .summary-title {
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+    }
+
+    .summary-title i {
+        margin-right: 0.5rem;
+        color: var(--primary-color);
+    }
+
+    .summary-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #dee2e6;
+    }
+
+    .summary-item:last-child {
+        border-bottom: none;
+        font-weight: 600;
+        font-size: 1.1rem;
+        color: var(--primary-color);
+    }
+
+    .summary-label {
+        color: #666;
+    }
+
+    .summary-value {
+        font-weight: 500;
+        color: #333;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .form-content {
+            padding: 1.5rem;
+        }
+        
+        .form-row {
+            grid-template-columns: 1fr;
+        }
+        
+        .selection-cards {
+            grid-template-columns: 1fr;
+        }
+        
+        .step-indicator {
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        
+        .step {
+            flex: none;
+        }
+        
+        .step-connector {
+            display: none;
+        }
+    }
+
+    /* Loading Animation */
+    .loading {
+        display: none;
+        text-align: center;
+        padding: 2rem;
+    }
+
+    .loading.show {
+        display: block;
+    }
+
+    .spinner {
+        width: 50px;
+        height: 50px;
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid var(--primary-color);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 1rem;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header">
+    <div class="page-header-content">
+        <h1><i class="fas fa-seedling me-3"></i>Nuovo Trattamento</h1>
+        <p>Crea un nuovo trattamento in pochi semplici passaggi</p>
+    </div>
+</div>
+
+<!-- Main Form -->
+<div class="form-container">
+    <div class="form-header">
+        <h2><i class="fas fa-plus-circle me-2"></i>Configurazione Trattamento</h2>
+    </div>
+    
+    <div class="form-content">
+        <!-- Step Indicator -->
+        <div class="step-indicator">
+            <div class="step active" id="step1">
+                <div class="step-number">1</div>
+                <div class="step-label">Selezione<br>Target</div>
+                <div class="step-connector"></div>
+            </div>
+            <div class="step" id="step2">
+                <div class="step-number">2</div>
+                <div class="step-label">Prodotti<br>Trattamento</div>
+                <div class="step-connector"></div>
+            </div>
+            <div class="step" id="step3">
+                <div class="step-number">3</div>
+                <div class="step-label">Dettagli<br>Aggiuntivi</div>
+                <div class="step-connector"></div>
+            </div>
+            <div class="step" id="step4">
+                <div class="step-number">4</div>
+                <div class="step-label">Riepilogo<br>Conferma</div>
+            </div>
+        </div>
+
+        <!-- Form -->
+        <form id="trattamentoForm">
+            {% csrf_token %}
+            
+            <!-- Step 1: Target Selection -->
+            <div class="form-step active" id="form-step-1">
+                <h3><i class="fas fa-crosshairs text-primary me-2"></i>Seleziona il Target del Trattamento</h3>
+                <p class="text-muted mb-4">Scegli se il trattamento riguarda un'intera azienda, una cascina specifica o terreni selezionati.</p>
+                
+                <div class="selection-cards">
+                    <div class="selection-card" onclick="selectTarget('cliente')">
+                        <div class="selection-icon">
+                            <i class="fas fa-building"></i>
+                        </div>
+                        <div class="selection-title">Intera Azienda</div>
+                        <div class="selection-description">Applica il trattamento a tutti i terreni dell'azienda selezionata</div>
+                    </div>
+                    
+                    <div class="selection-card" onclick="selectTarget('cascina')">
+                        <div class="selection-icon">
+                            <i class="fas fa-home"></i>
+                        </div>
+                        <div class="selection-title">Cascina Specifica</div>
+                        <div class="selection-description">Applica il trattamento a tutti i terreni di una cascina</div>
+                    </div>
+                    
+                    <div class="selection-card" onclick="selectTarget('terreno')">
+                        <div class="selection-icon">
+                            <i class="fas fa-seedling"></i>
+                        </div>
+                        <div class="selection-title">Terreni Selezionati</div>
+                        <div class="selection-description">Scegli specifici terreni per il trattamento</div>
+                    </div>
+                </div>
+
+                <!-- Dynamic Selection Forms -->
+                <div id="cliente-selection" class="target-form" style="display: none;">
+                    <div class="form-group">
+                        <label class="form-label required">Seleziona Aziende</label>
+                        <p class="text-muted mb-3">Puoi selezionare una o più aziende per il trattamento</p>
+                        <div id="clienti-list" class="selection-cards">
+                            {% for cliente in clienti %}
+                            <div class="selection-card cliente-card" data-cliente-id="{{ cliente.id }}" onclick="toggleCliente({{ cliente.id }}, this)">
+                                <div class="selection-icon">
+                                    <i class="fas fa-building"></i>
+                                </div>
+                                <div class="selection-title">{{ cliente.nome }}</div>
+                                <div class="selection-description">Tutte le cascine e terreni</div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <div id="cascina-selection" class="target-form" style="display: none;">
+                    <div class="form-group">
+                        <label class="form-label required">Seleziona Azienda per visualizzare le Cascine</label>
+                        <select class="form-select" id="cascina-cliente-select" onchange="loadCascineForSelection()">
+                            <option value="">Scegli un'azienda...</option>
+                            {% for cliente in clienti %}
+                            <option value="{{ cliente.id }}">{{ cliente.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="form-group" id="cascine-selection-container" style="display: none;">
+                        <label class="form-label required">Seleziona Cascine</label>
+                        <p class="text-muted mb-3">Puoi selezionare una o più cascine per il trattamento</p>
+                        <div id="cascine-list" class="selection-cards">
+                            <!-- Le cascine verranno caricate dinamicamente -->
+                        </div>
+                    </div>
+                </div>
+
+                <div id="terreno-selection" class="target-form" style="display: none;">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label required">Seleziona Azienda</label>
+                            <select class="form-select" id="terreno-cliente-select" onchange="loadCascineForTerreni()">
+                                <option value="">Scegli un'azienda...</option>
+                                {% for cliente in clienti %}
+                                <option value="{{ cliente.id }}">{{ cliente.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label required">Seleziona Cascina</label>
+                            <select class="form-select" id="terreno-cascina-select" onchange="loadTerreniForCascina()">
+                                <option value="">Prima seleziona un'azienda...</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group" id="terreni-selection-container" style="display: none;">
+                        <label class="form-label required">Seleziona Terreni</label>
+                        <p class="text-muted mb-3">Puoi selezionare uno o più terreni per il trattamento</p>
+                        <div id="terreni-list" class="selection-cards" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+                            <!-- I terreni verranno caricati dinamicamente -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contoterzista Info -->
+                <div id="contoterzista-info" style="display: none;">
+                    <div class="summary-box">
+                        <div class="summary-title">
+                            <i class="fas fa-user-tie"></i>
+                            Contoterzista Assegnato
+                        </div>
+                        <div id="contoterzista-details">
+                            <!-- Verrà popolato dinamicamente -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 2: Products -->
+            <div class="form-step" id="form-step-2">
+                <h3><i class="fas fa-flask text-primary me-2"></i>Seleziona i Prodotti per il Trattamento</h3>
+                <p class="text-muted mb-4">Aggiungi i prodotti fitosanitari che verranno utilizzati nel trattamento.</p>
+                
+                <div class="product-list" id="products-container">
+                    <!-- I prodotti verranno aggiunti dinamicamente -->
+                </div>
+                
+                <div class="add-product-btn" onclick="addProduct()">
+                    <i class="fas fa-plus"></i>
+                    <strong>Aggiungi Prodotto</strong>
+                    <div class="text-muted">Clicca per aggiungere un nuovo prodotto al trattamento</div>
+                </div>
+            </div>
+
+            <!-- Step 3: Additional Details -->
+            <div class="form-step" id="form-step-3">
+                <h3><i class="fas fa-calendar-alt text-primary me-2"></i>Dettagli Aggiuntivi</h3>
+                <p class="text-muted mb-4">Specifica la data di esecuzione e aggiungi eventuali note per il contoterzista.</p>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Data Esecuzione Prevista</label>
+                        <input type="date" class="form-control" id="data-esecuzione">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Priorità</label>
+                        <select class="form-select" id="priorita">
+                            <option value="normale">Normale</option>
+                            <option value="alta">Alta</option>
+                            <option value="urgente">Urgente</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Note per il Contoterzista</label>
+                    <textarea class="form-control" id="note" rows="4" placeholder="Inserisci eventuali istruzioni speciali, condizioni meteorologiche da rispettare, o altre informazioni utili per l'esecuzione del trattamento..."></textarea>
+                </div>
+            </div>
+
+            <!-- Step 4: Summary -->
+            <div class="form-step" id="form-step-4">
+                <h3><i class="fas fa-check-circle text-success me-2"></i>Riepilogo e Conferma</h3>
+                <p class="text-muted mb-4">Verifica tutti i dettagli del trattamento prima di confermarlo.</p>
+                
+                <div class="summary-box">
+                    <div class="summary-title">
+                        <i class="fas fa-clipboard-list"></i>
+                        Dettagli Trattamento
+                    </div>
+                    <div id="final-summary">
+                        <!-- Verrà popolato dinamicamente -->
+                    </div>
+                </div>
+                
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p>Creazione trattamento in corso...</p>
+                </div>
+            </div>
+
+            <!-- Navigation -->
+            <div class="form-navigation">
+                <button type="button" class="btn btn-secondary" id="prev-btn" onclick="previousStep()" style="display: none;">
+                    <i class="fas fa-arrow-left"></i> Indietro
+                </button>
+                
+                <div></div> <!-- Spacer -->
+                
+                <button type="button" class="btn btn-primary" id="next-btn" onclick="nextStep()">
+                    Avanti <i class="fas fa-arrow-right"></i>
+                </button>
+                
+                <button type="button" class="btn btn-success" id="submit-btn" onclick="submitForm()" style="display: none;">
+                    <i class="fas fa-check"></i> Crea Trattamento
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let currentStep = 1;
+    let maxSteps = 4;
+    let selectedTarget = null;
+    let selectedData = {};
+    let products = [];
+    let productCounter = 0;
+    
+    // Step Navigation
+    function nextStep() {
+        if (validateCurrentStep()) {
+            if (currentStep < maxSteps) {
+                currentStep++;
+                updateStepDisplay();
+                if (currentStep === 4) {
+                    generateSummary();
+                }
+            }
+        }
+    }
+    
+    function previousStep() {
+        if (currentStep > 1) {
+            currentStep--;
+            updateStepDisplay();
+        }
+    }
+    
+    function updateStepDisplay() {
+        // Update step indicator
+        document.querySelectorAll('.step').forEach((step, index) => {
+            const stepNum = index + 1;
+            step.classList.remove('active', 'completed');
+            
+            if (stepNum < currentStep) {
+                step.classList.add('completed');
+            } else if (stepNum === currentStep) {
+                step.classList.add('active');
+            }
+        });
+        
+        // Update form steps
+        document.querySelectorAll('.form-step').forEach((step, index) => {
+            step.classList.remove('active');
+            if (index + 1 === currentStep) {
+                step.classList.add('active');
+            }
+        });
+        
+        // Update navigation buttons
+        document.getElementById('prev-btn').style.display = currentStep > 1 ? 'inline-flex' : 'none';
+        document.getElementById('next-btn').style.display = currentStep < maxSteps ? 'inline-flex' : 'none';
+        document.getElementById('submit-btn').style.display = currentStep === maxSteps ? 'inline-flex' : 'none';
+    }
+    
+    // Target Selection
+    function selectTarget(target) {
+        selectedTarget = target;
+        
+        // Update selection cards
+        document.querySelectorAll('.selection-card').forEach(card => {
+            card.classList.remove('selected');
+        });
+        event.currentTarget.classList.add('selected');
+        
+        // Show appropriate form
+        document.querySelectorAll('.target-form').forEach(form => {
+            form.style.display = 'none';
+        });
+        document.getElementById(target + '-selection').style.display = 'block';
+        
+        // Reset contoterzista info
+        document.getElementById('contoterzista-info').style.display = 'none';
+    }
+    
+    // Dynamic loading functions
+    function loadCascineForCliente() {
+        const clienteId = document.getElementById('cascina-cliente-select').value;
+        const cascinaSelect = document.getElementById('cascina-select');
+        
+        cascinaSelect.innerHTML = '<option value="">Caricamento...</option>';
+        
+        if (clienteId) {
+            fetch(`/api/cascine/${clienteId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    cascinaSelect.innerHTML = '<option value="">Seleziona una cascina...</option>';
+                    data.forEach(cascina => {
+                        const option = document.createElement('option');
+                        option.value = cascina.id;
+                        option.textContent = cascina.nome;
+                        cascinaSelect.appendChild(option);
+                    });
+                })
+                .catch(() => {
+                    cascinaSelect.innerHTML = '<option value="">Errore nel caricamento</option>';
+                });
+        }
+    }
+    
+    function loadTerreniForCascina() {
+        const cascinaId = document.getElementById('terreno-cascina-select').value;
+        const terreniList = document.getElementById('terreni-list');
+        
+        terreniList.innerHTML = '<div class="text-center">Caricamento terreni...</div>';
+        
+        if (cascinaId) {
+            fetch(`/api/terreni/${cascinaId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    terreniList.innerHTML = '';
+                    data.forEach(terreno => {
+                        const terrenaCard = document.createElement('div');
+                        terrenaCard.className = 'selection-card terreno-card';
+                        terrenaCard.onclick = () => toggleTerreno(terreno.id, terrenaCard);
+                        terrenaCard.innerHTML = `
+                            <div class="selection-icon">
+                                <i class="fas fa-seedling"></i>
+                            </div>
+                            <div class="selection-title">${terreno.nome}</div>
+                            <div class="selection-description">${terreno.superficie} ha</div>
+                        `;
+                        terreniList.appendChild(terrenaCard);
+                    });
+                })
+                .catch(() => {
+                    terreniList.innerHTML = '<div class="text-center text-danger">Errore nel caricamento terreni</div>';
+                });
+        }
+    }
+    
+    function toggleTerreno(terrenoId, cardElement) {
+        cardElement.classList.toggle('selected');
+        
+        if (cardElement.classList.contains('selected')) {
+            if (!selectedData.terreni) selectedData.terreni = [];
+            selectedData.terreni.push(terrenoId);
+        } else {
+            selectedData.terreni = selectedData.terreni.filter(id => id !== terrenoId);
+        }
+    }
+    
+    function updateContoterzista() {
+        let cascinaId = null;
+        
+        if (selectedTarget === 'cliente') {
+            const clienteId = document.getElementById('cliente-select').value;
+            selectedData.cliente = clienteId;
+            if (clienteId) {
+                // Per ora mostriamo info generica, in una implementazione reale 
+                // dovresti fare una chiamata API per ottenere il contoterzista
+                showContoterzastaInfo('Contoterzista sarà assegnato automaticamente');
+            }
+        } else if (selectedTarget === 'cascina') {
+            cascinaId = document.getElementById('cascina-select').value;
+            selectedData.cascina = cascinaId;
+        }
+        
+        if (cascinaId) {
+            fetch(`/api/cascina/${cascinaId}/contoterzista/`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.contoterzista) {
+                        showContoterzastaInfo(data.contoterzista.nome);
+                    } else {
+                        showContoterzastaInfo('Nessun contoterzista assegnato');
+                    }
+                })
+                .catch(() => {
+                    showContoterzastaInfo('Errore nel caricamento contoterzista');
+                });
+        }
+    }
+    
+    function showContoterzastaInfo(nome) {
+        const container = document.getElementById('contoterzista-details');
+        container.innerHTML = `
+            <div class="summary-item">
+                <span class="summary-label">Nome:</span>
+                <span class="summary-value">${nome}</span>
+            </div>
+        `;
+        document.getElementById('contoterzista-info').style.display = 'block';
+    }
+    
+    // Product Management
+    function addProduct() {
+        productCounter++;
+        
+        const productItem = document.createElement('div');
+        productItem.className = 'product-item';
+        productItem.id = `product-${productCounter}`;
+        productItem.innerHTML = `
+            <button type="button" class="product-remove" onclick="removeProduct(${productCounter})">
+                <i class="fas fa-times"></i>
+            </button>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label required">Prodotto</label>
+                    <select class="form-select product-select" data-product-id="${productCounter}" onchange="updateProductInfo(${productCounter})">
+                        <option value="">Seleziona un prodotto...</option>
+                        {% for prodotto in prodotti %}
+                        <option value="{{ prodotto.id }}">{{ prodotto.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label required">Quantità</label>
+                    <div class="input-group">
+                        <input type="number" class="form-control" step="0.01" min="0.01" placeholder="0.00">
+                        <span class="input-group-text" id="unit-${productCounter}">L</span>
+                    </div>
+                </div>
+            </div>
+            <div class="product-info" id="product-info-${productCounter}">
+                <!-- Info prodotto verranno mostrate qui -->
+            </div>
+        `;
+        
+        document.getElementById('products-container').appendChild(productItem);
+    }
+    
+    function removeProduct(productId) {
+        document.getElementById(`product-${productId}`).remove();
+        products = products.filter(p => p.id !== productId);
+    }
+    
+    function updateProductInfo(productId) {
+        const select = document.querySelector(`[data-product-id="${productId}"]`);
+        const productInfo = document.getElementById(`product-info-${productId}`);
+        
+        if (select.value) {
+            // In una implementazione reale, faresti una chiamata API per ottenere le info del prodotto
+            productInfo.innerHTML = `
+                <div class="mt-3 p-3 bg-light rounded">
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Informazioni prodotto caricate automaticamente
+                    </small>
+                </div>
+            `;
+        } else {
+            productInfo.innerHTML = '';
+        }
+    }
+    
+    // Form Validation
+    function validateCurrentStep() {
+        if (currentStep === 1) {
+            if (!selectedTarget) {
+                alert('Seleziona il tipo di target per il trattamento');
+                return false;
+            }
+            
+            if (selectedTarget === 'cliente') {
+                const cliente = document.getElementById('cliente-select').value;
+                if (!cliente) {
+                    alert('Seleziona un\'azienda');
+                    return false;
+                }
+            } else if (selectedTarget === 'cascina') {
+                const cascina = document.getElementById('cascina-select').value;
+                if (!cascina) {
+                    alert('Seleziona una cascina');
+                    return false;
+                }
+            } else if (selectedTarget === 'terreno') {
+                if (!selectedData.terreni || selectedData.terreni.length === 0) {
+                    alert('Seleziona almeno un terreno');
+                    return false;
+                }
+            }
+        } else if (currentStep === 2) {
+            const productItems = document.querySelectorAll('.product-item');
+            if (productItems.length === 0) {
+                alert('Aggiungi almeno un prodotto');
+                return false;
+            }
+            
+            let valid = true;
+            productItems.forEach(item => {
+                const select = item.querySelector('.product-select');
+                const quantity = item.querySelector('input[type="number"]');
+                
+                if (!select.value || !quantity.value || quantity.value <= 0) {
+                    valid = false;
+                }
+            });
+            
+            if (!valid) {
+                alert('Completa tutti i campi dei prodotti');
+                return false;
+            }
+        }
+        
+        return true;
+    }
+    
+    // Generate Summary
+    function generateSummary() {
+        const summaryContainer = document.getElementById('final-summary');
+        let summaryHTML = '';
+        
+        // Target info
+        if (selectedTarget === 'cliente') {
+            const clienteSelect = document.getElementById('cliente-select');
+            summaryHTML += `
+                <div class="summary-item">
+                    <span class="summary-label">Target:</span>
+                    <span class="summary-value">Intera Azienda - ${clienteSelect.options[clienteSelect.selectedIndex].text}</span>
+                </div>
+            `;
+        } else if (selectedTarget === 'cascina') {
+            const cascinaSelect = document.getElementById('cascina-select');
+            summaryHTML += `
+                <div class="summary-item">
+                    <span class="summary-label">Target:</span>
+                    <span class="summary-value">Cascina - ${cascinaSelect.options[cascinaSelect.selectedIndex].text}</span>
+                </div>
+            `;
+        } else if (selectedTarget === 'terreno') {
+            const selectedTerreni = document.querySelectorAll('.terreno-card.selected');
+            summaryHTML += `
+                <div class="summary-item">
+                    <span class="summary-label">Target:</span>
+                    <span class="summary-value">${selectedTerreni.length} terreni selezionati</span>
+                </div>
+            `;
+        }
+        
+        // Products info
+        const productItems = document.querySelectorAll('.product-item');
+        summaryHTML += `
+            <div class="summary-item">
+                <span class="summary-label">Prodotti:</span>
+                <span class="summary-value">${productItems.length} prodotti</span>
+            </div>
+        `;
+        
+        // Date info
+        const dataEsecuzione = document.getElementById('data-esecuzione').value;
+        if (dataEsecuzione) {
+            summaryHTML += `
+                <div class="summary-item">
+                    <span class="summary-label">Data Esecuzione:</span>
+                    <span class="summary-value">${new Date(dataEsecuzione).toLocaleDateString('it-IT')}</span>
+                </div>
+            `;
+        }
+        
+        // Notes
+        const note = document.getElementById('note').value;
+        if (note) {
+            summaryHTML += `
+                <div class="summary-item">
+                    <span class="summary-label">Note:</span>
+                    <span class="summary-value">${note.substring(0, 100)}${note.length > 100 ? '...' : ''}</span>
+                </div>
+            `;
+        }
+        
+        summaryHTML += `
+            <div class="summary-item">
+                <span class="summary-label">Stato:</span>
+                <span class="summary-value">Programmato</span>
+            </div>
+        `;
+        
+        summaryContainer.innerHTML = summaryHTML;
+    }
+    
+    
+    // Submit Form
+    function submitForm() {
+        if (!validateCurrentStep()) return;
+        
+        document.getElementById('loading').classList.add('show');
+        document.getElementById('submit-btn').disabled = true;
+        
+        // Raccoglio tutti i dati del form
+        const formData = new FormData();
+        formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+        
+        // Target data
+        formData.append('livello_applicazione', selectedTarget);
+        if (selectedTarget === 'cliente') {
+            formData.append('cliente', document.getElementById('cliente-select').value);
+        } else if (selectedTarget === 'cascina') {
+            formData.append('cliente', document.getElementById('cascina-cliente-select').value);
+            formData.append('cascina', document.getElementById('cascina-select').value);
+        } else if (selectedTarget === 'terreno') {
+            formData.append('cliente', document.getElementById('terreno-cliente-select').value);
+            formData.append('cascina', document.getElementById('terreno-cascina-select').value);
+            selectedData.terreni.forEach(terrenoId => {
+                formData.append('terreni_selezionati', terrenoId);
+            });
+        }
+        
+        // Products data
+        const productItems = document.querySelectorAll('.product-item');
+        const prodottiData = [];
+        productItems.forEach(item => {
+            const select = item.querySelector('.product-select');
+            const quantity = item.querySelector('input[type="number"]');
+            
+            if (select.value && quantity.value) {
+                prodottiData.push({
+                    prodotto_id: select.value,
+                    quantita: quantity.value
+                });
+            }
+        });
+        formData.append('prodotti_data', JSON.stringify(prodottiData));
+        
+        // Additional data
+        const dataEsecuzione = document.getElementById('data-esecuzione').value;
+        if (dataEsecuzione) {
+            formData.append('data_esecuzione_prevista', dataEsecuzione);
+        }
+        formData.append('note', document.getElementById('note').value);
+        
+        // Invia alla tua API esistente
+        fetch('/api/trattamenti/', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Trattamento creato con successo!');
+                window.location.href = '{% url "trattamenti" %}';
+            } else {
+                alert('Errore nel salvare il trattamento: ' + (data.error || 'Errore sconosciuto'));
+            }
+        })
+        .catch(error => {
+            console.error('Errore:', error);
+            alert('Errore di connessione');
+        })
+        .finally(() => {
+            document.getElementById('loading').classList.remove('show');
+            document.getElementById('submit-btn').disabled = false;
+        });
+    }
+    
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add first product by default
+        addProduct();
+        
+        // Set minimum date to today
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('data-esecuzione').min = today;
+    });
+
+    function loadCascineForTerreni() {
+        const clienteId = document.getElementById('terreno-cliente-select').value;
+        const cascinaSelect = document.getElementById('terreno-cascina-select');
+        
+        cascinaSelect.innerHTML = '<option value="">Caricamento...</option>';
+        
+        if (clienteId) {
+            fetch(`/api/cascine/${clienteId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    cascinaSelect.innerHTML = '<option value="">Seleziona una cascina...</option>';
+                    data.forEach(cascina => {
+                        const option = document.createElement('option');
+                        option.value = cascina.id;
+                        option.textContent = cascina.nome;
+                        cascinaSelect.appendChild(option);
+                    });
+                })
+                .catch(() => {
+                    cascinaSelect.innerHTML = '<option value="">Errore nel caricamento</option>';
+                });
+        }
+    }
+    </script>
+{% endblock %}
+    

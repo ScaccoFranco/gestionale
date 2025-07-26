@@ -58,6 +58,8 @@
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
         gap: 1.5rem;
+        grid-auto-rows: max-content;
+        align-items: start;
     }
     
     .azienda-card {
@@ -68,6 +70,8 @@
         overflow: hidden;
         border: 1px solid var(--border-color);
         position: relative;
+        height: fit-content;
+        align-self: start;
     }
     
     .azienda-card:hover {
@@ -139,10 +143,28 @@
         padding: 1rem;
         background: #fafafa;
         border-top: 1px solid var(--border-color);
+        transition: all 0.3s ease;
+        overflow: hidden;
     }
     
     .cascine-container.expanded {
         display: block;
+        animation: slideDown 0.3s ease-out;
+    }
+    
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            max-height: 0;
+            padding-top: 0;
+            padding-bottom: 0;
+        }
+        to {
+            opacity: 1;
+            max-height: 1000px;
+            padding-top: 1rem;
+            padding-bottom: 1rem;
+        }
     }
     
     .cascina-card {
@@ -309,6 +331,12 @@
     }
     
     /* Responsive */
+    @media (max-width: 1200px) {
+        .aziende-container {
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        }
+    }
+    
     @media (max-width: 768px) {
         .aziende-container {
             grid-template-columns: 1fr;
@@ -317,6 +345,16 @@
         .azienda-info,
         .cascina-details {
             grid-template-columns: 1fr;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .aziende-container {
+            gap: 1rem;
+        }
+        
+        .azienda-card {
+            margin-bottom: 0;
         }
     }
 </style>
@@ -373,15 +411,7 @@
         <div class="label">Terreni</div>
     </div>
     <div class="summary-card">
-        <div class="number" id="total-superficie-clienti">
-            <script>
-                let totalSuperficie = 0;
-                    {% for cliente in aziende_tree %}
-                        totalSuperficie += {{ cliente.superficie_totale|floatformat:2|default:0 }};
-                    {% endfor %}
-                document.getElementById('total-superficie-clienti').textContent = totalSuperficie.toFixed(2) + ' ha';
-            </script>
-        </div>
+        <div class="number">{{ aziende_tree|total_superficie }} ha</div>
         <div class="label">Superficie Totale</div>
     </div>
 </div>

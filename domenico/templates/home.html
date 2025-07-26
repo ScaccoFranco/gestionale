@@ -1,0 +1,564 @@
+{% extends 'base.html' %}
+
+{% block page_title %}Dashboard{% endblock %}
+{% block page_icon %}<i class="fas fa-home"></i>{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --primary-color: #007bff;
+        --success-color: #28a745;
+        --warning-color: #ffc107;
+        --info-color: #17a2b8;
+        --danger-color: #dc3545;
+        --purple-color: #6f42c1;
+        --orange-color: #fd7e14;
+        --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --gradient-success: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        --gradient-warning: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        --gradient-info: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        --shadow: 0 10px 30px rgba(0,0,0,0.1);
+        --shadow-hover: 0 20px 40px rgba(0,0,0,0.15);
+    }
+
+    .welcome-section {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 3rem 0;
+        margin: -2rem -2rem 3rem -2rem;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .welcome-section::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 100" fill="white" opacity="0.1"><polygon points="1000,100 1000,0 0,100"/></svg>');
+        background-size: cover;
+    }
+
+    .welcome-content {
+        position: relative;
+        z-index: 2;
+    }
+
+    .welcome-title {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+
+    .welcome-subtitle {
+        font-size: 1.2rem;
+        opacity: 0.9;
+        font-weight: 300;
+    }
+
+    /* Quick Actions Cards */
+    .quick-actions {
+        margin-bottom: 3rem;
+    }
+
+    .quick-actions h2 {
+        text-align: center;
+        margin-bottom: 2rem;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .actions-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 2rem;
+        margin-bottom: 3rem;
+    }
+
+    .action-card {
+        background: white;
+        border-radius: 20px;
+        padding: 2rem;
+        box-shadow: var(--shadow);
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+        text-decoration: none;
+        color: inherit;
+        border: none;
+        cursor: pointer;
+    }
+
+    .action-card:hover {
+        transform: translateY(-10px);
+        box-shadow: var(--shadow-hover);
+        text-decoration: none;
+        color: inherit;
+    }
+
+    .action-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 5px;
+        background: var(--card-gradient);
+        transition: height 0.3s ease;
+    }
+
+    .action-card:hover::before {
+        height: 100%;
+        opacity: 0.05;
+    }
+
+    .action-card.new-treatment {
+        --card-gradient: var(--gradient-success);
+    }
+
+    .action-card.companies {
+        --card-gradient: var(--gradient-primary);
+    }
+
+    .action-card.treatments {
+        --card-gradient: var(--gradient-warning);
+    }
+
+    .action-card.database {
+        --card-gradient: var(--gradient-info);
+    }
+
+    .action-icon {
+        width: 70px;
+        height: 70px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 1.5rem;
+        font-size: 2rem;
+        color: white;
+        background: var(--card-gradient);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+    }
+
+    .action-title {
+        font-size: 1.3rem;
+        font-weight: 600;
+        margin-bottom: 0.8rem;
+        color: #333;
+    }
+
+    .action-description {
+        color: #666;
+        line-height: 1.6;
+        margin-bottom: 1.5rem;
+    }
+
+    .action-button {
+        background: var(--card-gradient);
+        color: white;
+        border: none;
+        padding: 0.8rem 2rem;
+        border-radius: 50px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+
+    .action-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+    }
+
+    /* Stats Overview */
+    .stats-overview {
+        background: white;
+        border-radius: 20px;
+        padding: 2rem;
+        box-shadow: var(--shadow);
+        margin-bottom: 3rem;
+    }
+
+    .stats-title {
+        text-align: center;
+        margin-bottom: 2rem;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 2rem;
+    }
+
+    .stat-item {
+        text-align: center;
+        position: relative;
+    }
+
+    .stat-number {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        background: var(--gradient-primary);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .stat-label {
+        color: #666;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-size: 0.9rem;
+    }
+
+    .stat-item::after {
+        content: '';
+        position: absolute;
+        bottom: -10px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 50px;
+        height: 3px;
+        background: var(--gradient-primary);
+        border-radius: 2px;
+    }
+
+    /* Recent Activity */
+    .recent-activity {
+        background: white;
+        border-radius: 20px;
+        padding: 2rem;
+        box-shadow: var(--shadow);
+    }
+
+    .activity-title {
+        margin-bottom: 1.5rem;
+        color: #333;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+    }
+
+    .activity-title i {
+        margin-right: 0.5rem;
+        color: var(--primary-color);
+    }
+
+    .activity-list {
+        list-style: none;
+        padding: 0;
+    }
+
+    .activity-item {
+        padding: 1rem;
+        border-left: 4px solid var(--primary-color);
+        margin-bottom: 1rem;
+        background: #f8f9fa;
+        border-radius: 0 10px 10px 0;
+        transition: all 0.3s ease;
+    }
+
+    .activity-item:hover {
+        background: #e9ecef;
+        transform: translateX(5px);
+    }
+
+    .activity-item:last-child {
+        margin-bottom: 0;
+    }
+
+    .activity-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+    }
+
+    .activity-text {
+        color: #333;
+        font-weight: 500;
+    }
+
+    .activity-time {
+        color: #666;
+        font-size: 0.9rem;
+        white-space: nowrap;
+        margin-left: 1rem;
+    }
+
+    .empty-activity {
+        text-align: center;
+        color: #666;
+        padding: 2rem;
+        font-style: italic;
+    }
+
+    /* Weather Widget */
+    .weather-widget {
+        background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
+        color: white;
+        border-radius: 20px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        text-align: center;
+    }
+
+    .weather-temp {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+
+    .weather-desc {
+        opacity: 0.9;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .welcome-title {
+            font-size: 2rem;
+        }
+        
+        .actions-grid {
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+        
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        
+        .action-card {
+            padding: 1.5rem;
+        }
+    }
+
+    /* Animation */
+    .action-card, .stats-overview, .recent-activity {
+        animation: fadeInUp 0.6s ease-out;
+    }
+
+    .action-card:nth-child(1) { animation-delay: 0.1s; }
+    .action-card:nth-child(2) { animation-delay: 0.2s; }
+    .action-card:nth-child(3) { animation-delay: 0.3s; }
+    .action-card:nth-child(4) { animation-delay: 0.4s; }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Welcome Section -->
+<div class="welcome-section">
+    <div class="welcome-content">
+        <h1 class="welcome-title">
+            Benvenuto, Domenico! 👋
+        </h1>
+        <p class="welcome-subtitle">
+            Gestisci le tue aziende agricole e i trattamenti in modo semplice e professionale
+        </p>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="quick-actions">
+    <h2><i class="fas fa-bolt text-warning me-2"></i>Azioni Rapide</h2>
+    
+    <div class="actions-grid">
+        <!-- Nuovo Trattamento -->
+        <a href="{% url 'inserisci' %}" class="action-card new-treatment">
+            <div class="action-icon">
+                <i class="fas fa-plus-circle"></i>
+            </div>
+            <h3 class="action-title">Nuovo Trattamento</h3>
+            <p class="action-description">
+                Crea rapidamente un nuovo trattamento per le tue aziende e programma l'intervento
+            </p>
+            <button class="action-button">
+                <i class="fas fa-plus me-2"></i>Inizia Ora
+            </button>
+        </a>
+
+        <!-- Le Tue Aziende -->
+        <a href="{% url 'aziende' %}" class="action-card companies">
+            <div class="action-icon">
+                <i class="fas fa-building"></i>
+            </div>
+            <h3 class="action-title">Le Tue Aziende</h3>
+            <p class="action-description">
+                Visualizza e gestisci tutte le aziende, cascine e terreni in un'interfaccia intuitiva
+            </p>
+            <button class="action-button">
+                <i class="fas fa-eye me-2"></i>Visualizza
+            </button>
+        </a>
+
+        <!-- Trattamenti -->
+        <a href="{% url 'trattamenti' %}" class="action-card treatments">
+            <div class="action-icon">
+                <i class="fas fa-flask"></i>
+            </div>
+            <h3 class="action-title">Gestione Trattamenti</h3>
+            <p class="action-description">
+                Monitora lo stato di tutti i trattamenti e comunica con i contoterzisti
+            </p>
+            <button class="action-button">
+                <i class="fas fa-list me-2"></i>Gestisci
+            </button>
+        </a>
+
+        <!-- Database -->
+        <a href="{% url 'database' %}" class="action-card database">
+            <div class="action-icon">
+                <i class="fas fa-database"></i>
+            </div>
+            <h3 class="action-title">Gestione Database</h3>
+            <p class="action-description">
+                Aggiungi nuove aziende, prodotti, contoterzisti e mantieni aggiornato il sistema
+            </p>
+            <button class="action-button">
+                <i class="fas fa-cog me-2"></i>Configura
+            </button>
+        </a>
+    </div>
+</div>
+
+<!-- Stats Overview -->
+<div class="stats-overview">
+    <h2 class="stats-title">
+        <i class="fas fa-chart-bar text-primary me-2"></i>Panoramica Generale
+    </h2>
+    
+    <div class="stats-grid">
+        <div class="stat-item">
+            <div class="stat-number">{{ stats.clienti_totali }}</div>
+            <div class="stat-label">Clienti</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number">{{ stats.cascine_totali }}</div>
+            <div class="stat-label">Cascine</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number">{{ stats.terreni_totali }}</div>
+            <div class="stat-label">Terreni</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number">{{ stats.superficie_totale|floatformat:1 }}</div>
+            <div class="stat-label">Ettari Totali</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number">{{ stats.trattamenti_programmati }}</div>
+            <div class="stat-label">Programmati</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number">{{ stats.trattamenti_comunicati }}</div>
+            <div class="stat-label">Comunicati</div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Weather Widget -->
+    <div class="col-md-4">
+        <div class="weather-widget">
+            <h4><i class="fas fa-sun me-2"></i>Meteo Oggi</h4>
+            <div class="weather-temp">22°C</div>
+            <div class="weather-desc">Soleggiato - Ideale per trattamenti</div>
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="col-md-8">
+        <div class="recent-activity">
+            <h3 class="activity-title">
+                <i class="fas fa-clock"></i>
+                Attività Recenti
+            </h3>
+            
+            {% if trattamenti_recenti %}
+            <ul class="activity-list">
+                {% for trattamento in trattamenti_recenti %}
+                <li class="activity-item">
+                    <div class="activity-content">
+                        <div class="activity-text">
+                            <strong>{{ trattamento.get_stato_display }}</strong> - 
+                            {{ trattamento.cliente.nome }}
+                            {% if trattamento.cascina %}
+                                ({{ trattamento.cascina.nome }})
+                            {% endif %}
+                        </div>
+                        <div class="activity-time">
+                            {{ trattamento.data_inserimento|timesince }} fa
+                        </div>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <div class="empty-activity">
+                <i class="fas fa-leaf text-muted mb-3" style="font-size: 3rem;"></i>
+                <p>Nessuna attività recente. Inizia creando il tuo primo trattamento!</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Animazione contatori
+    document.addEventListener('DOMContentLoaded', function() {
+        const numbers = document.querySelectorAll('.stat-number');
+        
+        numbers.forEach(number => {
+            const finalValue = parseInt(number.textContent) || parseFloat(number.textContent) || 0;
+            let currentValue = 0;
+            const increment = finalValue / 30;
+            
+            const timer = setInterval(() => {
+                currentValue += increment;
+                if (currentValue >= finalValue) {
+                    currentValue = finalValue;
+                    clearInterval(timer);
+                }
+                
+                if (Number.isInteger(finalValue)) {
+                    number.textContent = Math.floor(currentValue);
+                } else {
+                    number.textContent = currentValue.toFixed(1);
+                }
+            }, 50);
+        });
+    });
+
+    // Effetto hover sulle action cards
+    document.querySelectorAll('.action-card').forEach(card => {
+        card.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-10px) scale(1.02)';
+        });
+        
+        card.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0) scale(1)';
+        });
+    });
+</script>
+{% endblock %}
