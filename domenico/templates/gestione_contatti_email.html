@@ -1,0 +1,856 @@
+<!-- domenico/templates/gestione_contatti_email.html -->
+{% extends 'base.html' %}
+
+{% block page_title %}Gestione Contatti Email{% endblock %}
+{% block page_icon %}<i class="fas fa-address-book"></i>{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --primary-color: #007bff;
+        --success-color: #28a745;
+        --warning-color: #ffc107;
+        --info-color: #17a2b8;
+        --danger-color: #dc3545;
+        --light-bg: #f8f9fa;
+        --border-color: #dee2e6;
+        --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.15);
+    }
+
+    /* Header Section */
+    .page-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem 0;
+        margin: -2rem -2rem 2rem -2rem;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .page-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 100" fill="white" opacity="0.1"><polygon points="1000,100 1000,0 0,100"/></svg>');
+        background-size: cover;
+    }
+
+    .page-header-content {
+        position: relative;
+        z-index: 2;
+    }
+
+    .page-header h1 {
+        font-size: 2.2rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+
+    .page-header p {
+        font-size: 1.1rem;
+        opacity: 0.9;
+        font-weight: 300;
+    }
+
+    /* Stats Bar */
+    .stats-bar {
+        background: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: var(--shadow);
+        display: flex;
+        justify-content: space-around;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .stat-item {
+        text-align: center;
+        flex: 1;
+        min-width: 120px;
+    }
+
+    .stat-number {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: var(--primary-color);
+        display: block;
+    }
+
+    .stat-label {
+        font-size: 0.85rem;
+        color: #666;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-top: 0.25rem;
+    }
+
+    /* Cliente Cards */
+    .clienti-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+        gap: 2rem;
+    }
+
+    .cliente-card {
+        background: white;
+        border-radius: 15px;
+        box-shadow: var(--shadow);
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+
+    .cliente-card:hover {
+        transform: translateY(-5px);
+        box-shadow: var(--shadow-lg);
+    }
+
+    .cliente-header {
+        background: var(--primary-color);
+        color: white;
+        padding: 1.5rem;
+        position: relative;
+    }
+
+    .cliente-nome {
+        font-size: 1.3rem;
+        font-weight: 600;
+        margin: 0;
+    }
+
+    .contatti-count {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        background: rgba(255,255,255,0.2);
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.9rem;
+    }
+
+    .cliente-body {
+        padding: 1.5rem;
+    }
+
+    .contatti-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .contatto-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        margin-bottom: 0.5rem;
+        transition: all 0.2s ease;
+    }
+
+    .contatto-item:hover {
+        background: #f8f9fa;
+        border-color: var(--primary-color);
+    }
+
+    .contatto-item:last-child {
+        margin-bottom: 0;
+    }
+
+    .contatto-item.inattivo {
+        opacity: 0.6;
+        background: #f8f9fa;
+    }
+
+    .contatto-info {
+        flex: 1;
+    }
+
+    .contatto-nome {
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 0.25rem;
+    }
+
+    .contatto-email {
+        color: #666;
+        font-size: 0.9rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .contatto-dettagli {
+        font-size: 0.8rem;
+        color: #999;
+    }
+
+    .priorita-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 15px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        margin-right: 0.5rem;
+    }
+
+    .priorita-1 {
+        background: #dc3545;
+        color: white;
+    }
+
+    .priorita-2 {
+        background: #ffc107;
+        color: #212529;
+    }
+
+    .priorita-3 {
+        background: #6c757d;
+        color: white;
+    }
+
+    .contatto-actions {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+    }
+
+    .btn-icon {
+        width: 35px;
+        height: 35px;
+        border-radius: 50%;
+        border: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .btn-edit {
+        background: var(--info-color);
+        color: white;
+    }
+
+    .btn-edit:hover {
+        background: #138496;
+        transform: scale(1.1);
+    }
+
+    .btn-delete {
+        background: var(--danger-color);
+        color: white;
+    }
+
+    .btn-delete:hover {
+        background: #c82333;
+        transform: scale(1.1);
+    }
+
+    .btn-add-contatto {
+        background: var(--success-color);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        width: 100%;
+        margin-top: 1rem;
+    }
+
+    .btn-add-contatto:hover {
+        background: #1e7e34;
+        transform: translateY(-2px);
+    }
+
+    .empty-contatti {
+        text-align: center;
+        padding: 2rem;
+        color: #666;
+        font-style: italic;
+    }
+
+    .empty-contatti i {
+        font-size: 2rem;
+        margin-bottom: 1rem;
+        opacity: 0.3;
+    }
+
+    /* Modal Styles */
+    .modal-header {
+        background: var(--primary-color);
+        color: white;
+        border-bottom: none;
+    }
+
+    .modal-title {
+        font-weight: 600;
+    }
+
+    .form-group {
+        margin-bottom: 1rem;
+    }
+
+    .form-label {
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 0.5rem;
+    }
+
+    .form-control, .form-select {
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        padding: 0.75rem;
+        transition: all 0.3s ease;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        outline: none;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .clienti-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .contatto-item {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+        
+        .contatto-actions {
+            align-self: flex-end;
+        }
+    }
+
+    /* Animations */
+    .cliente-card {
+        animation: fadeInUp 0.6s ease-out;
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Loading */
+    .loading {
+        text-align: center;
+        padding: 2rem;
+        color: #666;
+    }
+
+    .spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid var(--primary-color);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 1rem;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header">
+    <div class="page-header-content">
+        <h1><i class="fas fa-address-book me-3"></i>Gestione Contatti Email</h1>
+        <p>Configura i contatti email per le comunicazioni dei trattamenti</p>
+    </div>
+</div>
+
+<!-- Stats Bar -->
+<div class="stats-bar">
+    <div class="stat-item">
+        <span class="stat-number">{{ stats.clienti_totali }}</span>
+        <div class="stat-label">Clienti Totali</div>
+    </div>
+    <div class="stat-item">
+        <span class="stat-number">{{ stats.clienti_con_contatti }}</span>
+        <div class="stat-label">Con Contatti</div>
+    </div>
+    <div class="stat-item">
+        <span class="stat-number">{{ stats.contatti_totali }}</span>
+        <div class="stat-label">Contatti Totali</div>
+    </div>
+    <div class="stat-item">
+        <span class="stat-number">{{ stats.contatti_attivi }}</span>
+        <div class="stat-label">Contatti Attivi</div>
+    </div>
+</div>
+
+<!-- Action Buttons -->
+<div class="mb-4 text-center">
+    <button class="btn btn-success me-2" onclick="testEmailConfig()">
+        <i class="fas fa-envelope-open-text"></i> Test Configurazione Email
+    </button>
+    <a href="{% url 'comunicazioni_dashboard' %}" class="btn btn-info">
+        <i class="fas fa-paper-plane"></i> Storico Comunicazioni
+    </a>
+</div>
+
+<!-- Clienti Grid -->
+<div class="clienti-grid">
+    {% for cliente in clienti %}
+    <div class="cliente-card">
+        <div class="cliente-header">
+            <h3 class="cliente-nome">{{ cliente.nome }}</h3>
+            <div class="contatti-count">
+                <i class="fas fa-users me-1"></i>
+                {{ cliente.contatti_email.count }} contatt{{ cliente.contatti_email.count|pluralize:"o,i" }}
+            </div>
+        </div>
+        
+        <div class="cliente-body">
+            {% if cliente.contatti_email.all %}
+                <ul class="contatti-list">
+                    {% for contatto in cliente.contatti_email.all %}
+                    <li class="contatto-item {% if not contatto.attivo %}inattivo{% endif %}">
+                        <div class="contatto-info">
+                            <div class="contatto-nome">
+                                <span class="priorita-badge priorita-{{ contatto.priorita }}">
+                                    {% if contatto.priorita == 1 %}Alta{% elif contatto.priorita == 2 %}Media{% else %}Bassa{% endif %}
+                                </span>
+                                {{ contatto.nome }}
+                                {% if not contatto.attivo %}
+                                    <small class="text-muted">(Inattivo)</small>
+                                {% endif %}
+                            </div>
+                            <div class="contatto-email">
+                                <i class="fas fa-envelope me-1"></i>{{ contatto.email }}
+                            </div>
+                            <div class="contatto-dettagli">
+                                {% if contatto.ruolo %}
+                                    <i class="fas fa-user-tag me-1"></i>{{ contatto.ruolo }}
+                                {% endif %}
+                                {% if contatto.telefono %}
+                                    <i class="fas fa-phone ms-2 me-1"></i>{{ contatto.telefono }}
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="contatto-actions">
+                            <button class="btn-icon btn-edit" onclick="editContatto({{ contatto.id }})" title="Modifica">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn-icon btn-delete" onclick="deleteContatto({{ contatto.id }}, '{{ contatto.nome }}')" title="Elimina">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <div class="empty-contatti">
+                    <i class="fas fa-user-plus"></i>
+                    <p>Nessun contatto configurato</p>
+                </div>
+            {% endif %}
+            
+            <button class="btn-add-contatto" onclick="addContatto({{ cliente.id }}, '{{ cliente.nome }}')">
+                <i class="fas fa-plus me-2"></i>Aggiungi Contatto
+            </button>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12">
+        <div class="text-center py-5">
+            <i class="fas fa-building fa-3x text-muted mb-3"></i>
+            <h4>Nessun cliente trovato</h4>
+            <p class="text-muted">Aggiungi prima alcuni clienti per configurare i contatti email.</p>
+            <a href="{% url 'database' %}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Aggiungi Cliente
+            </a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Modal per aggiungere/modificare contatto -->
+<div class="modal fade" id="contattoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="contattoModalTitle">
+                    <i class="fas fa-user-plus me-2"></i>Nuovo Contatto
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="contattoForm">
+                    <div class="form-group">
+                        <label class="form-label">Nome Completo *</label>
+                        <input type="text" class="form-control" id="contatto-nome" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Email *</label>
+                        <input type="email" class="form-control" id="contatto-email" required>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label class="form-label">Ruolo</label>
+                                <input type="text" class="form-control" id="contatto-ruolo" placeholder="es. Contoterzista, Agronomo">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label class="form-label">Telefono</label>
+                                <input type="tel" class="form-control" id="contatto-telefono">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label class="form-label">Priorità</label>
+                                <select class="form-select" id="contatto-priorita">
+                                    <option value="1">Alta (riceve sempre le comunicazioni)</option>
+                                    <option value="2" selected>Media (riceve comunicazioni normali)</option>
+                                    <option value="3">Bassa (riceve solo comunicazioni importanti)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label class="form-label">Stato</label>
+                                <select class="form-select" id="contatto-attivo">
+                                    <option value="true" selected>Attivo</option>
+                                    <option value="false">Inattivo</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Note</label>
+                        <textarea class="form-control" id="contatto-note" rows="3" placeholder="Note aggiuntive o istruzioni speciali..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-primary" onclick="saveContatto()">
+                    <i class="fas fa-save me-2"></i>Salva Contatto
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Modal -->
+<div class="modal fade" id="loadingModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-body text-center">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Elaborazione in corso...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let currentClienteId = null;
+    let currentContattoId = null;
+    let isEditing = false;
+    
+    function addContatto(clienteId, clienteNome) {
+        currentClienteId = clienteId;
+        currentContattoId = null;
+        isEditing = false;
+        
+        // Reset form
+        document.getElementById('contattoForm').reset();
+        document.getElementById('contatto-priorita').value = '2';
+        document.getElementById('contatto-attivo').value = 'true';
+        
+        // Update modal title
+        document.getElementById('contattoModalTitle').innerHTML = `
+            <i class="fas fa-user-plus me-2"></i>Nuovo Contatto - ${clienteNome}
+        `;
+        
+        // Show modal
+        new bootstrap.Modal(document.getElementById('contattoModal')).show();
+    }
+    
+    function editContatto(contattoId) {
+        currentContattoId = contattoId;
+        isEditing = true;
+        
+        // Show loading
+        showLoading();
+        
+        // Carica i dati del contatto
+        fetch(`/api/contatti/${contattoId}/`)
+            .then(response => response.json())
+            .then(data => {
+                hideLoading();
+                
+                if (data.success) {
+                    const contatto = data.contatto;
+                    
+                    // Popola il form
+                    document.getElementById('contatto-nome').value = contatto.nome;
+                    document.getElementById('contatto-email').value = contatto.email;
+                    document.getElementById('contatto-ruolo').value = contatto.ruolo || '';
+                    document.getElementById('contatto-telefono').value = contatto.telefono || '';
+                    document.getElementById('contatto-priorita').value = contatto.priorita;
+                    document.getElementById('contatto-attivo').value = contatto.attivo ? 'true' : 'false';
+                    document.getElementById('contatto-note').value = contatto.note || '';
+                    
+                    // Update modal title
+                    document.getElementById('contattoModalTitle').innerHTML = `
+                        <i class="fas fa-user-edit me-2"></i>Modifica Contatto - ${contatto.nome}
+                    `;
+                    
+                    // Show modal
+                    new bootstrap.Modal(document.getElementById('contattoModal')).show();
+                } else {
+                    alert('Errore nel caricamento del contatto: ' + data.error);
+                }
+            })
+            .catch(error => {
+                hideLoading();
+                console.error('Errore:', error);
+                alert('Errore di connessione');
+            });
+    }
+    
+    function deleteContatto(contattoId, nomeContatto) {
+        if (!confirm(`Sei sicuro di voler eliminare il contatto "${nomeContatto}"?`)) {
+            return;
+        }
+        
+        showLoading();
+        
+        fetch(`/api/contatti/${contattoId}/`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => response.json())
+        .then(data => {
+            hideLoading();
+            
+        .then(data => {
+            hideLoading();
+            
+            if (data.success) {
+                alert('Contatto eliminato con successo');
+                location.reload();
+            } else {
+                alert('Errore nell\'eliminazione: ' + data.error);
+            }
+        })
+        .catch(error => {
+            hideLoading();
+            console.error('Errore:', error);
+            alert('Errore di connessione');
+        });
+    }
+    
+    function saveContatto() {
+        // Validazione form
+        const nome = document.getElementById('contatto-nome').value.trim();
+        const email = document.getElementById('contatto-email').value.trim();
+        
+        if (!nome) {
+            alert('Il nome è obbligatorio');
+            return;
+        }
+        
+        if (!email) {
+            alert('L\'email è obbligatoria');
+            return;
+        }
+        
+        // Validazione email
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            alert('Inserisci un indirizzo email valido');
+            return;
+        }
+        
+        showLoading();
+        
+        // Prepara i dati
+        const formData = new FormData();
+        formData.append('nome', nome);
+        formData.append('email', email);
+        formData.append('ruolo', document.getElementById('contatto-ruolo').value.trim());
+        formData.append('telefono', document.getElementById('contatto-telefono').value.trim());
+        formData.append('priorita', document.getElementById('contatto-priorita').value);
+        formData.append('attivo', document.getElementById('contatto-attivo').value);
+        formData.append('note', document.getElementById('contatto-note').value.trim());
+        formData.append('csrfmiddlewaretoken', getCsrfToken());
+        
+        // URL e metodo in base se stiamo modificando o creando
+        let url, method;
+        if (isEditing && currentContattoId) {
+            url = `/api/contatti/${currentContattoId}/`;
+            method = 'POST';
+        } else {
+            url = `/api/clienti/${currentClienteId}/contatti/add/`;
+            method = 'POST';
+        }
+        
+        fetch(url, {
+            method: method,
+            body: formData,
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => response.json())
+        .then(data => {
+            hideLoading();
+            
+            if (data.success) {
+                const action = isEditing ? 'aggiornato' : 'aggiunto';
+                alert(`Contatto ${action} con successo`);
+                
+                // Chiudi modal
+                bootstrap.Modal.getInstance(document.getElementById('contattoModal')).hide();
+                
+                // Ricarica la pagina
+                location.reload();
+            } else {
+                alert('Errore nel salvataggio: ' + data.error);
+            }
+        })
+        .catch(error => {
+            hideLoading();
+            console.error('Errore:', error);
+            alert('Errore di connessione');
+        });
+    }
+    
+    function testEmailConfig() {
+        showLoading();
+        
+        fetch('/api/test-email/', {
+            method: 'GET',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => response.json())
+        .then(data => {
+            hideLoading();
+            
+            if (data.success) {
+                alert('✅ Test email inviato con successo!\n\n' + data.message);
+            } else {
+                alert('❌ Errore nel test email:\n\n' + data.error);
+            }
+        })
+        .catch(error => {
+            hideLoading();
+            console.error('Errore:', error);
+            alert('❌ Errore di connessione durante il test email');
+        });
+    }
+    
+    function showLoading() {
+        new bootstrap.Modal(document.getElementById('loadingModal')).show();
+    }
+    
+    function hideLoading() {
+        const loadingModal = bootstrap.Modal.getInstance(document.getElementById('loadingModal'));
+        if (loadingModal) {
+            loadingModal.hide();
+        }
+    }
+    
+    function getCsrfToken() {
+        return document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
+               document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || '';
+    }
+    
+    // Event listeners
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Gestione contatti email caricata');
+        
+        // Auto-hide loading modal on page load
+        hideLoading();
+        
+        // Reset form when modal is hidden
+        document.getElementById('contattoModal').addEventListener('hidden.bs.modal', function() {
+            document.getElementById('contattoForm').reset();
+            currentClienteId = null;
+            currentContattoId = null;
+            isEditing = false;
+        });
+        
+        // Enter key submit form
+        document.getElementById('contattoModal').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
+                e.preventDefault();
+                saveContatto();
+            }
+        });
+        
+        // Debug info
+        console.log('Stats:', {
+            clienti: {{ stats.clienti_totali }},
+            contatti: {{ stats.contatti_totali }},
+            attivi: {{ stats.contatti_attivi }}
+        });
+    });
+    
+    // Funzioni di utilità per debug
+    window.debugContatti = {
+        stats: {
+            clienti: {{ stats.clienti_totali }},
+            contatti: {{ stats.contatti_totali }},
+            attivi: {{ stats.contatti_attivi }}
+        },
+        testEmail: testEmailConfig,
+        currentState: () => ({
+            clienteId: currentClienteId,
+            contattoId: currentContattoId,
+            isEditing: isEditing
+        })
+    };
+</script>
+
+<!-- CSRF Token -->
+{% csrf_token %}
+{% endblock %}

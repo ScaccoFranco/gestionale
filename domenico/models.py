@@ -20,9 +20,39 @@ class Cliente(models.Model):
             stato__in=['programmato', 'comunicato']
         )
     
+    def get_contatti_email(self):
+        """Restituisce tutti i contatti email per questo cliente"""
+        return self.contatti_email.filter(attivo=True)
+    
     class Meta:
         verbose_name = "Cliente"
         verbose_name_plural = "Clienti"
+
+class ContattoEmail(models.Model):
+    """Contatti email per le comunicazioni dei trattamenti"""
+    cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE, related_name='contatti_email')
+    nome = models.CharField(max_length=200, help_text="Nome del contatto")
+    email = models.EmailField(help_text="Indirizzo email del contatto")
+    ruolo = models.CharField(
+        max_length=100, 
+        blank=True, 
+        help_text="Es: Contoterzista, Agronomo, Responsabile"
+    )
+    telefono = models.CharField(max_length=20, blank=True)
+    attivo = models.BooleanField(default=True, help_text="Se deselezionato, non riceverà le comunicazioni")
+    priorita = models.IntegerField(
+        default=1,
+        help_text="1=Alta priorità, 2=Media, 3=Bassa (per ordinare i contatti)"
+    )
+    note = models.TextField(blank=True)
+    
+    def __str__(self):
+        return f"{self.nome} ({self.email}) - {self.cliente.nome}"
+    
+    class Meta:
+        verbose_name = "Contatto Email"
+        verbose_name_plural = "Contatti Email"
+        ordering = ['priorita', 'nome']
 
 class Contoterzista(models.Model):
     nome = models.CharField(max_length=200)
@@ -45,7 +75,7 @@ class Cascina(models.Model):
         null=True, 
         blank=True,
         related_name='cascine',
-        help_text="Contoterzista responsabile per questa cascina"
+        help_text="Contoterzista responsabile per questa cascina (opzionale)"
     )
     
     def __str__(self):
@@ -201,6 +231,26 @@ class Trattamento(models.Model):
             return prima_cascina.contoterzista if prima_cascina else None
         return None
     
+    def get_contatti_email_destinatari(self):
+        """Restituisce tutti i contatti email che devono ricevere la comunicazione"""
+        return self.cliente.get_contatti_email()
+    
+    def get_quantita_totali_prodotti(self):
+        """Restituisce le quantità totali calcolate per tutti i prodotti"""
+        superficie = self.get_superficie_interessata()
+        risultati = []
+        
+        for tp in self.trattamentoprodotto_set.all():
+            quantita_totale = tp.quantita_per_ettaro * superficie
+            risultati.append({
+                'prodotto': tp.prodotto,
+                'quantita_per_ettaro': tp.quantita_per_ettaro,
+                'quantita_totale': quantita_totale,
+                'unita_misura': tp.prodotto.unita_misura
+            })
+        
+        return risultati
+    
     class Meta:
         verbose_name = "Trattamento"
         verbose_name_plural = "Trattamenti"
@@ -210,16 +260,42 @@ class TrattamentoProdotto(models.Model):
     """Tabella intermedia per gestire quantità dei prodotti nei trattamenti"""
     trattamento = models.ForeignKey(Trattamento, on_delete=models.CASCADE)
     prodotto = models.ForeignKey(Prodotto, on_delete=models.CASCADE)
-    quantita = models.DecimalField(
+    quantita_per_ettaro = models.DecimalField(
         max_digits=10, 
         decimal_places=3,
-        validators=[MinValueValidator(0.001)]
+        validators=[MinValueValidator(0.001)],
+        help_text="Quantità per ettaro"
     )
     
     def __str__(self):
-        return f"{self.prodotto.nome} - {self.quantita} {self.prodotto.unita_misura}"
+        return f"{self.prodotto.nome} - {self.quantita_per_ettaro} {self.prodotto.unita_misura}/ha"
+    
+    @property
+    def quantita_totale(self):
+        """Calcola la quantità totale moltiplicando per la superficie interessata"""
+        superficie = self.trattamento.get_superficie_interessata()
+        return self.quantita_per_ettaro * superficie
     
     class Meta:
         unique_together = ['trattamento', 'prodotto']
         verbose_name = "Prodotto del Trattamento"
         verbose_name_plural = "Prodotti del Trattamento"
+
+class ComunicazioneTrattamento(models.Model):
+    """Traccia le comunicazioni inviate per ogni trattamento"""
+    trattamento = models.ForeignKey(Trattamento, on_delete=models.CASCADE, related_name='comunicazioni')
+    data_invio = models.DateTimeField(auto_now_add=True)
+    destinatari = models.TextField(help_text="Lista email destinatari (separati da virgola)")
+    oggetto = models.CharField(max_length=500)
+    corpo_email = models.TextField()
+    allegati = models.TextField(blank=True, help_text="Lista percorsi allegati (separati da virgola)")
+    inviato_con_successo = models.BooleanField(default=False)
+    errore = models.TextField(blank=True)
+    
+    def __str__(self):
+        return f"Comunicazione {self.trattamento.id} - {self.data_invio.strftime('%d/%m/%Y %H:%M')}"
+    
+    class Meta:
+        verbose_name = "Comunicazione Trattamento"
+        verbose_name_plural = "Comunicazioni Trattamenti"
+        ordering = ['-data_invio']
