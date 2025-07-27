@@ -151,6 +151,20 @@
         outline: none;
     }
 
+    .form-check {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem;
+        background: #f8f9fa;
+        border-radius: 8px;
+        border: 1px solid #e9ecef;
+    }
+
+    .form-check-input {
+        margin: 0;
+    }
+
     .filters-actions {
         display: flex;
         gap: 1rem;
@@ -349,10 +363,18 @@
         font-size: 0.8rem;
         padding: 0.2rem 0;
         border-bottom: 1px solid #f1f3f4;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
     }
 
     .destinatario-item:last-child {
         border-bottom: none;
+    }
+
+    .destinatario-item i {
+        color: #666;
+        width: 12px;
     }
 
     /* Empty State */
@@ -423,6 +445,66 @@
         background: var(--primary-color);
         color: white;
     }
+
+    /* Loading */
+    .loading {
+        text-align: center;
+        padding: 2rem;
+        color: #666;
+    }
+
+    .spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid var(--primary-color);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 1rem;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    /* Action Buttons */
+    .action-buttons {
+        display: flex;
+        gap: 0.25rem;
+        flex-wrap: wrap;
+    }
+
+    .btn-icon {
+        width: 30px;
+        height: 30px;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+    }
+
+    /* Tooltip per azioni */
+    .tooltip {
+        position: relative;
+        display: inline-block;
+    }
+
+    .tooltip:hover::after {
+        content: attr(data-tooltip);
+        position: absolute;
+        bottom: 125%;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 0.5rem;
+        background: #333;
+        color: white;
+        font-size: 0.8rem;
+        border-radius: 4px;
+        white-space: nowrap;
+        z-index: 1000;
+    }
 </style>
 {% endblock %}
 
@@ -437,8 +519,11 @@
 
 <!-- Back Button -->
 <div class="mb-3">
-    <a href="{% url 'contatti-email' %}" class="btn btn-outline-secondary">
+    <a href="{% url 'gestione_contatti_email' %}" class="btn btn-outline-secondary">
         <i class="fas fa-arrow-left"></i> Gestione Contatti
+    </a>
+    <a href="{% url 'trattamenti' %}" class="btn btn-outline-secondary ms-2">
+        <i class="fas fa-flask"></i> Trattamenti
     </a>
 </div>
 
@@ -449,4 +534,668 @@
         <div class="stat-label">Totali</div>
     </div>
     <div class="stat-item">
-        <span class="stat-number success">{{ stats.riuscite }}</span
+        <span class="stat-number success">{{ stats.riuscite }}</span>
+        <div class="stat-label">Riuscite</div>
+    </div>
+    <div class="stat-item">
+        <span class="stat-number danger">{{ stats.fallite }}</span>
+        <div class="stat-label">Fallite</div>
+    </div>
+    <div class="stat-item">
+        <span class="stat-number info">{{ stats.oggi }}</span>
+        <div class="stat-label">Oggi</div>
+    </div>
+    <div class="stat-item">
+        <span class="stat-number primary">{{ stats.questa_settimana }}</span>
+        <div class="stat-label">Questa Settimana</div>
+    </div>
+    <div class="stat-item">
+        <span class="stat-number info">{{ stats.questo_mese }}</span>
+        <div class="stat-label">Questo Mese</div>
+    </div>
+</div>
+
+<!-- Filters Section -->
+<div class="filters-section">
+    <h3 class="filters-title">
+        <i class="fas fa-filter"></i>
+        Filtri di Ricerca
+    </h3>
+    
+    <form method="GET" id="filtersForm">
+        <div class="filters-grid">
+            <div class="filter-group">
+                <label class="filter-label">Cliente</label>
+                <select class="form-select" name="cliente">
+                    <option value="">Tutti i clienti</option>
+                    {% for cliente in clienti %}
+                    <option value="{{ cliente.id }}" {% if filters.cliente == cliente.id|stringformat:"s" %}selected{% endif %}>
+                        {{ cliente.nome }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label class="filter-label">Data Da</label>
+                <input type="date" class="form-control" name="data_da" value="{{ filters.data_da }}">
+            </div>
+            
+            <div class="filter-group">
+                <label class="filter-label">Data A</label>
+                <input type="date" class="form-control" name="data_a" value="{{ filters.data_a }}">
+            </div>
+            
+            <div class="filter-group">
+                <label class="filter-label">Filtro Errori</label>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="solo_errori" id="solo_errori" {% if filters.solo_errori %}checked{% endif %}>
+                    <label class="form-check-label" for="solo_errori">
+                        <i class="fas fa-exclamation-triangle text-warning"></i>
+                        Solo comunicazioni fallite
+                    </label>
+                </div>
+            </div>
+        </div>
+        
+        <div class="filters-actions">
+            <button type="button" class="btn btn-outline-secondary" onclick="clearFilters()">
+                <i class="fas fa-times"></i> Pulisci
+            </button>
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-search"></i> Filtra
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Table Section -->
+<div class="table-section">
+    <div class="table-header">
+        <h3 class="table-title">
+            <i class="fas fa-list"></i>
+            Elenco Comunicazioni
+        </h3>
+        <div class="table-actions">
+            <button class="btn btn-success btn-sm" onclick="testEmailConfig()">
+                <i class="fas fa-envelope-open-text"></i> Test Email
+            </button>
+            <button class="btn btn-outline-secondary btn-sm" onclick="exportComunicazioni()">
+                <i class="fas fa-download"></i> Esporta
+            </button>
+        </div>
+    </div>
+    
+    {% if comunicazioni %}
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th width="8%">ID Tratt.</th>
+                    <th width="15%">Cliente</th>
+                    <th width="12%">Data Invio</th>
+                    <th width="10%">Stato</th>
+                    <th width="20%">Destinatari</th>
+                    <th width="25%">Oggetto</th>
+                    <th width="10%">Azioni</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for comunicazione in comunicazioni %}
+                <tr>
+                    <td>
+                        <strong>#{{ comunicazione.trattamento.id }}</strong>
+                    </td>
+                    <td>
+                        <div class="cliente-info">
+                            <div class="cliente-avatar">
+                                {{ comunicazione.trattamento.cliente.nome|first|upper }}
+                            </div>
+                            <div class="cliente-details">
+                                <div class="cliente-name">{{ comunicazione.trattamento.cliente.nome }}</div>
+                                <div class="cliente-meta">
+                                    <i class="fas fa-flask me-1"></i>{{ comunicazione.trattamento.get_stato_display }}
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <strong>{{ comunicazione.data_invio|date:"d/m/Y" }}</strong>
+                        <br><small class="text-muted">{{ comunicazione.data_invio|date:"H:i" }}</small>
+                    </td>
+                    <td>
+                        {% if comunicazione.inviato_con_successo %}
+                            <span class="status-badge status-success">
+                                <i class="fas fa-check me-1"></i>Inviato
+                            </span>
+                        {% else %}
+                            <span class="status-badge status-danger">
+                                <i class="fas fa-times me-1"></i>Fallito
+                            </span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="destinatari-list">
+                            {% for destinatario in comunicazione.destinatari|split:", " %}
+                            <div class="destinatario-item">
+                                <i class="fas fa-envelope"></i>
+                                <span>{{ destinatario }}</span>
+                            </div>
+                            {% empty %}
+                            <div class="text-muted">Nessun destinatario</div>
+                            {% endfor %}
+                        </div>
+                    </td>
+                    <td>
+                        <strong>{{ comunicazione.oggetto|truncatechars:50 }}</strong>
+                        {% if comunicazione.allegati %}
+                            <br><small class="text-info">
+                                <i class="fas fa-paperclip me-1"></i>
+                                {% with allegati_count=comunicazione.allegati|split:","|length %}
+                                    {{ allegati_count }} allegat{{ allegati_count|pluralize:"o,i" }}
+                                {% endwith %}
+                            </small>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn btn-info btn-sm btn-icon tooltip" 
+                                    onclick="viewComunicazioneDetails({{ comunicazione.id }})" 
+                                    data-tooltip="Visualizza dettagli">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            
+                            {% if comunicazione.allegati %}
+                            <button class="btn btn-success btn-sm btn-icon tooltip" 
+                                    onclick="downloadAllegato({{ comunicazione.trattamento.id }})" 
+                                    data-tooltip="Scarica PDF">
+                                <i class="fas fa-download"></i>
+                            </button>
+                            {% endif %}
+                            
+                            {% if not comunicazione.inviato_con_successo %}
+                            <button class="btn btn-warning btn-sm btn-icon tooltip" 
+                                    onclick="resendComunicazione({{ comunicazione.trattamento.id }})" 
+                                    data-tooltip="Riprova invio">
+                                <i class="fas fa-redo"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Pagination -->
+    {% if comunicazioni.has_other_pages %}
+    <div class="pagination-section">
+        <div>
+            <small class="text-muted">
+                Mostra {{ comunicazioni.start_index }}-{{ comunicazioni.end_index }} di {{ comunicazioni.paginator.count }} comunicazioni
+            </small>
+        </div>
+        
+        <nav aria-label="Paginazione comunicazioni">
+            <ul class="pagination">
+                {% if comunicazioni.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ comunicazioni.previous_page_number }}">
+                            <i class="fas fa-chevron-left"></i>
+                        </a>
+                    </li>
+                {% endif %}
+                
+                {% for num in comunicazioni.paginator.page_range %}
+                    {% if comunicazioni.number == num %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ num }}</span>
+                        </li>
+                    {% elif num > comunicazioni.number|add:'-3' and num < comunicazioni.number|add:'3' %}
+                        <li class="page-item">
+                            <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ num }}">{{ num }}</a>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if comunicazioni.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ comunicazioni.next_page_number }}">
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+    
+    {% else %}
+    <!-- Empty State -->
+    <div class="empty-state">
+        <i class="fas fa-paper-plane"></i>
+        <h4>Nessuna comunicazione trovata</h4>
+        <p>Non ci sono comunicazioni che corrispondono ai filtri selezionati.</p>
+        <a href="{% url 'trattamenti' %}" class="btn btn-primary">
+            <i class="fas fa-flask"></i> Vai ai Trattamenti
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Modal per dettagli comunicazione -->
+<div class="modal fade" id="comunicazioneDetailsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-info-circle"></i> Dettagli Comunicazione
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="comunicazioneDetailsContent">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Caricamento dettagli...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal per conferma azioni -->
+<div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirmModalTitle">Conferma Azione</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="confirmModalBody">
+                Sei sicuro di voler procedere?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-primary" id="confirmModalAction">Conferma</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Modal -->
+<div class="modal fade" id="loadingModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-body text-center">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Elaborazione in corso...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Variabili globali
+    let currentComunicazioneId = null;
+    
+    // Funzioni principali
+    function viewComunicazioneDetails(comunicazioneId) {
+        currentComunicazioneId = comunicazioneId;
+        console.log('Visualizza dettagli comunicazione:', comunicazioneId);
+        
+        // Mostra il modal
+        const modal = new bootstrap.Modal(document.getElementById('comunicazioneDetailsModal'));
+        modal.show();
+        
+        // Simula caricamento dettagli (da implementare con API reale)
+        setTimeout(() => {
+            displayComunicazioneDetails({
+                id: comunicazioneId,
+                trattamento_id: 123,
+                data_invio: new Date().toISOString(),
+                destinatari: ['test1@example.com', 'test2@example.com'],
+                oggetto: 'Trattamento #123 - Cliente Test',
+                stato: 'Inviato con successo',
+                allegati: ['PDF_Trattamento_123.pdf'],
+                errore: null
+            });
+        }, 1000);
+    }
+    
+    function displayComunicazioneDetails(data) {
+        const content = document.getElementById('comunicazioneDetailsContent');
+        
+        let detailsHtml = `
+            <div class="row">
+                <div class="col-md-6">
+                    <h6 class="text-muted mb-3">INFORMAZIONI GENERALI</h6>
+                    <div class="mb-3">
+                        <label class="form-label"><strong>ID Comunicazione:</strong></label>
+                        <div>#${data.id}</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Trattamento Collegato:</strong></label>
+                        <div><a href="javascript:void(0)" onclick="viewTrattamento(${data.trattamento_id})">#${data.trattamento_id}</a></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Data e Ora Invio:</strong></label>
+                        <div>${new Date(data.data_invio).toLocaleString('it-IT')}</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Stato:</strong></label>
+                        <div>${data.stato}</div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <h6 class="text-muted mb-3">DESTINATARI</h6>
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Email Inviate A:</strong></label>
+                        <div class="border rounded p-2">
+                            ${data.destinatari.map(email => `
+                                <div class="d-flex align-items-center mb-1">
+                                    <i class="fas fa-envelope text-primary me-2"></i>
+                                    <span>${email}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    
+                    ${data.allegati && data.allegati.length > 0 ? `
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Allegati:</strong></label>
+                        <div class="border rounded p-2">
+                            ${data.allegati.map(allegato => `
+                                <div class="d-flex align-items-center justify-content-between mb-1">
+                                    <span><i class="fas fa-file-pdf text-danger me-2"></i>${allegato}</span>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="downloadAllegato(${data.trattamento_id})">
+                                        <i class="fas fa-download"></i>
+                                    </button>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>` : ''}
+                </div>
+            </div>
+            
+            <hr>
+            <h6 class="text-muted mb-3">OGGETTO EMAIL</h6>
+            <div class="p-3 bg-light rounded">
+                ${data.oggetto}
+            </div>
+            
+            ${data.errore ? `
+            <hr>
+            <h6 class="text-muted mb-3 text-danger">DETTAGLI ERRORE</h6>
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle"></i>
+                ${data.errore}
+            </div>` : ''}
+        `;
+        
+        content.innerHTML = detailsHtml;
+    }
+    
+    function downloadAllegato(trattamentoId) {
+        console.log('Download allegato per trattamento:', trattamentoId);
+        
+        showLoading();
+        
+        // Simula download
+        setTimeout(() => {
+            hideLoading();
+            
+            // Crea un link di download simulato
+            const link = document.createElement('a');
+            link.href = `/api/trattamenti/${trattamentoId}/download-pdf/`;
+            link.download = `Trattamento_${trattamentoId}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            showSuccessMessage('Download avviato!');
+        }, 1000);
+    }
+    
+    function resendComunicazione(trattamentoId) {
+        console.log('Riprova invio comunicazione per trattamento:', trattamentoId);
+        
+        // Mostra modal di conferma
+        showConfirmModal(
+            'Riprova Invio Comunicazione',
+            `Sei sicuro di voler riprovare l'invio della comunicazione per il trattamento #${trattamentoId}?`,
+            () => executeResendComunicazione(trattamentoId)
+        );
+    }
+    
+    function executeResendComunicazione(trattamentoId) {
+        showLoading();
+        
+        fetch(`/api/trattamenti/${trattamentoId}/send/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: 'force_send=true',
+            credentials: 'same-origin'
+        })
+        .then(response => response.json())
+        .then(data => {
+            hideLoading();
+            
+            if (data.success) {
+                showSuccessMessage(`Comunicazione inviata con successo a ${data.destinatari_count} destinatari!`);
+                // Ricarica la pagina dopo 2 secondi
+                setTimeout(() => location.reload(), 2000);
+            } else {
+                showErrorMessage('Errore nell\'invio: ' + data.error);
+            }
+        })
+        .catch(error => {
+            hideLoading();
+            console.error('Errore nell\'invio comunicazione:', error);
+            showErrorMessage('Errore di connessione durante l\'invio');
+        });
+    }
+    
+    function testEmailConfig() {
+        console.log('Test configurazione email...');
+        
+        showLoading();
+        
+        fetch('/api/test-email/', {
+            method: 'GET',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => response.json())
+        .then(data => {
+            hideLoading();
+            
+            if (data.success) {
+                showSuccessMessage('✅ Test email inviato con successo!\n\n' + data.message);
+            } else {
+                showErrorMessage('❌ Errore nel test email:\n\n' + data.error);
+            }
+        })
+        .catch(error => {
+            hideLoading();
+            console.error('Errore test email:', error);
+            showErrorMessage('❌ Errore di connessione durante il test email');
+        });
+    }
+    
+    function exportComunicazioni() {
+        console.log('Export comunicazioni...');
+        
+        // Prepara i parametri attuali per l'export
+        const params = new URLSearchParams(window.location.search);
+        params.set('export', 'csv');
+        
+        // Simula export
+        showSuccessMessage('Funzione di export in sviluppo. I dati verranno esportati in formato CSV.');
+    }
+    
+    function clearFilters() {
+        // Reset di tutti i campi del form
+        document.getElementById('filtersForm').reset();
+        
+        // Ricarica la pagina senza parametri
+        window.location.href = window.location.pathname;
+    }
+    
+    function viewTrattamento(trattamentoId) {
+        console.log('Visualizza trattamento:', trattamentoId);
+        // Chiudi il modal corrente
+        bootstrap.Modal.getInstance(document.getElementById('comunicazioneDetailsModal')).hide();
+        
+        // Vai alla pagina trattamenti con filtro per ID
+        window.location.href = `/trattamenti/?search=${trattamentoId}`;
+    }
+    
+    // Funzioni di utilità
+    function showLoading() {
+        new bootstrap.Modal(document.getElementById('loadingModal')).show();
+    }
+    
+    function hideLoading() {
+        const loadingModal = bootstrap.Modal.getInstance(document.getElementById('loadingModal'));
+        if (loadingModal) {
+            loadingModal.hide();
+        }
+    }
+    
+    function showConfirmModal(title, message, onConfirm) {
+        document.getElementById('confirmModalTitle').textContent = title;
+        document.getElementById('confirmModalBody').textContent = message;
+        
+        const confirmButton = document.getElementById('confirmModalAction');
+        confirmButton.onclick = () => {
+            bootstrap.Modal.getInstance(document.getElementById('confirmModal')).hide();
+            onConfirm();
+        };
+        
+        new bootstrap.Modal(document.getElementById('confirmModal')).show();
+    }
+    
+    function showSuccessMessage(message) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-success alert-dismissible fade show';
+        alertDiv.style.position = 'fixed';
+        alertDiv.style.top = '20px';
+        alertDiv.style.right = '20px';
+        alertDiv.style.zIndex = '10000';
+        alertDiv.style.minWidth = '300px';
+        alertDiv.innerHTML = `
+            <i class="fas fa-check-circle me-2"></i>
+            <strong>Successo!</strong> ${message}
+            <button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>
+        `;
+        
+        document.body.appendChild(alertDiv);
+        
+        // Rimuovi automaticamente dopo 5 secondi
+        setTimeout(() => {
+            if (alertDiv.parentElement) {
+                alertDiv.remove();
+            }
+        }, 5000);
+    }
+    
+    function showErrorMessage(message) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+        alertDiv.style.position = 'fixed';
+        alertDiv.style.top = '20px';
+        alertDiv.style.right = '20px';
+        alertDiv.style.zIndex = '10000';
+        alertDiv.style.minWidth = '300px';
+        alertDiv.innerHTML = `
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <strong>Errore!</strong> ${message}
+            <button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>
+        `;
+        
+        document.body.appendChild(alertDiv);
+        
+        // Rimuovi automaticamente dopo 8 secondi per gli errori
+        setTimeout(() => {
+            if (alertDiv.parentElement) {
+                alertDiv.remove();
+            }
+        }, 8000);
+    }
+    
+    function getCsrfToken() {
+        return document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
+               document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || '';
+    }
+    
+    // Event listeners
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Dashboard comunicazioni caricata');
+        
+        // Auto-submit del form quando si cambiano i filtri
+        document.querySelectorAll('#filtersForm select, #filtersForm input[type="date"], #filtersForm input[type="checkbox"]').forEach(element => {
+            element.addEventListener('change', function() {
+                document.getElementById('filtersForm').submit();
+            });
+        });
+        
+        // Aggiungi token CSRF come meta tag se non presente
+        if (!document.querySelector('meta[name=csrf-token]')) {
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+            if (csrfToken) {
+                const meta = document.createElement('meta');
+                meta.name = 'csrf-token';
+                meta.content = csrfToken;
+                document.head.appendChild(meta);
+            }
+        }
+        
+        // Debug info
+        console.log('Filtri attivi:', {
+            cliente: '{{ filters.cliente }}',
+            data_da: '{{ filters.data_da }}',
+            data_a: '{{ filters.data_a }}',
+            solo_errori: {{ filters.solo_errori|yesno:"true,false" }}
+        });
+        
+        console.log('Stats:', {
+            totali: {{ stats.totali }},
+            riuscite: {{ stats.riuscite }},
+            fallite: {{ stats.fallite }},
+            oggi: {{ stats.oggi }}
+        });
+    });
+    
+    // Funzioni di debug
+    window.debugComunicazioni = {
+        viewDetails: viewComunicazioneDetails,
+        testEmail: testEmailConfig,
+        export: exportComunicazioni,
+        stats: {
+            totali: {{ stats.totali }},
+            riuscite: {{ stats.riuscite }},
+            fallite: {{ stats.fallite }}
+        }
+    };
+</script>
+
+<!-- CSRF Token -->
+{% csrf_token %}
+
+<!-- Template Filter Split (aggiungi in templatetags se non presente) -->
+{% load aziende_extras %}
+{% endblock %}

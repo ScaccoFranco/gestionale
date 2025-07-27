@@ -1,4 +1,4 @@
-# domenico/email_utils.py
+# domenico/email_utils.py - Versione con WeasyPrint
 
 import os
 import io
@@ -14,16 +14,24 @@ from django.shortcuts import get_object_or_404
 logger = logging.getLogger('domenico.email_utils')
 
 try:
-    from xhtml2pdf import pisa
+    from weasyprint import HTML, CSS
+    from weasyprint.text.fonts import FontConfiguration
     PDF_AVAILABLE = True
+    PDF_ENGINE = 'weasyprint'
 except ImportError:
-    logger.warning("xhtml2pdf non installato. Le funzioni PDF non saranno disponibili.")
-    PDF_AVAILABLE = False
+    try:
+        from xhtml2pdf import pisa
+        PDF_AVAILABLE = True
+        PDF_ENGINE = 'xhtml2pdf'
+    except ImportError:
+        logger.warning("Né WeasyPrint né xhtml2pdf sono installati. Le funzioni PDF non saranno disponibili.")
+        PDF_AVAILABLE = False
+        PDF_ENGINE = None
 
 def generate_pdf_comunicazione(trattamento_id):
     """Genera un PDF per la comunicazione del trattamento"""
     if not PDF_AVAILABLE:
-        raise Exception("xhtml2pdf non è installato. Installa con: pip install xhtml2pdf")
+        raise Exception("Nessun motore PDF installato. Installa WeasyPrint o xhtml2pdf.")
     
     try:
         from .models import Trattamento
@@ -44,21 +52,50 @@ def generate_pdf_comunicazione(trattamento_id):
         template = get_template('comunicazione_trattamento.html')
         html = template.render(context)
         
-        # Crea il PDF
-        result = io.BytesIO()
-        pdf = pisa.pisaDocument(io.BytesIO(html.encode("UTF-8")), result)
-        
-        if not pdf.err:
-            logger.info(f"PDF generato con successo per trattamento {trattamento_id}")
-            return result.getvalue()
+        if PDF_ENGINE == 'weasyprint':
+            # Usa WeasyPrint (più moderno e affidabile)
+            logger.info(f"Generazione PDF con WeasyPrint per trattamento {trattamento_id}")
+            
+            # Crea la configurazione font
+            font_config = FontConfiguration()
+            
+            # CSS aggiuntivo per WeasyPrint
+            css = CSS(string='''
+                @page {
+                    margin: 2cm;
+                    size: A4;
+                }
+                body {
+                    font-family: Arial, sans-serif;
+                }
+            ''', font_config=font_config)
+            
+            # Genera il PDF
+            html_doc = HTML(string=html)
+            pdf_bytes = html_doc.write_pdf(stylesheets=[css], font_config=font_config)
+            
+            logger.info(f"PDF generato con successo con WeasyPrint per trattamento {trattamento_id}")
+            return pdf_bytes
+            
         else:
-            logger.error(f"Errore nella generazione PDF per trattamento {trattamento_id}: {pdf.err}")
-            raise Exception("Errore nella generazione del PDF")
+            # Fallback a xhtml2pdf
+            logger.info(f"Generazione PDF con xhtml2pdf per trattamento {trattamento_id}")
+            
+            result = io.BytesIO()
+            pdf = pisa.pisaDocument(io.BytesIO(html.encode("UTF-8")), result)
+            
+            if not pdf.err:
+                logger.info(f"PDF generato con successo con xhtml2pdf per trattamento {trattamento_id}")
+                return result.getvalue()
+            else:
+                logger.error(f"Errore nella generazione PDF con xhtml2pdf per trattamento {trattamento_id}: {pdf.err}")
+                raise Exception("Errore nella generazione del PDF")
             
     except Exception as e:
         logger.error(f"Errore nella generazione del PDF per trattamento {trattamento_id}: {str(e)}")
         raise Exception(f"Errore nella generazione del PDF: {str(e)}")
 
+# Il resto delle funzioni rimane identico...
 def send_trattamento_communication(trattamento_id, force_send=False):
     """
     Invia la comunicazione email per un trattamento
@@ -175,7 +212,8 @@ def send_trattamento_communication(trattamento_id, force_send=False):
             'comunicazione_id': comunicazione.id,
             'destinatari': destinatari_info,
             'destinatari_count': len(destinatari),
-            'error': errore_invio if not invio_riuscito else None
+            'error': errore_invio if not invio_riuscito else None,
+            'pdf_engine': PDF_ENGINE
         }
         
     except Exception as e:
@@ -224,7 +262,9 @@ NOTE SPECIALI:
 
 """
     
-    corpo_email += """
+    corpo_email += f"""
+Generato con: {PDF_ENGINE.upper() if PDF_ENGINE else 'Sistema Standard'}
+
 Si prega di confermare la ricezione e di comunicare l'avvenuta esecuzione del trattamento.
 
 Per qualsiasi chiarimento, non esitate a contattarci.
@@ -236,6 +276,7 @@ Sistema di Gestione Trattamenti Agricoli
     
     return corpo_email
 
+# Resto delle funzioni identiche ma con logging aggiornato
 def preview_comunicazione_pdf(request, trattamento_id):
     """View per visualizzare l'anteprima del PDF di comunicazione"""
     try:
@@ -269,8 +310,7 @@ def download_comunicazione_pdf(request, trattamento_id):
         logger.error(f"Errore download PDF per trattamento {trattamento_id}: {str(e)}")
         return HttpResponse(f"Errore nel download: {str(e)}", status=500)
 
-# Funzioni di utilità per gestire i contatti email
-
+# Resto delle funzioni di utilità rimane identico...
 def get_contatti_by_cliente(cliente_id):
     """Ottiene tutti i contatti email attivi per un cliente"""
     try:
@@ -384,14 +424,15 @@ def test_email_configuration():
         
         # Email di test
         test_subject = 'Test Configurazione Email - Sistema Trattamenti'
-        test_message = '''
+        test_message = f'''
 Questo è un messaggio di test per verificare la configurazione email del sistema di gestione trattamenti.
 
 Se ricevi questo messaggio, la configurazione email funziona correttamente.
 
-Timestamp: {timestamp}
+Motore PDF utilizzato: {PDF_ENGINE.upper() if PDF_ENGINE else 'Non disponibile'}
+Timestamp: {timezone.now().strftime('%d/%m/%Y %H:%M:%S')}
 Sistema: Gestionale Agricolo Domenico Franco
-        '''.format(timestamp=timezone.now().strftime('%d/%m/%Y %H:%M:%S'))
+        '''
         
         from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@gestionale.com')
         to_email = getattr(settings, 'EMAIL_HOST_USER', from_email)
@@ -408,7 +449,7 @@ Sistema: Gestionale Agricolo Domenico Franco
         
         return {
             'success': True,
-            'message': f'Test email inviato con successo a {to_email}'
+            'message': f'Test email inviato con successo a {to_email}\nMotore PDF: {PDF_ENGINE or "Non disponibile"}'
         }
         
     except Exception as e:
@@ -446,37 +487,6 @@ def get_comunicazioni_stats():
         logger.error(f"Errore nel calcolo statistiche comunicazioni: {str(e)}")
         return {}
 
-def cleanup_old_comunicazioni(days_old=90):
-    """Pulisce le comunicazioni più vecchie di X giorni (opzionale)"""
-    try:
-        from .models import ComunicazioneTrattamento
-        
-        cutoff_date = timezone.now() - timezone.timedelta(days=days_old)
-        
-        old_comunicazioni = ComunicazioneTrattamento.objects.filter(
-            data_invio__lt=cutoff_date
-        )
-        
-        count = old_comunicazioni.count()
-        old_comunicazioni.delete()
-        
-        logger.info(f"Eliminate {count} comunicazioni più vecchie di {days_old} giorni")
-        
-        return {
-            'success': True,
-            'eliminated_count': count,
-            'message': f'Eliminate {count} comunicazioni vecchie'
-        }
-        
-    except Exception as e:
-        logger.error(f"Errore nella pulizia comunicazioni: {str(e)}")
-        return {
-            'success': False,
-            'error': str(e)
-        }
-
-# Funzioni helper per debugging
-
 def debug_email_settings():
     """Mostra le impostazioni email attuali (per debug)"""
     email_settings = {
@@ -486,31 +496,8 @@ def debug_email_settings():
         'EMAIL_USE_TLS': getattr(settings, 'EMAIL_USE_TLS', 'Non configurato'),
         'DEFAULT_FROM_EMAIL': getattr(settings, 'DEFAULT_FROM_EMAIL', 'Non configurato'),
         'EMAIL_HOST_USER': getattr(settings, 'EMAIL_HOST_USER', 'Non configurato')[:10] + '...' if getattr(settings, 'EMAIL_HOST_USER', '') else 'Non configurato',
+        'PDF_ENGINE': PDF_ENGINE or 'Non disponibile',
+        'PDF_AVAILABLE': PDF_AVAILABLE
     }
     
     return email_settings
-
-def create_sample_communication():
-    """Crea una comunicazione di esempio per test (solo per debug)"""
-    try:
-        from .models import Trattamento
-        
-        # Prendi il primo trattamento disponibile
-        trattamento = Trattamento.objects.first()
-        
-        if not trattamento:
-            return {
-                'success': False,
-                'error': 'Nessun trattamento disponibile per il test'
-            }
-        
-        # Invia comunicazione di test
-        risultato = send_trattamento_communication(trattamento.id, force_send=True)
-        
-        return risultato
-        
-    except Exception as e:
-        return {
-            'success': False,
-            'error': f'Errore nella creazione comunicazione di esempio: {str(e)}'
-        }

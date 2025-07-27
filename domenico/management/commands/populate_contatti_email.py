@@ -16,11 +16,30 @@ class Command(BaseCommand):
             action='store_true',
             help='Aggiunge anche dati di test con email fittizie',
         )
+        parser.add_argument(
+            '--show-stats',
+            action='store_true',
+            help='Mostra statistiche dettagliate dopo il popolamento',
+        )
 
     def handle(self, *args, **options):
+        # Statistiche iniziali
+        self.stdout.write(self.style.SUCCESS('=== POPOLAMENTO CONTATTI EMAIL ===\n'))
+        
+        stats_iniziali = {
+            'clienti': Cliente.objects.count(),
+            'contatti_prima': ContattoEmail.objects.count(),
+            'clienti_con_contatti_prima': Cliente.objects.filter(contatti_email__isnull=False).distinct().count()
+        }
+        
+        self.stdout.write("📊 Statistiche iniziali:")
+        self.stdout.write(f"  • Clienti totali: {stats_iniziali['clienti']}")
+        self.stdout.write(f"  • Contatti esistenti: {stats_iniziali['contatti_prima']}")
+        self.stdout.write(f"  • Clienti con contatti: {stats_iniziali['clienti_con_contatti_prima']}")
+        
         if options['reset']:
             self.stdout.write(
-                self.style.WARNING('⚠️  Cancellazione di tutti i contatti email esistenti...')
+                self.style.WARNING('\n⚠️  Cancellazione di tutti i contatti email esistenti...')
             )
             ContattoEmail.objects.all().delete()
             self.stdout.write(self.style.SUCCESS('✅ Contatti email cancellati'))
@@ -32,14 +51,30 @@ class Command(BaseCommand):
                 if options['test_data']:
                     self.populate_contatti_test()
                 
-            self.stdout.write(
-                self.style.SUCCESS('✅ Popolamento contatti email completato con successo!')
-            )
         except Exception as e:
             self.stdout.write(
                 self.style.ERROR(f'❌ Errore durante il popolamento: {e}')
             )
             raise
+
+        # Statistiche finali
+        stats_finali = {
+            'contatti_dopo': ContattoEmail.objects.count(),
+            'clienti_con_contatti_dopo': Cliente.objects.filter(contatti_email__isnull=False).distinct().count(),
+            'contatti_attivi': ContattoEmail.objects.filter(attivo=True).count()
+        }
+        
+        self.stdout.write('\n📈 STATISTICHE FINALI:')
+        self.stdout.write(f"  • Contatti totali: {stats_finali['contatti_dopo']}")
+        self.stdout.write(f"  • Contatti attivi: {stats_finali['contatti_attivi']}")
+        self.stdout.write(f"  • Clienti con contatti: {stats_finali['clienti_con_contatti_dopo']}")
+        self.stdout.write(f"  • Contatti aggiunti: {stats_finali['contatti_dopo'] - stats_iniziali['contatti_prima']}")
+        
+        if options['show_stats']:
+            self.show_detailed_stats()
+        
+        self.stdout.write(self.style.SUCCESS('\n✅ Popolamento contatti email completato con successo!'))
+        self.stdout.write('\n🌐 Per gestire i contatti vai su: http://localhost:8000/contatti-email/')
 
     def populate_contatti_reali(self):
         """Popola contatti email reali basati sui dati esistenti"""
@@ -225,66 +260,6 @@ class Command(BaseCommand):
         
         self.stdout.write(f"  ✅ Creati {contatti_test_creati} contatti email di test")
 
-    def add_arguments(self, parser):
-        parser.add_argument(
-            '--show-stats',
-            action='store_true',
-            help='Mostra statistiche dettagliate dopo il popolamento',
-        )
-
-    def handle(self, *args, **options):
-        # Statistiche iniziali
-        self.stdout.write(self.style.SUCCESS('=== POPOLAMENTO CONTATTI EMAIL ===\n'))
-        
-        stats_iniziali = {
-            'clienti': Cliente.objects.count(),
-            'contatti_prima': ContattoEmail.objects.count(),
-            'clienti_con_contatti_prima': Cliente.objects.filter(contatti_email__isnull=False).distinct().count()
-        }
-        
-        self.stdout.write("📊 Statistiche iniziali:")
-        self.stdout.write(f"  • Clienti totali: {stats_iniziali['clienti']}")
-        self.stdout.write(f"  • Contatti esistenti: {stats_iniziali['contatti_prima']}")
-        self.stdout.write(f"  • Clienti con contatti: {stats_iniziali['clienti_con_contatti_prima']}")
-        
-        if options['reset']:
-            self.stdout.write(
-                self.style.WARNING('\n⚠️  Cancellazione di tutti i contatti email esistenti...')
-            )
-            ContattoEmail.objects.all().delete()
-            self.stdout.write(self.style.SUCCESS('✅ Contatti email cancellati'))
-
-        try:
-            with transaction.atomic():
-                self.populate_contatti_reali()
-                
-                if options['test_data']:
-                    self.populate_contatti_test()
-                
-        except Exception as e:
-            self.stdout.write(
-                self.style.ERROR(f'❌ Errore durante il popolamento: {e}')
-            )
-            raise
-
-        # Statistiche finali
-        stats_finali = {
-            'contatti_dopo': ContattoEmail.objects.count(),
-            'clienti_con_contatti_dopo': Cliente.objects.filter(contatti_email__isnull=False).distinct().count(),
-            'contatti_attivi': ContattoEmail.objects.filter(attivo=True).count()
-        }
-        
-        self.stdout.write('\n📈 STATISTICHE FINALI:')
-        self.stdout.write(f"  • Contatti totali: {stats_finali['contatti_dopo']}")
-        self.stdout.write(f"  • Contatti attivi: {stats_finali['contatti_attivi']}")
-        self.stdout.write(f"  • Clienti con contatti: {stats_finali['clienti_con_contatti_dopo']}")
-        self.stdout.write(f"  • Contatti aggiunti: {stats_finali['contatti_dopo'] - stats_iniziali['contatti_prima']}")
-        
-        if options['show_stats']:
-            self.show_detailed_stats()
-        
-        self.stdout.write(self.style.SUCCESS('\n✅ Popolamento contatti email completato con successo!'))
-        self.stdout.write('\n🌐 Per gestire i contatti vai su: http://localhost:8000/contatti-email/')
 
     def show_detailed_stats(self):
         """Mostra statistiche dettagliate"""

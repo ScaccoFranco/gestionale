@@ -1035,10 +1035,24 @@
             .then(response => {
                 console.log(`Risposta trattamento ${index + 1}:`, response.status, response.statusText);
                 
+                // Prima controlla se la risposta è ok
                 if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    // Per errori, prova a leggere come testo prima
+                    return response.text().then(text => {
+                        console.error(`Errore HTTP ${response.status}:`, text);
+                        
+                        // Prova a parsare come JSON se possibile
+                        try {
+                            const errorData = JSON.parse(text);
+                            throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+                        } catch (jsonError) {
+                            // Se non è JSON, usa il testo raw
+                            throw new Error(`HTTP ${response.status}: ${text || response.statusText}`);
+                        }
+                    });
                 }
                 
+                // Se ok, parsa come JSON
                 return response.json();
             })
             .then(data => {
@@ -1053,13 +1067,13 @@
                 }
                 
                 // Procedi al prossimo
-                setTimeout(() => createNext(index + 1), 500); // Pausa più lunga
+                setTimeout(() => createNext(index + 1), 500);
             })
             .catch(error => {
                 console.error(`💥 Errore completo trattamento ${index + 1}:`, error);
                 errors.push(`Trattamento ${index + 1}: ${error.message}`);
                 
-                // Procedi al prossimo
+                // Procedi al prossimo anche in caso di errore
                 setTimeout(() => createNext(index + 1), 500);
             });
         }

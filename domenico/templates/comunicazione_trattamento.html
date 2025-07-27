@@ -1,0 +1,361 @@
+<!-- domenico/templates/comunicazione_trattamento.html -->
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comunicazione Trattamento #{{ trattamento.id }}</title>
+    <style>
+        @page {
+            margin: 2cm;
+            @bottom-center {
+                content: "Pagina " counter(page) " di " counter(pages);
+                font-size: 10px;
+                color: #666;
+            }
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            line-height: 1.4;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            color: #007bff;
+            font-size: 24px;
+            margin: 0 0 10px 0;
+        }
+        
+        .header p {
+            margin: 5px 0;
+            color: #666;
+        }
+        
+        .section {
+            margin-bottom: 25px;
+            page-break-inside: avoid;
+        }
+        
+        .section-title {
+            background: #f8f9fa;
+            border-left: 4px solid #007bff;
+            padding: 10px 15px;
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        .info-grid {
+            display: table;
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        
+        .info-row {
+            display: table-row;
+        }
+        
+        .info-label {
+            display: table-cell;
+            font-weight: bold;
+            width: 30%;
+            padding: 8px 15px 8px 0;
+            vertical-align: top;
+        }
+        
+        .info-value {
+            display: table-cell;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .prodotti-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        
+        .prodotti-table th {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            text-align: left;
+            font-weight: bold;
+        }
+        
+        .prodotti-table td {
+            border: 1px solid #dee2e6;
+            padding: 10px;
+        }
+        
+        .prodotti-table tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+        
+        .terreni-list {
+            display: table;
+            width: 100%;
+        }
+        
+        .terreno-item {
+            display: table-row;
+        }
+        
+        .terreno-nome {
+            display: table-cell;
+            padding: 5px 15px 5px 0;
+            font-weight: bold;
+        }
+        
+        .terreno-superficie {
+            display: table-cell;
+            padding: 5px 0;
+            text-align: right;
+        }
+        
+        .totale-row {
+            border-top: 2px solid #007bff;
+            font-weight: bold;
+            background: #e8f4fd;
+        }
+        
+        .note-box {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+        
+        .footer {
+            margin-top: 40px;
+            border-top: 1px solid #dee2e6;
+            padding-top: 20px;
+            text-align: center;
+            color: #666;
+            font-size: 10px;
+        }
+        
+        .signature {
+            margin-top: 30px;
+            text-align: right;
+        }
+        
+        .signature-line {
+            border-bottom: 1px solid #333;
+            width: 200px;
+            margin: 20px 0 5px auto;
+        }
+        
+        .highlight {
+            background: #fff3cd;
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+        
+        .urgent {
+            background: #f8d7da;
+            border: 1px solid #f1aeb5;
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: bold;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <h1>COMUNICAZIONE TRATTAMENTO FITOSANITARIO</h1>
+        <p><strong>ID Trattamento:</strong> #{{ trattamento.id }}</p>
+        <p><strong>Data Comunicazione:</strong> {{ now|date:"d/m/Y H:i" }}</p>
+        {% if trattamento.data_esecuzione_prevista %}
+        <p><strong>Esecuzione Prevista:</strong> {{ trattamento.data_esecuzione_prevista|date:"d/m/Y" }}</p>
+        {% endif %}
+    </div>
+    
+    <!-- Informazioni Cliente -->
+    <div class="section">
+        <div class="section-title">INFORMAZIONI CLIENTE</div>
+        <div class="info-grid">
+            <div class="info-row">
+                <div class="info-label">Azienda:</div>
+                <div class="info-value">{{ trattamento.cliente.nome }}</div>
+            </div>
+            {% if trattamento.livello_applicazione == 'cascina' and trattamento.cascina %}
+            <div class="info-row">
+                <div class="info-label">Cascina:</div>
+                <div class="info-value">{{ trattamento.cascina.nome }}</div>
+            </div>
+            {% endif %}
+            {% if trattamento.get_contoterzista %}
+            <div class="info-row">
+                <div class="info-label">Contoterzista:</div>
+                <div class="info-value">{{ trattamento.get_contoterzista.nome }}</div>
+            </div>
+            {% if trattamento.get_contoterzista.telefono %}
+            <div class="info-row">
+                <div class="info-label">Telefono:</div>
+                <div class="info-value">{{ trattamento.get_contoterzista.telefono }}</div>
+            </div>
+            {% endif %}
+            {% if trattamento.get_contoterzista.email %}
+            <div class="info-row">
+                <div class="info-label">Email:</div>
+                <div class="info-value">{{ trattamento.get_contoterzista.email }}</div>
+            </div>
+            {% endif %}
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Dettagli Trattamento -->
+    <div class="section">
+        <div class="section-title">DETTAGLI TRATTAMENTO</div>
+        <div class="info-grid">
+            <div class="info-row">
+                <div class="info-label">Tipo Applicazione:</div>
+                <div class="info-value">{{ trattamento.get_livello_applicazione_display }}</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">Superficie Interessata:</div>
+                <div class="info-value"><span class="highlight">{{ trattamento.get_superficie_interessata|floatformat:2 }} ettari</span></div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">Stato:</div>
+                <div class="info-value">{{ trattamento.get_stato_display }}</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">Data Inserimento:</div>
+                <div class="info-value">{{ trattamento.data_inserimento|date:"d/m/Y H:i" }}</div>
+            </div>
+            {% if trattamento.data_esecuzione_prevista %}
+            <div class="info-row">
+                <div class="info-label">Esecuzione Prevista:</div>
+                <div class="info-value">{{ trattamento.data_esecuzione_prevista|date:"d/m/Y" }}</div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Terreni Interessati -->
+    {% if trattamento.livello_applicazione == 'terreno' and trattamento.terreni.all %}
+    <div class="section">
+        <div class="section-title">TERRENI INTERESSATI</div>
+        <div class="terreni-list">
+            {% for terreno in trattamento.terreni.all %}
+            <div class="terreno-item">
+                <div class="terreno-nome">{{ terreno.nome }}</div>
+                <div class="terreno-superficie">{{ terreno.superficie }} ha</div>
+            </div>
+            {% endfor %}
+            <div class="terreno-item totale-row">
+                <div class="terreno-nome">TOTALE SUPERFICIE</div>
+                <div class="terreno-superficie">{{ trattamento.get_superficie_interessata|floatformat:2 }} ha</div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Prodotti e Quantità -->
+    <div class="section">
+        <div class="section-title">PRODOTTI E QUANTITÀ</div>
+        
+        {% if trattamento.trattamentoprodotto_set.all %}
+        <table class="prodotti-table">
+            <thead>
+                <tr>
+                    <th>Prodotto</th>
+                    <th>Quantità/ha</th>
+                    <th>Quantità Totale</th>
+                    <th>Unità</th>
+                    <th>Principi Attivi</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for tp in trattamento.trattamentoprodotto_set.all %}
+                <tr>
+                    <td><strong>{{ tp.prodotto.nome }}</strong></td>
+                    <td>{{ tp.quantita_per_ettaro }}</td>
+                    <td><strong>{{ tp.quantita_totale|floatformat:3 }}</strong></td>
+                    <td>{{ tp.prodotto.unita_misura }}</td>
+                    <td>
+                        {% for pa in tp.prodotto.principi_attivi.all %}
+                            {{ pa.nome }}{% if not forloop.last %}, {% endif %}
+                        {% empty %}
+                            -
+                        {% endfor %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>Nessun prodotto specificato per questo trattamento.</p>
+        {% endif %}
+    </div>
+    
+    <!-- Note -->
+    {% if trattamento.note %}
+    <div class="section">
+        <div class="section-title">NOTE E ISTRUZIONI SPECIALI</div>
+        <div class="note-box">
+            {{ trattamento.note|linebreaks }}
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Istruzioni -->
+    <div class="section">
+        <div class="section-title">ISTRUZIONI PER L'ESECUZIONE</div>
+        <div class="info-grid">
+            <div class="info-row">
+                <div class="info-label">Condizioni Meteo:</div>
+                <div class="info-value">Verificare condizioni di vento e umidità prima del trattamento</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">Orario Consigliato:</div>
+                <div class="info-value">Prime ore del mattino o tardo pomeriggio</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">Comunicazione:</div>
+                <div class="info-value">Comunicare l'avvenuta esecuzione entro 24 ore</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">Sicurezza:</div>
+                <div class="info-value">Utilizzare i dispositivi di protezione individuale previsti</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Firma -->
+    <div class="signature">
+        <p><strong>Domenico Franco</strong></p>
+        <p>Sistema di Gestione Trattamenti Agricoli</p>
+        <div class="signature-line"></div>
+        <p style="margin-top: 10px; font-size: 10px;">Firma per presa visione</p>
+    </div>
+    
+    <!-- Footer -->
+    <div class="footer">
+        <p>Questo documento è stato generato automaticamente dal Sistema di Gestione Trattamenti Agricoli</p>
+        <p>Data generazione: {{ now|date:"d/m/Y H:i:s" }} | ID Trattamento: #{{ trattamento.id }}</p>
+        <p>Per informazioni contattare: Domenico Franco - Tel: 333-XXXXXXX - Email: domenico.franco@example.com</p>
+    </div>
+</body>
+</html>

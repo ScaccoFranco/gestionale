@@ -1,2 +1,7 @@
-xhtml2pdf==0.2.11
-reportlab==4.0.4
+Django>=5.2.0,<6.0.0
+python-decouple>=3.6
+Pillow>=9.0.0
+
+# Alternativa moderna per PDF
+weasyprint>=59.0
+cffi>=1.15.0

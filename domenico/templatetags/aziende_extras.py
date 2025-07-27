@@ -1,3 +1,5 @@
+# domenico/templatetags/aziende_extras.py (aggiorna il file esistente)
+
 from django import template
 
 register = template.Library()
@@ -27,7 +29,12 @@ def total_superficie(aziende_tree):
         total += float(cliente['superficie_totale'] or 0)
     return round(total, 2)
 
-# NUOVE FUNZIONI PER I TRATTAMENTI
+@register.filter
+def split(value, delimiter):
+    """Divide una stringa usando il delimitatore specificato"""
+    if not value:
+        return []
+    return value.split(delimiter)
 
 @register.filter
 def get_livello_display(trattamento):
@@ -126,3 +133,46 @@ def multiply(value, arg):
         return float(value) * float(arg)
     except (ValueError, TypeError):
         return 0
+
+# NUOVI FILTRI PER LE COMUNICAZIONI
+
+@register.filter
+def format_email_list(emails_string, max_display=3):
+    """Formatta una lista di email per visualizzazione"""
+    if not emails_string:
+        return []
+    
+    emails = emails_string.split(', ')
+    if len(emails) <= max_display:
+        return emails
+    
+    return emails[:max_display] + [f'+{len(emails) - max_display} altri']
+
+@register.filter
+def email_domain(email):
+    """Estrae il dominio da un indirizzo email"""
+    if not email or '@' not in email:
+        return email
+    return email.split('@')[1]
+
+@register.filter
+def success_rate(stats):
+    """Calcola la percentuale di successo delle comunicazioni"""
+    if not stats or stats.get('totali', 0) == 0:
+        return 0
+    
+    riuscite = stats.get('riuscite', 0)
+    totali = stats.get('totali', 1)
+    
+    return round((riuscite / totali) * 100, 1)
+
+@register.filter
+def failure_rate(stats):
+    """Calcola la percentuale di fallimento delle comunicazioni"""
+    if not stats or stats.get('totali', 0) == 0:
+        return 0
+    
+    fallite = stats.get('fallite', 0)
+    totali = stats.get('totali', 1)
+    
+    return round((fallite / totali) * 100, 1)
