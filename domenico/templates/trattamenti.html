@@ -1,0 +1,742 @@
+{% extends 'base.html' %}
+
+{% block page_title %}Gestione Trattamenti{% endblock %}
+{% block page_icon %}<i class="fas fa-flask"></i>{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --primary-color: #007bff;
+        --success-color: #28a745;
+        --warning-color: #ffc107;
+        --info-color: #17a2b8;
+        --danger-color: #dc3545;
+        --purple-color: #6f42c1;
+        --orange-color: #fd7e14;
+        --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --gradient-success: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        --gradient-warning: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        --gradient-info: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        --gradient-danger: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
+        --shadow: 0 10px 30px rgba(0,0,0,0.1);
+        --shadow-hover: 0 20px 40px rgba(0,0,0,0.15);
+    }
+
+    .welcome-section {
+        background: var(--gradient-primary);
+        color: white;
+        padding: 3rem 0;
+        margin: -2rem -2rem 3rem -2rem;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .welcome-section::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 100" fill="white" opacity="0.1"><polygon points="1000,100 1000,0 0,100"/></svg>');
+        background-size: cover;
+    }
+
+    .welcome-content {
+        position: relative;
+        z-index: 2;
+    }
+
+    .welcome-title {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+
+    .welcome-subtitle {
+        font-size: 1.2rem;
+        opacity: 0.9;
+        font-weight: 300;
+    }
+
+    /* Stats Overview */
+    .stats-overview {
+        margin-bottom: 3rem;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 2rem;
+        margin-bottom: 2rem;
+    }
+
+    .stat-card {
+        background: white;
+        border-radius: 20px;
+        padding: 2rem;
+        box-shadow: var(--shadow);
+        text-align: center;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+        border-left: 5px solid var(--card-color);
+    }
+
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: var(--shadow-hover);
+    }
+
+    .stat-card.programmati {
+        --card-color: var(--warning-color);
+    }
+
+    .stat-card.comunicati {
+        --card-color: var(--info-color);
+    }
+
+    .stat-card.in-esecuzione {
+        --card-color: var(--orange-color);
+    }
+
+    .stat-card.completati {
+        --card-color: var(--success-color);
+    }
+
+    .stat-card.annullati {
+        --card-color: var(--danger-color);
+    }
+
+    .stat-card.totali {
+        --card-color: var(--primary-color);
+    }
+
+    .stat-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        color: var(--card-color);
+        opacity: 0.8;
+    }
+
+    .stat-number {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: var(--card-color);
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+
+    .stat-label {
+        color: #666;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-size: 0.9rem;
+    }
+
+    .stat-sublabel {
+        color: #999;
+        font-size: 0.8rem;
+        margin-top: 0.25rem;
+    }
+
+    /* Navigation Cards */
+    .navigation-section {
+        margin-bottom: 3rem;
+    }
+
+    .navigation-title {
+        text-align: center;
+        margin-bottom: 2rem;
+        color: #333;
+        font-weight: 600;
+        font-size: 1.8rem;
+    }
+
+    .navigation-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 2rem;
+    }
+
+    .nav-card {
+        background: white;
+        border-radius: 20px;
+        padding: 2.5rem;
+        box-shadow: var(--shadow);
+        transition: all 0.3s ease;
+        text-decoration: none;
+        color: inherit;
+        position: relative;
+        overflow: hidden;
+        border-top: 5px solid var(--card-gradient);
+    }
+
+    .nav-card:hover {
+        transform: translateY(-10px);
+        box-shadow: var(--shadow-hover);
+        text-decoration: none;
+        color: inherit;
+    }
+
+    .nav-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 5px;
+        background: var(--card-gradient);
+        transition: height 0.3s ease;
+    }
+
+    .nav-card:hover::before {
+        height: 100%;
+        opacity: 0.05;
+    }
+
+    .nav-card.tutti {
+        --card-gradient: var(--gradient-primary);
+    }
+
+    .nav-card.programmati {
+        --card-gradient: var(--gradient-warning);
+    }
+
+    .nav-card.comunicati {
+        --card-gradient: var(--gradient-info);
+    }
+
+    .nav-card.completati {
+        --card-gradient: var(--gradient-success);
+    }
+
+    .nav-card.in-esecuzione {
+        --card-gradient: linear-gradient(135deg, #fd7e14 0%, #ff6b35 100%);
+    }
+
+    .nav-icon {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 1.5rem;
+        font-size: 2.5rem;
+        color: white;
+        background: var(--card-gradient);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+        margin: 0 auto 1.5rem;
+    }
+
+    .nav-title {
+        font-size: 1.4rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        color: #333;
+        text-align: center;
+    }
+
+    .nav-description {
+        color: #666;
+        line-height: 1.6;
+        margin-bottom: 1.5rem;
+        text-align: center;
+    }
+
+    .nav-count {
+        background: var(--card-gradient);
+        color: white;
+        padding: 0.8rem 1.5rem;
+        border-radius: 50px;
+        font-weight: 600;
+        text-align: center;
+        font-size: 1.1rem;
+    }
+
+    /* Recent Activity */
+    .recent-activity {
+        background: white;
+        border-radius: 20px;
+        padding: 2.5rem;
+        box-shadow: var(--shadow);
+    }
+
+    .activity-title {
+        margin-bottom: 2rem;
+        color: #333;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        font-size: 1.5rem;
+    }
+
+    .activity-title i {
+        margin-right: 0.75rem;
+        color: var(--primary-color);
+    }
+
+    .activity-list {
+        list-style: none;
+        padding: 0;
+    }
+
+    .activity-item {
+        padding: 1.5rem;
+        border-left: 4px solid var(--activity-color);
+        margin-bottom: 1rem;
+        background: var(--activity-bg);
+        border-radius: 0 12px 12px 0;
+        transition: all 0.3s ease;
+        position: relative;
+    }
+
+    .activity-item:hover {
+        transform: translateX(8px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .activity-item:last-child {
+        margin-bottom: 0;
+    }
+
+    .activity-item.programmato {
+        --activity-color: var(--warning-color);
+        --activity-bg: #fff8e1;
+    }
+
+    .activity-item.comunicato {
+        --activity-color: var(--info-color);
+        --activity-bg: #e1f5fe;
+    }
+
+    .activity-item.completato {
+        --activity-color: var(--success-color);
+        --activity-bg: #e8f5e8;
+    }
+
+    .activity-item.in_esecuzione {
+        --activity-color: var(--orange-color);
+        --activity-bg: #fff3e0;
+    }
+
+    .activity-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .activity-main {
+        flex: 1;
+    }
+
+    .activity-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 0.5rem;
+        gap: 0.75rem;
+    }
+
+    .activity-status {
+        padding: 0.25rem 0.75rem;
+        border-radius: 15px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: white;
+        background: var(--activity-color);
+    }
+
+    .activity-text {
+        color: #333;
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+
+    .activity-details {
+        color: #666;
+        font-size: 0.9rem;
+        margin-top: 0.5rem;
+        line-height: 1.4;
+    }
+
+    .activity-meta {
+        text-align: right;
+        color: #999;
+        font-size: 0.85rem;
+        min-width: 100px;
+    }
+
+    .activity-time {
+        font-weight: 500;
+        margin-bottom: 0.25rem;
+    }
+
+    .activity-id {
+        color: #bbb;
+        font-size: 0.75rem;
+    }
+
+    .empty-activity {
+        text-align: center;
+        padding: 3rem;
+        color: #666;
+    }
+
+    .empty-activity i {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        opacity: 0.3;
+    }
+
+    /* Quick Actions */
+    .quick-actions {
+        display: flex;
+        justify-content: center;
+        gap: 1rem;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+    }
+
+    .quick-action-btn {
+        background: var(--gradient-success);
+        color: white;
+        border: none;
+        padding: 1rem 2rem;
+        border-radius: 50px;
+        font-weight: 600;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+    }
+
+    .quick-action-btn:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+        color: white;
+        text-decoration: none;
+    }
+
+    .quick-action-btn.secondary {
+        background: var(--gradient-primary);
+        box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
+    }
+
+    .quick-action-btn.secondary:hover {
+        box-shadow: 0 6px 20px rgba(0, 123, 255, 0.4);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .welcome-title {
+            font-size: 2rem;
+        }
+        
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+        
+        .navigation-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .activity-content {
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .activity-meta {
+            text-align: left;
+            min-width: auto;
+        }
+        
+        .quick-actions {
+            flex-direction: column;
+            align-items: center;
+        }
+    }
+
+    /* Animation */
+    .stat-card, .nav-card, .recent-activity {
+        animation: fadeInUp 0.6s ease-out;
+    }
+
+    .stat-card:nth-child(1) { animation-delay: 0.1s; }
+    .stat-card:nth-child(2) { animation-delay: 0.2s; }
+    .stat-card:nth-child(3) { animation-delay: 0.3s; }
+    .stat-card:nth-child(4) { animation-delay: 0.4s; }
+    .stat-card:nth-child(5) { animation-delay: 0.5s; }
+    .stat-card:nth-child(6) { animation-delay: 0.6s; }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Welcome Section -->
+<div class="welcome-section">
+    <div class="welcome-content">
+        <h1 class="welcome-title">
+            <i class="fas fa-flask me-3"></i>Gestione Trattamenti
+        </h1>
+        <p class="welcome-subtitle">
+            Monitora, gestisci e analizza tutti i trattamenti fitosanitari
+        </p>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="quick-actions">
+    <a href="{% url 'inserisci' %}" class="quick-action-btn">
+        <i class="fas fa-plus-circle"></i>
+        Nuovo Trattamento
+    </a>
+    <a href="#" class="quick-action-btn secondary" onclick="window.print()">
+        <i class="fas fa-print"></i>
+        Stampa Report
+    </a>
+</div>
+
+<!-- Stats Overview -->
+<div class="stats-overview">
+    <div class="stats-grid">
+        <div class="stat-card totali">
+            <div class="stat-icon">
+                <i class="fas fa-clipboard-list"></i>
+            </div>
+            <span class="stat-number">{{ stats.totali }}</span>
+            <div class="stat-label">Trattamenti Totali</div>
+            <div class="stat-sublabel">Da sempre</div>
+        </div>
+        
+        <div class="stat-card programmati">
+            <div class="stat-icon">
+                <i class="fas fa-calendar-plus"></i>
+            </div>
+            <span class="stat-number">{{ stats.programmati }}</span>
+            <div class="stat-label">Programmati</div>
+            <div class="stat-sublabel">In attesa di comunicazione</div>
+        </div>
+        
+        <div class="stat-card comunicati">
+            <div class="stat-icon">
+                <i class="fas fa-paper-plane"></i>
+            </div>
+            <span class="stat-number">{{ stats.comunicati }}</span>
+            <div class="stat-label">Comunicati</div>
+            <div class="stat-sublabel">Inviati ai contoterzisti</div>
+        </div>
+        
+        <div class="stat-card in-esecuzione">
+            <div class="stat-icon">
+                <i class="fas fa-cogs"></i>
+            </div>
+            <span class="stat-number">{{ stats.in_esecuzione }}</span>
+            <div class="stat-label">In Esecuzione</div>
+            <div class="stat-sublabel">Attualmente in corso</div>
+        </div>
+        
+        <div class="stat-card completati">
+            <div class="stat-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <span class="stat-number">{{ stats.completati }}</span>
+            <div class="stat-label">Completati</div>
+            <div class="stat-sublabel">Eseguiti con successo</div>
+        </div>
+        
+        <div class="stat-card annullati">
+            <div class="stat-icon">
+                <i class="fas fa-times-circle"></i>
+            </div>
+            <span class="stat-number">{{ stats.annullati }}</span>
+            <div class="stat-label">Annullati</div>
+            <div class="stat-sublabel">Trattamenti cancellati</div>
+        </div>
+    </div>
+</div>
+
+<!-- Navigation to Detail Views -->
+<div class="navigation-section">
+    <h2 class="navigation-title">
+        <i class="fas fa-list me-2"></i>Visualizza Trattamenti per Categoria
+    </h2>
+    
+    <div class="navigation-grid">
+        <a href="?view=tutti" class="nav-card tutti">
+            <div class="nav-icon">
+                <i class="fas fa-list-ul"></i>
+            </div>
+            <h3 class="nav-title">Tutti i Trattamenti</h3>
+            <p class="nav-description">
+                Visualizza l'elenco completo di tutti i trattamenti con filtri avanzati e opzioni di ricerca
+            </p>
+            <div class="nav-count">{{ stats.totali }} trattamenti</div>
+        </a>
+        
+        <a href="?view=programmati" class="nav-card programmati">
+            <div class="nav-icon">
+                <i class="fas fa-calendar-plus"></i>
+            </div>
+            <h3 class="nav-title">Programmati</h3>
+            <p class="nav-description">
+                Trattamenti pianificati che necessitano di essere comunicati ai contoterzisti
+            </p>
+            <div class="nav-count">{{ stats.programmati }} da comunicare</div>
+        </a>
+        
+        <a href="?view=comunicati" class="nav-card comunicati">
+            <div class="nav-icon">
+                <i class="fas fa-paper-plane"></i>
+            </div>
+            <h3 class="nav-title">Comunicati</h3>
+            <p class="nav-description">
+                Trattamenti già comunicati ai contoterzisti e in attesa di esecuzione
+            </p>
+            <div class="nav-count">{{ stats.comunicati }} comunicati</div>
+        </a>
+        
+        <a href="?view=in_esecuzione" class="nav-card in-esecuzione">
+            <div class="nav-icon">
+                <i class="fas fa-cogs"></i>
+            </div>
+            <h3 class="nav-title">In Esecuzione</h3>
+            <p class="nav-description">
+                Trattamenti attualmente in corso di esecuzione sul campo
+            </p>
+            <div class="nav-count">{{ stats.in_esecuzione }} in corso</div>
+        </a>
+        
+        <a href="?view=completati" class="nav-card completati">
+            <div class="nav-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <h3 class="nav-title">Completati</h3>
+            <p class="nav-description">
+                Trattamenti eseguiti con successo e completati
+            </p>
+            <div class="nav-count">{{ stats.completati }} completati</div>
+        </a>
+    </div>
+</div>
+
+<!-- Recent Activity -->
+<div class="recent-activity">
+    <h3 class="activity-title">
+        <i class="fas fa-history"></i>
+        Cronologia Recente
+    </h3>
+    
+    {% if trattamenti_recenti %}
+    <ul class="activity-list">
+        {% for trattamento in trattamenti_recenti %}
+        <li class="activity-item {{ trattamento.stato }}">
+            <div class="activity-content">
+                <div class="activity-main">
+                    <div class="activity-header">
+                        <span class="activity-status">{{ trattamento.get_stato_display }}</span>
+                        <span class="activity-text">{{ trattamento.cliente.nome }}</span>
+                    </div>
+                    <div class="activity-details">
+                        {% if trattamento.livello_applicazione == 'cliente' %}
+                            <i class="fas fa-building me-1"></i>Trattamento per tutta l'azienda
+                        {% elif trattamento.livello_applicazione == 'cascina' %}
+                            <i class="fas fa-home me-1"></i>Cascina: {{ trattamento.cascina.nome }}
+                        {% elif trattamento.livello_applicazione == 'terreno' %}
+                            <i class="fas fa-seedling me-1"></i>{{ trattamento.terreni.count }} terreno{{ trattamento.terreni.count|pluralize:"i" }} selezionato{{ trattamento.terreni.count|pluralize:"i" }}
+                        {% endif %}
+                        {% if trattamento.get_contoterzista %}
+                            <br><i class="fas fa-user-tie me-1"></i>{{ trattamento.get_contoterzista.nome }}
+                        {% endif %}
+                        <br><i class="fas fa-map-marked-alt me-1"></i>Superficie: {{ trattamento.get_superficie_interessata|floatformat:2 }} ha
+                    </div>
+                </div>
+                <div class="activity-meta">
+                    <div class="activity-time">{{ trattamento.data_inserimento|timesince }} fa</div>
+                    <div class="activity-id">ID #{{ trattamento.id }}</div>
+                </div>
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <div class="empty-activity">
+        <i class="fas fa-seedling"></i>
+        <h4>Nessun trattamento registrato</h4>
+        <p>Inizia creando il tuo primo trattamento!</p>
+        <a href="{% url 'inserisci' %}" class="quick-action-btn mt-3">
+            <i class="fas fa-plus-circle"></i>
+            Crea Primo Trattamento
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Animazione contatori
+    document.addEventListener('DOMContentLoaded', function() {
+        const numbers = document.querySelectorAll('.stat-number');
+        
+        numbers.forEach(number => {
+            const finalValue = parseInt(number.textContent) || 0;
+            let currentValue = 0;
+            const increment = Math.ceil(finalValue / 25);
+            
+            const timer = setInterval(() => {
+                currentValue += increment;
+                if (currentValue >= finalValue) {
+                    currentValue = finalValue;
+                    clearInterval(timer);
+                }
+                number.textContent = currentValue;
+            }, 80);
+        });
+    });
+
+    // Effetti hover per le navigation cards
+    document.querySelectorAll('.nav-card').forEach(card => {
+        card.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-15px) scale(1.02)';
+        });
+        
+        card.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0) scale(1)';
+        });
+    });
+
+    // Aggiorna la cronologia ogni 30 secondi
+    setInterval(function() {
+        // Potresti implementare un aggiornamento AJAX qui
+        console.log('Aggiornamento cronologia...');
+    }, 30000);
+
+    // Log per debug
+    console.log('Pagina trattamenti caricata');
+    console.log('Stats:', {
+        totali: {{ stats.totali }},
+        programmati: {{ stats.programmati }},
+        comunicati: {{ stats.comunicati }},
+        completati: {{ stats.completati }}
+    });
+</script>
+{% endblock %}

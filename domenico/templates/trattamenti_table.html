@@ -1,0 +1,1103 @@
+{% extends 'base.html' %}
+
+{% block page_title %}{{ view_title }}{% endblock %}
+{% block page_icon %}<i class="fas fa-table"></i>{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --primary-color: #007bff;
+        --success-color: #28a745;
+        --warning-color: #ffc107;
+        --info-color: #17a2b8;
+        --danger-color: #dc3545;
+        --light-bg: #f8f9fa;
+        --border-color: #dee2e6;
+        --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.15);
+    }
+
+    /* Header Section */
+    .page-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem 0;
+        margin: -2rem -2rem 2rem -2rem;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .page-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 100" fill="white" opacity="0.1"><polygon points="1000,100 1000,0 0,100"/></svg>');
+        background-size: cover;
+    }
+
+    .page-header-content {
+        position: relative;
+        z-index: 2;
+    }
+
+    .page-header h1 {
+        font-size: 2.2rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+
+    .page-header p {
+        font-size: 1.1rem;
+        opacity: 0.9;
+        font-weight: 300;
+    }
+
+    /* Stats Bar */
+    .stats-bar {
+        background: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: var(--shadow);
+        display: flex;
+        justify-content: space-around;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .stat-item {
+        text-align: center;
+        flex: 1;
+        min-width: 120px;
+    }
+
+    .stat-number {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: var(--primary-color);
+        display: block;
+    }
+
+    .stat-label {
+        font-size: 0.85rem;
+        color: #666;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-top: 0.25rem;
+    }
+
+    /* Filters Section */
+    .filters-section {
+        background: white;
+        border-radius: 15px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: var(--shadow);
+    }
+
+    .filters-title {
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+    }
+
+    .filters-title i {
+        margin-right: 0.5rem;
+        color: var(--primary-color);
+    }
+
+    .filters-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .filter-label {
+        font-weight: 500;
+        color: #333;
+        margin-bottom: 0.5rem;
+        font-size: 0.9rem;
+    }
+
+    .form-control, .form-select {
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        padding: 0.6rem 1rem;
+        font-size: 0.95rem;
+        transition: all 0.3s ease;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        outline: none;
+    }
+
+    .filters-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: flex-end;
+        align-items: center;
+    }
+
+    /* Table Section */
+    .table-section {
+        background: white;
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: var(--shadow);
+    }
+
+    .table-header {
+        background: var(--light-bg);
+        padding: 1.5rem 2rem;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .table-title {
+        font-weight: 600;
+        color: #333;
+        margin: 0;
+        display: flex;
+        align-items: center;
+    }
+
+    .table-title i {
+        margin-right: 0.5rem;
+        color: var(--primary-color);
+    }
+
+    .table-actions {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+    }
+
+    .table-responsive {
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+
+    .table {
+        margin: 0;
+        font-size: 0.9rem;
+    }
+
+    .table th {
+        background: var(--light-bg);
+        color: #333;
+        font-weight: 600;
+        border-bottom: 2px solid var(--border-color);
+        padding: 1rem 0.75rem;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+
+    .table td {
+        padding: 1rem 0.75rem;
+        vertical-align: middle;
+        border-bottom: 1px solid #f1f3f4;
+    }
+
+    .table tbody tr {
+        transition: all 0.2s ease;
+    }
+
+    .table tbody tr:hover {
+        background-color: #f8f9fa;
+        transform: scale(1.01);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    /* Status Badges */
+    .status-badge {
+        padding: 0.4rem 0.8rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        white-space: nowrap;
+    }
+
+    .status-programmato {
+        background: #fff3cd;
+        color: #856404;
+        border: 1px solid #ffeaa7;
+    }
+
+    .status-comunicato {
+        background: #cce7ff;
+        color: #0c5aa6;
+        border: 1px solid #a2d2ff;
+    }
+
+    .status-in_esecuzione {
+        background: #ffe0cc;
+        color: #cc5500;
+        border: 1px solid #ffb380;
+    }
+
+    .status-completato {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+
+    .status-annullato {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f1aeb5;
+    }
+
+    /* Action Buttons */
+    .btn {
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        border: none;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.85rem;
+    }
+
+    .btn-primary {
+        background: var(--primary-color);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: #0056b3;
+        transform: translateY(-1px);
+        color: white;
+        text-decoration: none;
+    }
+
+    .btn-success {
+        background: var(--success-color);
+        color: white;
+    }
+
+    .btn-success:hover {
+        background: #1e7e34;
+        transform: translateY(-1px);
+        color: white;
+        text-decoration: none;
+    }
+
+    .btn-warning {
+        background: var(--warning-color);
+        color: #212529;
+    }
+
+    .btn-warning:hover {
+        background: #e0a800;
+        transform: translateY(-1px);
+        color: #212529;
+        text-decoration: none;
+    }
+
+    .btn-info {
+        background: var(--info-color);
+        color: white;
+    }
+
+    .btn-info:hover {
+        background: #138496;
+        transform: translateY(-1px);
+        color: white;
+        text-decoration: none;
+    }
+
+    .btn-outline-secondary {
+        background: transparent;
+        border: 1px solid #6c757d;
+        color: #6c757d;
+    }
+
+    .btn-outline-secondary:hover {
+        background: #6c757d;
+        color: white;
+        text-decoration: none;
+    }
+
+    .btn-sm {
+        padding: 0.3rem 0.6rem;
+        font-size: 0.8rem;
+    }
+
+    /* Client Info */
+    .client-info {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .client-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: var(--primary-color);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 0.8rem;
+    }
+
+    .client-details {
+        flex: 1;
+    }
+
+    .client-name {
+        font-weight: 600;
+        color: #333;
+        font-size: 0.9rem;
+        margin-bottom: 0.1rem;
+    }
+
+    .client-meta {
+        font-size: 0.75rem;
+        color: #666;
+    }
+
+    /* Surface Info */
+    .surface-info {
+        background: #e3f2fd;
+        color: #1976d2;
+        padding: 0.3rem 0.6rem;
+        border-radius: 15px;
+        font-size: 0.8rem;
+        font-weight: 500;
+        text-align: center;
+        white-space: nowrap;
+    }
+
+    /* Products List */
+    .products-list {
+        max-width: 200px;
+    }
+
+    .product-item {
+        font-size: 0.8rem;
+        padding: 0.2rem 0;
+        border-bottom: 1px solid #f1f3f4;
+    }
+
+    .product-item:last-child {
+        border-bottom: none;
+    }
+
+    .product-name {
+        font-weight: 500;
+        color: #333;
+    }
+
+    .product-quantity {
+        color: #666;
+        font-size: 0.75rem;
+    }
+
+    /* Pagination */
+    .pagination-section {
+        background: white;
+        padding: 1.5rem 2rem;
+        border-radius: 0 0 15px 15px;
+        border-top: 1px solid var(--border-color);
+        display: flex;
+        justify-content: between;
+        align-items: center;
+    }
+
+    .pagination {
+        margin: 0;
+    }
+
+    .page-link {
+        border: none;
+        padding: 0.5rem 1rem;
+        margin: 0 0.2rem;
+        border-radius: 8px;
+        color: var(--primary-color);
+        text-decoration: none;
+    }
+
+    .page-link:hover {
+        background: var(--primary-color);
+        color: white;
+        text-decoration: none;
+    }
+
+    .page-item.active .page-link {
+        background: var(--primary-color);
+        color: white;
+    }
+
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: #666;
+    }
+
+    .empty-state i {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        opacity: 0.3;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .page-header h1 {
+            font-size: 1.8rem;
+        }
+        
+        .stats-bar {
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .filters-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .filters-actions {
+            justify-content: center;
+        }
+        
+        .table-header {
+            flex-direction: column;
+            gap: 1rem;
+            text-align: center;
+        }
+        
+        .table-actions {
+            justify-content: center;
+        }
+        
+        .table-responsive {
+            font-size: 0.85rem;
+        }
+        
+        .pagination-section {
+            flex-direction: column;
+            gap: 1rem;
+        }
+    }
+
+    /* Loading Animation */
+    .loading {
+        text-align: center;
+        padding: 2rem;
+    }
+
+    .spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid var(--primary-color);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 1rem;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header">
+    <div class="page-header-content">
+        <h1><i class="fas fa-table me-3"></i>{{ view_title }}</h1>
+        <p>{{ view_description }}</p>
+    </div>
+</div>
+
+<!-- Back Button -->
+<div class="mb-3">
+    <a href="{% url 'trattamenti' %}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left"></i> Torna alla Dashboard
+    </a>
+</div>
+
+<!-- Stats Bar -->
+<div class="stats-bar">
+    <div class="stat-item">
+        <span class="stat-number">{{ stats.filtrati }}</span>
+        <div class="stat-label">Visualizzati</div>
+    </div>
+    <div class="stat-item">
+        <span class="stat-number">{{ stats.totali }}</span>
+        <div class="stat-label">Totali</div>
+    </div>
+    <div class="stat-item">
+        <span class="stat-number">{{ stats.programmati }}</span>
+        <div class="stat-label">Programmati</div>
+    </div>
+    <div class="stat-item">
+        <span class="stat-number">{{ stats.comunicati }}</span>
+        <div class="stat-label">Comunicati</div>
+    </div>
+    <div class="stat-item">
+        <span class="stat-number">{{ stats.completati }}</span>
+        <div class="stat-label">Completati</div>
+    </div>
+</div>
+
+<!-- Filters Section -->
+<div class="filters-section">
+    <h3 class="filters-title">
+        <i class="fas fa-filter"></i>
+        Filtri di Ricerca
+    </h3>
+    
+    <form method="GET" id="filtersForm">
+        <input type="hidden" name="view" value="{{ view_type }}">
+        
+        <div class="filters-grid">
+            <div class="filter-group">
+                <label class="filter-label">Cerca</label>
+                <input type="text" class="form-control" name="search" value="{{ filters.search }}" 
+                       placeholder="Nome cliente, cascina, note...">
+            </div>
+            
+            <div class="filter-group">
+                <label class="filter-label">Cliente</label>
+                <select class="form-select" name="cliente">
+                    <option value="">Tutti i clienti</option>
+                    {% for cliente in clienti %}
+                    <option value="{{ cliente.id }}" {% if filters.cliente == cliente.id|stringformat:"s" %}selected{% endif %}>
+                        {{ cliente.nome }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label class="filter-label">Cascina</label>
+                <select class="form-select" name="cascina">
+                    <option value="">Tutte le cascine</option>
+                    {% for cascina in cascine %}
+                    <option value="{{ cascina.id }}" {% if filters.cascina == cascina.id|stringformat:"s" %}selected{% endif %}>
+                        {{ cascina.nome }} ({{ cascina.cliente.nome }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label class="filter-label">Contoterzista</label>
+                <select class="form-select" name="contoterzista">
+                    <option value="">Tutti i contoterzisti</option>
+                    {% for contoterzista in contoterzisti %}
+                    <option value="{{ contoterzista.id }}" {% if filters.contoterzista == contoterzista.id|stringformat:"s" %}selected{% endif %}>
+                        {{ contoterzista.nome }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        
+        <div class="filters-actions">
+            <button type="button" class="btn btn-outline-secondary" onclick="clearFilters()">
+                <i class="fas fa-times"></i> Pulisci
+            </button>
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-search"></i> Filtra
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Table Section -->
+<div class="table-section">
+    <div class="table-header">
+        <h3 class="table-title">
+            <i class="fas fa-list"></i>
+            Elenco Trattamenti
+        </h3>
+        <div class="table-actions">
+            <a href="{% url 'inserisci' %}" class="btn btn-success btn-sm">
+                <i class="fas fa-plus"></i> Nuovo
+            </a>
+            <button class="btn btn-outline-secondary btn-sm" onclick="exportData()">
+                <i class="fas fa-download"></i> Esporta
+            </button>
+        </div>
+    </div>
+    
+    {% if trattamenti %}
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th width="5%">ID</th>
+                    <th width="15%">Cliente</th>
+                    <th width="12%">Stato</th>
+                    <th width="12%">Target</th>
+                    <th width="10%">Superficie</th>
+                    <th width="15%">Contoterzista</th>
+                    <th width="15%">Prodotti</th>
+                    <th width="10%">Data</th>
+                    <th width="6%">Azioni</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for trattamento in trattamenti %}
+                <tr>
+                    <td>
+                        <strong>#{{ trattamento.id }}</strong>
+                    </td>
+                    <td>
+                        <div class="client-info">
+                            <div class="client-avatar">
+                                {{ trattamento.cliente.nome|first|upper }}
+                            </div>
+                            <div class="client-details">
+                                <div class="client-name">{{ trattamento.cliente.nome }}</div>
+                                <div class="client-meta">
+                                    {% if trattamento.livello_applicazione == 'cascina' %}
+                                        <i class="fas fa-home me-1"></i>{{ trattamento.cascina.nome }}
+                                    {% elif trattamento.livello_applicazione == 'terreno' %}
+                                        <i class="fas fa-seedling me-1"></i>{{ trattamento.terreni.count }} terreno{{ trattamento.terreni.count|pluralize:"i" }}
+                                    {% else %}
+                                        <i class="fas fa-building me-1"></i>Intera azienda
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="status-badge status-{{ trattamento.stato }}">
+                            {{ trattamento.get_stato_display }}
+                        </span>
+                    </td>
+                    <td>
+                        <strong>{{ trattamento.get_livello_applicazione_display }}</strong>
+                        {% if trattamento.livello_applicazione == 'cascina' and trattamento.cascina %}
+                            <br><small class="text-muted">{{ trattamento.cascina.nome }}</small>
+                        {% elif trattamento.livello_applicazione == 'terreno' %}
+                            <br><small class="text-muted">{{ trattamento.terreni.count }} terreno{{ trattamento.terreni.count|pluralize:"i" }}</small>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="surface-info">
+                            <i class="fas fa-map"></i>
+                            {{ trattamento.get_superficie_interessata|floatformat:2 }} ha
+                        </div>
+                    </td>
+                    <td>
+                        {% if trattamento.get_contoterzista %}
+                            <strong>{{ trattamento.get_contoterzista.nome }}</strong>
+                            {% if trattamento.get_contoterzista.telefono %}
+                                <br><small class="text-muted">{{ trattamento.get_contoterzista.telefono }}</small>
+                            {% endif %}
+                        {% else %}
+                            <span class="text-muted">Non assegnato</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="products-list">
+                            {% for tp in trattamento.trattamentoprodotto_set.all|slice:":3" %}
+                            <div class="product-item">
+                                <div class="product-name">{{ tp.prodotto.nome }}</div>
+                                <div class="product-quantity">{{ tp.quantita }} {{ tp.prodotto.unita_misura }}</div>
+                            </div>
+                            {% endfor %}
+                            {% if trattamento.trattamentoprodotto_set.count > 3 %}
+                            <small class="text-muted">+{{ trattamento.trattamentoprodotto_set.count|add:"-3" }} altri</small>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td>
+                        <strong>{{ trattamento.data_inserimento|date:"d/m/Y" }}</strong>
+                        <br><small class="text-muted">{{ trattamento.data_inserimento|date:"H:i" }}</small>
+                        {% if trattamento.data_esecuzione_prevista %}
+                            <br><small class="text-info">Prev: {{ trattamento.data_esecuzione_prevista|date:"d/m" }}</small>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="btn-group-vertical" role="group">
+                            <button class="btn btn-info btn-sm mb-1" onclick="viewDetails({{ trattamento.id }})" title="Visualizza dettagli">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            {% if trattamento.stato == 'programmato' %}
+                            <button class="btn btn-warning btn-sm mb-1" onclick="comunicaTrattamento({{ trattamento.id }})" title="Comunica">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                            {% endif %}
+                            {% if trattamento.stato == 'comunicato' %}
+                            <button class="btn btn-success btn-sm mb-1" onclick="completaTrattamento({{ trattamento.id }})" title="Completa">
+                                <i class="fas fa-check"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Pagination -->
+    {% if trattamenti.has_other_pages %}
+    <div class="pagination-section">
+        <div>
+            <small class="text-muted">
+                Mostra {{ trattamenti.start_index }}-{{ trattamenti.end_index }} di {{ trattamenti.paginator.count }} trattamenti
+            </small>
+        </div>
+        
+        <nav aria-label="Paginazione trattamenti">
+            <ul class="pagination">
+                {% if trattamenti.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ trattamenti.previous_page_number }}">
+                            <i class="fas fa-chevron-left"></i>
+                        </a>
+                    </li>
+                {% endif %}
+                
+                {% for num in trattamenti.paginator.page_range %}
+                    {% if trattamenti.number == num %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ num }}</span>
+                        </li>
+                    {% elif num > trattamenti.number|add:'-3' and num < trattamenti.number|add:'3' %}
+                        <li class="page-item">
+                            <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ num }}">{{ num }}</a>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if trattamenti.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ trattamenti.next_page_number }}">
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+    
+    {% else %}
+    <!-- Empty State -->
+    <div class="empty-state">
+        <i class="fas fa-flask"></i>
+        <h4>Nessun trattamento trovato</h4>
+        <p>Non ci sono trattamenti che corrispondono ai filtri selezionati.</p>
+        {% if view_type != 'tutti' %}
+        <a href="?view=tutti" class="btn btn-primary">
+            <i class="fas fa-list"></i> Visualizza tutti i trattamenti
+        </a>
+        {% else %}
+        <a href="{% url 'inserisci' %}" class="btn btn-success">
+            <i class="fas fa-plus"></i> Crea il primo trattamento
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<!-- Modal per dettagli trattamento -->
+<div class="modal fade" id="detailsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-info-circle"></i> Dettagli Trattamento
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="detailsContent">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Caricamento dettagli...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Funzioni per gestire le azioni sui trattamenti
+    function viewDetails(trattamentoId) {
+        console.log('Visualizza dettagli trattamento:', trattamentoId);
+        
+        // Mostra il modal
+        const modal = new bootstrap.Modal(document.getElementById('detailsModal'));
+        modal.show();
+        
+        // Carica i dettagli
+        fetch(`/api/trattamenti/${trattamentoId}/`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                displayTrattamentoDetails(data);
+            })
+            .catch(error => {
+                console.error('Errore nel caricamento dettagli:', error);
+                document.getElementById('detailsContent').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        Errore nel caricamento dei dettagli: ${error.message}
+                    </div>
+                `;
+            });
+    }
+    
+    function displayTrattamentoDetails(data) {
+        let contoterzista = 'Non assegnato';
+        if (data.contoterzista) {
+            contoterzista = data.contoterzista.nome;
+        }
+        
+        let target = '';
+        if (data.livello_applicazione === 'cliente') {
+            target = `<i class="fas fa-building"></i> Intera azienda: ${data.cliente.nome}`;
+        } else if (data.livello_applicazione === 'cascina') {
+            target = `<i class="fas fa-home"></i> Cascina: ${data.cascina.nome} (${data.cliente.nome})`;
+        } else if (data.livello_applicazione === 'terreno') {
+            target = `<i class="fas fa-seedling"></i> ${data.terreni.length} terreno/i selezionato/i`;
+        }
+        
+        let prodottiHtml = '';
+        data.prodotti.forEach(prodotto => {
+            prodottiHtml += `
+                <div class="d-flex justify-content-between align-items-center p-2 border-bottom">
+                    <span><strong>${prodotto.nome}</strong></span>
+                    <span class="text-muted">${prodotto.quantita} ${prodotto.unita_misura}</span>
+                </div>
+            `;
+        });
+        
+        let terreniHtml = '';
+        if (data.terreni && data.terreni.length > 0) {
+            data.terreni.forEach(terreno => {
+                terreniHtml += `
+                    <div class="d-flex justify-content-between align-items-center p-2 border-bottom">
+                        <span>${terreno.nome}</span>
+                        <span class="text-muted">${terreno.superficie} ha</span>
+                    </div>
+                `;
+            });
+        }
+        
+        const detailsHtml = `
+            <div class="row">
+                <div class="col-md-6">
+                    <h6 class="text-muted mb-3">INFORMAZIONI GENERALI</h6>
+                    <div class="mb-3">
+                        <label class="form-label"><strong>ID Trattamento:</strong></label>
+                        <div>#${data.id}</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Stato:</strong></label>
+                        <div><span class="status-badge status-${data.stato}">${data.stato_display}</span></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Target:</strong></label>
+                        <div>${target}</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Superficie interessata:</strong></label>
+                        <div><i class="fas fa-map text-primary"></i> ${data.superficie_interessata} ha</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Contoterzista:</strong></label>
+                        <div><i class="fas fa-user-tie text-success"></i> ${contoterzista}</div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <h6 class="text-muted mb-3">DATE E TEMPISTICHE</h6>
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Data inserimento:</strong></label>
+                        <div>${new Date(data.data_inserimento).toLocaleDateString('it-IT')} alle ${new Date(data.data_inserimento).toLocaleTimeString('it-IT')}</div>
+                    </div>
+                    ${data.data_comunicazione ? `
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Data comunicazione:</strong></label>
+                        <div>${new Date(data.data_comunicazione).toLocaleDateString('it-IT')} alle ${new Date(data.data_comunicazione).toLocaleTimeString('it-IT')}</div>
+                    </div>` : ''}
+                    ${data.data_esecuzione_prevista ? `
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Esecuzione prevista:</strong></label>
+                        <div>${new Date(data.data_esecuzione_prevista).toLocaleDateString('it-IT')}</div>
+                    </div>` : ''}
+                    ${data.data_esecuzione_effettiva ? `
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Esecuzione effettiva:</strong></label>
+                        <div>${new Date(data.data_esecuzione_effettiva).toLocaleDateString('it-IT')} alle ${new Date(data.data_esecuzione_effettiva).toLocaleTimeString('it-IT')}</div>
+                    </div>` : ''}
+                </div>
+            </div>
+            
+            ${data.prodotti.length > 0 ? `
+            <hr>
+            <h6 class="text-muted mb-3">PRODOTTI UTILIZZATI</h6>
+            <div class="border rounded">
+                ${prodottiHtml}
+            </div>` : ''}
+            
+            ${terreniHtml ? `
+            <hr>
+            <h6 class="text-muted mb-3">TERRENI INTERESSATI</h6>
+            <div class="border rounded">
+                ${terreniHtml}
+            </div>` : ''}
+            
+            ${data.note ? `
+            <hr>
+            <h6 class="text-muted mb-3">NOTE</h6>
+            <div class="p-3 bg-light rounded">
+                ${data.note}
+            </div>` : ''}
+        `;
+        
+        document.getElementById('detailsContent').innerHTML = detailsHtml;
+    }
+    
+    function comunicaTrattamento(trattamentoId) {
+        if (confirm('Confermi la comunicazione di questo trattamento al contoterzista?')) {
+            updateTrattamentoStato(trattamentoId, 'comunicato');
+        }
+    }
+    
+    function completaTrattamento(trattamentoId) {
+        if (confirm('Confermi il completamento di questo trattamento?')) {
+            updateTrattamentoStato(trattamentoId, 'completato');
+        }
+    }
+    
+    function updateTrattamentoStato(trattamentoId, nuovoStato) {
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
+                         document.querySelector('meta[name=csrf-token]')?.getAttribute('content');
+        
+        if (!csrfToken) {
+            alert('Errore: Token CSRF non trovato');
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('stato', nuovoStato);
+        formData.append('csrfmiddlewaretoken', csrfToken);
+        
+        fetch(`/api/trattamenti/${trattamentoId}/stato/`, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': csrfToken,
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload(); // Ricarica la pagina per aggiornare la vista
+            } else {
+                alert('Errore: ' + (data.error || 'Errore sconosciuto'));
+            }
+        })
+        .catch(error => {
+            console.error('Errore nell\'aggiornamento stato:', error);
+            alert('Errore di connessione');
+        });
+    }
+    
+    function clearFilters() {
+        // Reset di tutti i campi del form
+        document.getElementById('filtersForm').reset();
+        
+        // Mantieni solo il parametro view
+        const viewParam = new URLSearchParams(window.location.search).get('view') || 'tutti';
+        window.location.href = window.location.pathname + '?view=' + viewParam;
+    }
+    
+    function exportData() {
+        // Prepara i parametri attuali per l'export
+        const params = new URLSearchParams(window.location.search);
+        params.set('export', 'csv');
+        
+        // Crea e invia il download
+        const exportUrl = window.location.pathname + '?' + params.toString();
+        window.open(exportUrl, '_blank');
+        
+        // Placeholder - potresti implementare una vera funzione di export
+        alert('Funzione di export in sviluppo. I dati verranno esportati in formato CSV.');
+    }
+    
+    // Auto-submit del form quando si cambiano i filtri
+    document.querySelectorAll('#filtersForm select').forEach(select => {
+        select.addEventListener('change', function() {
+            document.getElementById('filtersForm').submit();
+        });
+    });
+    
+    // Debounce per il campo di ricerca
+    let searchTimeout;
+    document.querySelector('input[name="search"]').addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            document.getElementById('filtersForm').submit();
+        }, 800);
+    });
+    
+    // Log per debug
+    console.log('Pagina tabella trattamenti caricata');
+    console.log('View type:', '{{ view_type }}');
+    console.log('Filtri attivi:', {
+        search: '{{ filters.search }}',
+        cliente: '{{ filters.cliente }}',
+        cascina: '{{ filters.cascina }}',
+        contoterzista: '{{ filters.contoterzista }}'
+    });
+    
+    // Aggiungi token CSRF come meta tag se non presente
+    if (!document.querySelector('meta[name=csrf-token]')) {
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+        if (csrfToken) {
+            const meta = document.createElement('meta');
+            meta.name = 'csrf-token';
+            meta.content = csrfToken;
+            document.head.appendChild(meta);
+        }
+    }
+</script>
+
+<!-- CSRF Token per AJAX requests -->
+{% csrf_token %}
+{% endblock %}

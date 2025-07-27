@@ -105,44 +105,162 @@ def aziende(request):
     return render(request, 'aziende.html', context)
 
 def trattamenti(request):
-    """Vista per la lista dei trattamenti"""
+    """Vista per la gestione completa dei trattamenti"""
+    
+    # Parametro view per determinare quale vista mostrare
+    view_type = request.GET.get('view', 'dashboard')
+    
+    if view_type == 'dashboard':
+        # Vista dashboard principale con statistiche e cronologia
+        return trattamenti_dashboard(request)
+    else:
+        # Vista dettagliata con tabella filtrata
+        return trattamenti_detail_view(request, view_type)
+
+def trattamenti_dashboard(request):
+    """Dashboard principale dei trattamenti"""
+    
+    # Statistiche generali
+    stats = {
+        'totali': Trattamento.objects.count(),
+        'programmati': Trattamento.objects.filter(stato='programmato').count(),
+        'comunicati': Trattamento.objects.filter(stato='comunicato').count(),
+        'in_esecuzione': Trattamento.objects.filter(stato='in_esecuzione').count(),
+        'completati': Trattamento.objects.filter(stato='completato').count(),
+        'annullati': Trattamento.objects.filter(stato='annullato').count(),
+    }
+    
+    # Trattamenti recenti (ultimi 10)
+    trattamenti_recenti = Trattamento.objects.select_related(
+        'cliente', 'cascina', 'cascina__contoterzista'
+    ).prefetch_related('terreni', 'prodotti').order_by('-data_inserimento')[:10]
+    
+    context = {
+        'stats': stats,
+        'trattamenti_recenti': trattamenti_recenti,
+        'view_type': 'dashboard',
+    }
+    
+    return render(request, 'trattamenti.html', context)
+
+def trattamenti_detail_view(request, view_type):
+    """Vista dettagliata con tabella filtrata"""
     
     # Filtri dalla query string
-    stato_filter = request.GET.get('stato', '')
     cliente_filter = request.GET.get('cliente', '')
     cascina_filter = request.GET.get('cascina', '')
+    contoterzista_filter = request.GET.get('contoterzista', '')
+    search_filter = request.GET.get('search', '')
     
     # Query base
     trattamenti_list = Trattamento.objects.select_related(
-        'cliente', 'cascina'
-    ).prefetch_related('terreni', 'prodotti')
+        'cliente', 'cascina', 'cascina__contoterzista'
+    ).prefetch_related('terreni', 'prodotti', 'trattamentoprodotto_set__prodotto')
     
-    # Applica filtri
-    if stato_filter:
-        trattamenti_list = trattamenti_list.filter(stato=stato_filter)
+    # Applica filtro per stato
+    stato_map = {
+        'tutti': None,
+        'programmati': 'programmato',
+        'comunicati': 'comunicato',
+        'in_esecuzione': 'in_esecuzione',
+        'completati': 'completato',
+        'annullati': 'annullato',
+    }
+    
+    if view_type in stato_map and stato_map[view_type]:
+        trattamenti_list = trattamenti_list.filter(stato=stato_map[view_type])
+    
+    # Altri filtri
     if cliente_filter:
         trattamenti_list = trattamenti_list.filter(cliente_id=cliente_filter)
     if cascina_filter:
         trattamenti_list = trattamenti_list.filter(cascina_id=cascina_filter)
+    if contoterzista_filter:
+        trattamenti_list = trattamenti_list.filter(cascina__contoterzista_id=contoterzista_filter)
+    if search_filter:
+        trattamenti_list = trattamenti_list.filter(
+            Q(cliente__nome__icontains=search_filter) |
+            Q(cascina__nome__icontains=search_filter) |
+            Q(note__icontains=search_filter)
+        )
     
     # Ordina per data inserimento (più recenti prima)
     trattamenti_list = trattamenti_list.order_by('-data_inserimento')
     
+    # Statistiche per questa vista
+    stats = {
+        'totali': Trattamento.objects.count(),
+        'programmati': Trattamento.objects.filter(stato='programmato').count(),
+        'comunicati': Trattamento.objects.filter(stato='comunicato').count(),
+        'in_esecuzione': Trattamento.objects.filter(stato='in_esecuzione').count(),
+        'completati': Trattamento.objects.filter(stato='completato').count(),
+        'annullati': Trattamento.objects.filter(stato='annullato').count(),
+        'filtrati': trattamenti_list.count(),
+    }
+    
     # Per i dropdown dei filtri
     clienti = Cliente.objects.all().order_by('nome')
-    cascine = Cascina.objects.select_related('contoterzista').all().order_by('nome')
+    cascine = Cascina.objects.select_related('contoterzista', 'cliente').all().order_by('nome')
+    contoterzisti = Contoterzista.objects.all().order_by('nome')
+    
+    # Paginazione
+    from django.core.paginator import Paginator
+    paginator = Paginator(trattamenti_list, 20)  # 20 trattamenti per pagina
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
     
     context = {
-        'trattamenti': trattamenti_list,
+        'trattamenti': page_obj,
+        'stats': stats,
+        'view_type': view_type,
+        'view_title': get_view_title(view_type),
+        'view_description': get_view_description(view_type),
         'clienti': clienti,
         'cascine': cascine,
-        'stato_filter': stato_filter,
-        'cliente_filter': cliente_filter,
-        'cascina_filter': cascina_filter,
+        'contoterzisti': contoterzisti,
+        'filters': {
+            'cliente': cliente_filter,
+            'cascina': cascina_filter,
+            'contoterzista': contoterzista_filter,
+            'search': search_filter,
+        },
         'stati_choices': Trattamento.STATI_CHOICES,
     }
     
-    return render(request, 'trattamenti.html', context)
+    return render(request, 'trattamenti_table.html', context)
+
+def get_view_title(view_type):
+    """Restituisce il titolo per il tipo di vista"""
+    titles = {
+        'tutti': 'Tutti i Trattamenti',
+        'programmati': 'Trattamenti Programmati',
+        'comunicati': 'Trattamenti Comunicati',
+        'in_esecuzione': 'Trattamenti in Esecuzione',
+        'completati': 'Trattamenti Completati',
+        'annullati': 'Trattamenti Annullati',
+    }
+    return titles.get(view_type, 'Trattamenti')
+
+def get_view_description(view_type):
+    """Restituisce la descrizione per il tipo di vista"""
+    descriptions = {
+        'tutti': 'Elenco completo di tutti i trattamenti con filtri avanzati',
+        'programmati': 'Trattamenti pianificati che necessitano di essere comunicati',
+        'comunicati': 'Trattamenti comunicati ai contoterzisti in attesa di esecuzione',
+        'in_esecuzione': 'Trattamenti attualmente in corso di esecuzione',
+        'completati': 'Trattamenti eseguiti e completati con successo',
+        'annullati': 'Trattamenti cancellati o annullati',
+    }
+    return descriptions.get(view_type, 'Gestione trattamenti')
+
+# Aggiungi anche questa funzione helper per i template:
+def get_livello_applicazione_display_for_template():
+    """Funzione helper per mostrare il livello di applicazione nei template"""
+    # Questa può essere usata come template filter se necessario
+    pass
+
+
+
 
 def inserisci(request):
     """Vista per la pagina di inserimento (può contenere vari form o aprire modal)"""
