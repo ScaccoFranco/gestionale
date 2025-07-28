@@ -12,7 +12,7 @@ urlpatterns = [
     path('database/', views.database, name='database'),
     
     # Nuove pagine per gestione email
-    path('contatti-email/', views.gestione_contatti_email, name='gestione_contatti_email'),
+    path('contatti-email/', views.gestione_contatti_email, name='contatti_email'),
     path('comunicazioni/', views.comunicazioni_dashboard, name='comunicazioni_dashboard'),
     
     # API endpoints esistenti
@@ -36,4 +36,9 @@ urlpatterns = [
     
     # API di utilità
     path('api/test-email/', views.api_test_email_config, name='api_test_email_config'),
+    path('api/trattamenti/communication-preview/', views.api_communication_preview, name='api_communication_preview'),
+
+    # API bulk actions
+    path('api/trattamenti/bulk-action/', views.api_bulk_action_trattamenti, name='api_bulk_action_trattamenti'),
+
 ]

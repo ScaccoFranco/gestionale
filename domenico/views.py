@@ -5,6 +5,7 @@ from django.views.decorators.http import require_http_methods
 from django.db import transaction
 from django.db.models import Sum, Count, Q
 from django.utils import timezone
+from django.conf import settings 
 from django.core.paginator import Paginator
 import json
 from .models import *
@@ -116,15 +117,14 @@ def trattamenti(request):
         return trattamenti_table(request, view_type)
 
 def trattamenti_dashboard(request):
-    """Dashboard trattamenti con statistiche"""
+    """Dashboard trattamenti con statistiche (senza in_esecuzione)"""
     from django.db.models import Count
     
-    # Calcola statistiche
+    # Calcola statistiche (rimosso in_esecuzione)
     stats = {
         'totali': Trattamento.objects.count(),
         'programmati': Trattamento.objects.filter(stato='programmato').count(),
         'comunicati': Trattamento.objects.filter(stato='comunicato').count(),
-        'in_esecuzione': Trattamento.objects.filter(stato='in_esecuzione').count(),
         'completati': Trattamento.objects.filter(stato='completato').count(),
         'annullati': Trattamento.objects.filter(stato='annullato').count(),
     }
@@ -142,7 +142,7 @@ def trattamenti_dashboard(request):
     return render(request, 'trattamenti.html', context)
 
 def trattamenti_table(request, view_type):
-    """Vista tabella trattamenti con filtri"""
+    """Vista tabella trattamenti con filtri (senza in_esecuzione)"""
     from django.core.paginator import Paginator
     from django.db.models import Q
     
@@ -151,11 +151,10 @@ def trattamenti_table(request, view_type):
         'cliente', 'cascina', 'cascina__contoterzista'
     ).prefetch_related('terreni', 'trattamentoprodotto_set__prodotto')
     
-    # Mappatura corretta degli stati
+    # Mappatura corretta degli stati (rimosso in_esecuzione)
     stati_mapping = {
         'programmati': 'programmato',
         'comunicati': 'comunicato', 
-        'in_esecuzione': 'in_esecuzione',
         'completati': 'completato',
         'annullati': 'annullato'
     }
@@ -167,10 +166,7 @@ def trattamenti_table(request, view_type):
         print(f"Filtrando per stato: {view_type} -> {stato_db}")
         print(f"Trattamenti trovati: {trattamenti.count()}")
     elif view_type != 'tutti':
-        # Se il tipo non è riconosciuto, non filtrare
         print(f"Tipo vista non riconosciuto: {view_type}")
-    
-    # Resto del codice rimane uguale...
     
     # Filtri dalla query string
     filters = {
@@ -201,15 +197,12 @@ def trattamenti_table(request, view_type):
     # Ordinamento
     trattamenti = trattamenti.order_by('-data_inserimento')
     
-    # Debug: stampa il numero finale di trattamenti
-    print(f"Trattamenti finali dopo tutti i filtri: {trattamenti.count()}")
-    
     # Paginazione
     paginator = Paginator(trattamenti, 25)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
-    # Statistiche per la vista
+    # Statistiche per la vista (senza in_esecuzione)
     stats = {
         'totali': Trattamento.objects.count(),
         'filtrati': trattamenti.count(),
@@ -223,31 +216,32 @@ def trattamenti_table(request, view_type):
     cascine = Cascina.objects.select_related('cliente').order_by('nome')
     contoterzisti = Contoterzista.objects.all().order_by('nome')
     
-    # Titoli e descrizioni per vista
+    # Titoli e descrizioni per vista (aggiornati)
     view_info = {
         'tutti': {
             'title': 'Tutti i Trattamenti',
-            'description': 'Elenco completo di tutti i trattamenti registrati nel sistema'
+            'description': 'Elenco completo di tutti i trattamenti registrati nel sistema',
+            'next_action': None
         },
         'programmati': {
             'title': 'Trattamenti Programmati',
-            'description': 'Trattamenti pianificati che necessitano di essere comunicati'
+            'description': 'Trattamenti pianificati che necessitano di essere comunicati',
+            'next_action': 'comunica'
         },
         'comunicati': {
             'title': 'Trattamenti Comunicati',
-            'description': 'Trattamenti comunicati ai contoterzisti e in attesa di esecuzione'
-        },
-        'in_esecuzione': {
-            'title': 'Trattamenti In Esecuzione',
-            'description': 'Trattamenti attualmente in corso di esecuzione'
+            'description': 'Trattamenti comunicati ai contoterzisti e pronti per l\'esecuzione',
+            'next_action': 'completa'
         },
         'completati': {
             'title': 'Trattamenti Completati',
-            'description': 'Trattamenti eseguiti con successo'
+            'description': 'Trattamenti eseguiti con successo',
+            'next_action': None
         },
         'annullati': {
             'title': 'Trattamenti Annullati',
-            'description': 'Trattamenti cancellati o non eseguiti'
+            'description': 'Trattamenti cancellati o non eseguiti',
+            'next_action': None
         }
     }
     
@@ -263,6 +257,7 @@ def trattamenti_table(request, view_type):
         'view_type': view_type,
         'view_title': current_view['title'],
         'view_description': current_view['description'],
+        'next_action': current_view['next_action'],
     }
     
     return render(request, 'trattamenti_table.html', context)
@@ -301,14 +296,18 @@ def database(request):
 
 def gestione_contatti_email(request):
     """Vista per gestire i contatti email dei clienti"""
+    from django.db.models import Count
     
-    # Carica tutti i clienti con i loro contatti
-    clienti = Cliente.objects.prefetch_related('contatti_email').order_by('nome')
+    # Ottieni tutti i clienti con il numero di contatti
+    clienti = Cliente.objects.annotate(
+        contatti_count=Count('contatti_email'),
+        contatti_attivi_count=Count('contatti_email', filter=Q(contatti_email__attivo=True))
+    ).order_by('nome')
     
-    # Statistiche
+    # Statistiche generali
     stats = {
-        'clienti_totali': Cliente.objects.count(),
-        'clienti_con_contatti': Cliente.objects.filter(contatti_email__isnull=False).distinct().count(),
+        'clienti_totali': clienti.count(),
+        'clienti_con_contatti': clienti.filter(contatti_count__gt=0).count(),
         'contatti_totali': ContattoEmail.objects.count(),
         'contatti_attivi': ContattoEmail.objects.filter(attivo=True).count(),
     }
@@ -320,29 +319,38 @@ def gestione_contatti_email(request):
     
     return render(request, 'gestione_contatti_email.html', context)
 
+
 def comunicazioni_dashboard(request):
-    """Dashboard per visualizzare tutte le comunicazioni inviate"""
+    """Dashboard per visualizzare lo storico delle comunicazioni"""
+    from django.core.paginator import Paginator
+    from django.db.models import Q
+    from datetime import datetime
     
     # Filtri
     cliente_filter = request.GET.get('cliente', '')
     data_da = request.GET.get('data_da', '')
     data_a = request.GET.get('data_a', '')
-    solo_errori = request.GET.get('solo_errori', '') == 'on'
+    solo_errori = request.GET.get('solo_errori', False)
     
     # Query base
     comunicazioni = ComunicazioneTrattamento.objects.select_related(
-        'trattamento__cliente'
+        'trattamento__cliente', 'trattamento__cascina'
     ).order_by('-data_invio')
     
     # Applica filtri
     if cliente_filter:
         comunicazioni = comunicazioni.filter(trattamento__cliente_id=cliente_filter)
     
-    if data_da:
-        comunicazioni = comunicazioni.filter(data_invio__date__gte=data_da)
-    
-    if data_a:
-        comunicazioni = comunicazioni.filter(data_invio__date__lte=data_a)
+    if data_da and data_a:
+        try:
+            data_da_obj = datetime.strptime(data_da, '%Y-%m-%d').date()
+            data_a_obj = datetime.strptime(data_a, '%Y-%m-%d').date()
+            comunicazioni = comunicazioni.filter(
+                data_invio__date__gte=data_da_obj,
+                data_invio__date__lte=data_a_obj
+            )
+        except ValueError:
+            pass
     
     if solo_errori:
         comunicazioni = comunicazioni.filter(inviato_con_successo=False)
@@ -353,9 +361,20 @@ def comunicazioni_dashboard(request):
     page_obj = paginator.get_page(page_number)
     
     # Statistiche
-    stats = get_comunicazioni_stats()
+    from .email_utils import get_comunicazioni_stats
+    try:
+        stats = get_comunicazioni_stats()
+    except:
+        stats = {
+            'totali': comunicazioni.count(),
+            'riuscite': comunicazioni.filter(inviato_con_successo=True).count(),
+            'fallite': comunicazioni.filter(inviato_con_successo=False).count(),
+            'oggi': 0,
+            'questa_settimana': 0,
+            'questo_mese': 0,
+        }
     
-    # Per i dropdown dei filtri
+    # Clienti per il filtro
     clienti = Cliente.objects.all().order_by('nome')
     
     context = {
@@ -371,7 +390,6 @@ def comunicazioni_dashboard(request):
     }
     
     return render(request, 'comunicazioni_dashboard.html', context)
-
 
 # ============ API ENDPOINTS per COMUNICAZIONI EMAIL ============
 
@@ -995,3 +1013,331 @@ def api_update_trattamento_stato(request, trattamento_id):
             'success': False,
             'error': f'Errore nell\'aggiornamento: {str(e)}'
         }, status=500)
+ 
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_communication_preview(request):
+    """API per generare anteprima delle comunicazioni email"""
+    try:
+        import json
+        
+        # Parse degli ID trattamenti
+        trattamenti_ids_json = request.POST.get('trattamenti_ids', '[]')
+        
+        try:
+            trattamenti_ids = json.loads(trattamenti_ids_json)
+        except json.JSONDecodeError:
+            return JsonResponse({
+                'success': False,
+                'error': 'Lista ID trattamenti non valida'
+            }, status=400)
+        
+        if not trattamenti_ids:
+            return JsonResponse({
+                'success': False,
+                'error': 'Nessun trattamento selezionato'
+            }, status=400)
+        
+        # Ottieni i trattamenti
+        trattamenti = Trattamento.objects.filter(
+            id__in=trattamenti_ids,
+            stato='programmato'  # Solo trattamenti programmati
+        ).select_related('cliente').prefetch_related('cliente__contatti_email')
+        
+        if not trattamenti.exists():
+            return JsonResponse({
+                'success': False,
+                'error': 'Nessun trattamento programmato trovato con gli ID specificati'
+            }, status=404)
+        
+        # Genera anteprime per ogni trattamento
+        email_previews = []
+        all_recipients = []
+        
+        for trattamento in trattamenti:
+            # Ottieni contatti attivi per questo cliente
+            contatti_attivi = trattamento.cliente.contatti_email.filter(attivo=True)
+            
+            if not contatti_attivi.exists():
+                continue
+            
+            # Prepara dati email per questo trattamento
+            recipients = []
+            for contatto in contatti_attivi:
+                recipients.append(contatto.email)
+                all_recipients.append({
+                    'nome': contatto.nome,
+                    'email': contatto.email,
+                    'ruolo': contatto.ruolo,
+                    'trattamento_id': trattamento.id,
+                    'cliente_nome': trattamento.cliente.nome
+                })
+            
+            # Genera anteprima email
+            oggetto = f"Trattamento #{trattamento.id} - {trattamento.cliente.nome}"
+            if trattamento.data_esecuzione_prevista:
+                oggetto += f" - Esecuzione prevista: {trattamento.data_esecuzione_prevista.strftime('%d/%m/%Y')}"
+            
+            # Genera corpo email (usa funzione esistente se disponibile)
+            try:
+                from .email_utils import generate_email_body
+                corpo_email = generate_email_body(trattamento)
+            except (ImportError, AttributeError):
+                # Fallback se email_utils non disponibile
+                corpo_email = f"""
+Gentile Contoterzista,
+
+in allegato la comunicazione per il trattamento #{trattamento.id}.
+
+DETTAGLI TRATTAMENTO:
+• Cliente: {trattamento.cliente.nome}
+• Superficie interessata: {trattamento.get_superficie_interessata():.2f} ettari
+• Stato: {trattamento.get_stato_display()}
+"""
+                if trattamento.data_esecuzione_prevista:
+                    corpo_email += f"• Data esecuzione prevista: {trattamento.data_esecuzione_prevista.strftime('%d/%m/%Y')}\n"
+                
+                corpo_email += f"• Prodotti: {trattamento.trattamentoprodotto_set.count()} prodotti specificati\n\n"
+                
+                if trattamento.note:
+                    corpo_email += f"NOTE SPECIALI:\n{trattamento.note}\n\n"
+                
+                corpo_email += """
+Si prega di confermare la ricezione e di comunicare l'avvenuta esecuzione del trattamento.
+
+Cordiali saluti,
+Domenico Franco
+Sistema di Gestione Trattamenti Agricoli
+"""
+            
+            # Nome file PDF
+            filename = f"Trattamento_{trattamento.id}_{trattamento.cliente.nome.replace(' ', '_')}.pdf"
+            
+            email_previews.append({
+                'trattamento_id': trattamento.id,
+                'cliente_nome': trattamento.cliente.nome,
+                'from_email': getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@gestionale.com'),
+                'recipients': recipients,
+                'subject': oggetto,
+                'body': corpo_email,
+                'attachments': [filename]
+            })
+        
+        if not email_previews:
+            return JsonResponse({
+                'success': False,
+                'error': 'Nessun trattamento ha contatti email attivi configurati'
+            }, status=400)
+        
+        return JsonResponse({
+            'success': True,
+            'trattamenti_count': len(email_previews),
+            'total_recipients': len(set(r['email'] for r in all_recipients)),
+            'email_previews': email_previews,
+            'all_recipients': all_recipients
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'Errore durante la generazione anteprima: {str(e)}'
+        }, status=500)
+
+# Modifica la funzione api_bulk_action_trattamenti esistente per supportare le nuove modalità
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_bulk_action_trattamenti(request):
+    """API per azioni in blocco sui trattamenti (versione aggiornata)"""
+    try:
+        import json
+        from django.utils import timezone
+        from django.db import transaction
+        
+        # Parse dei dati
+        action = request.POST.get('action')
+        communication_mode = request.POST.get('communication_mode', 'send_only')  # Nuova modalità
+        trattamenti_ids_json = request.POST.get('trattamenti_ids', '[]')
+        
+        # Validazione azione
+        valid_actions = ['comunica', 'completa', 'annulla']
+        if action not in valid_actions:
+            return JsonResponse({
+                'success': False,
+                'error': f'Azione non valida. Azioni disponibili: {", ".join(valid_actions)}'
+            }, status=400)
+        
+        # Validazione modalità comunicazione
+        valid_modes = ['send_only', 'download_only', 'send_and_download']
+        if action == 'comunica' and communication_mode not in valid_modes:
+            return JsonResponse({
+                'success': False,
+                'error': f'Modalità comunicazione non valida. Disponibili: {", ".join(valid_modes)}'
+            }, status=400)
+        
+        # Parse degli ID
+        try:
+            trattamenti_ids = json.loads(trattamenti_ids_json)
+        except json.JSONDecodeError:
+            return JsonResponse({
+                'success': False,
+                'error': 'Lista ID trattamenti non valida'
+            }, status=400)
+        
+        if not trattamenti_ids:
+            return JsonResponse({
+                'success': False,
+                'error': 'Nessun trattamento selezionato'
+            }, status=400)
+        
+        # Ottieni i trattamenti
+        trattamenti = Trattamento.objects.filter(id__in=trattamenti_ids)
+        
+        if not trattamenti.exists():
+            return JsonResponse({
+                'success': False,
+                'error': 'Nessun trattamento trovato con gli ID specificati'
+            }, status=404)
+        
+        # Contatori per i risultati
+        successi = 0
+        errori = []
+        comunicazioni_inviate = 0
+        pdf_downloads = []
+        
+        with transaction.atomic():
+            for trattamento in trattamenti:
+                try:
+                    if action == 'comunica':
+                        # Verifica che il trattamento sia programmato
+                        if trattamento.stato != 'programmato':
+                            errori.append(f'Trattamento #{trattamento.id}: non è in stato programmato (attuale: {trattamento.get_stato_display()})')
+                            continue
+                        
+                        # Gestisci diverse modalità di comunicazione
+                        email_sent = False
+                        pdf_generated = False
+                        
+                        if communication_mode in ['send_only', 'send_and_download']:
+                            # Invia email
+                            try:
+                                from .email_utils import send_trattamento_communication
+                                risultato = send_trattamento_communication(trattamento.id)
+                                
+                                if risultato['success']:
+                                    email_sent = True
+                                    comunicazioni_inviate += 1
+                                else:
+                                    errori.append(f'Trattamento #{trattamento.id}: {risultato["error"]}')
+                                    continue
+                            except ImportError:
+                                # Se email_utils non è disponibile, segna come inviato ma aggiungi warning
+                                email_sent = True
+                                errori.append(f'Trattamento #{trattamento.id}: comunicato ma email non inviata (modulo email non disponibile)')
+                        
+                        if communication_mode in ['download_only', 'send_and_download']:
+                            # Genera PDF per download
+                            try:
+                                from .email_utils import generate_pdf_comunicazione
+                                pdf_content = generate_pdf_comunicazione(trattamento.id)
+                                
+                                # Prepara info per download
+                                filename = f"Trattamento_{trattamento.id}_{trattamento.cliente.nome.replace(' ', '_')}.pdf"
+                                
+                                # Crea URL temporaneo per download (implementazione semplificata)
+                                download_url = f'/api/trattamenti/{trattamento.id}/download-pdf/'
+                                
+                                pdf_downloads.append({
+                                    'trattamento_id': trattamento.id,
+                                    'filename': filename,
+                                    'url': download_url
+                                })
+                                
+                                pdf_generated = True
+                                
+                            except Exception as e:
+                                errori.append(f'Trattamento #{trattamento.id}: errore generazione PDF - {str(e)}')
+                                continue
+                        
+                        # Aggiorna stato solo se almeno una operazione è riuscita
+                        if email_sent or (communication_mode == 'download_only' and pdf_generated):
+                            trattamento.stato = 'comunicato'
+                            trattamento.data_comunicazione = timezone.now()
+                            trattamento.save()
+                            successi += 1
+                    
+                    elif action == 'completa':
+                        # Verifica che il trattamento sia comunicato
+                        if trattamento.stato != 'comunicato':
+                            errori.append(f'Trattamento #{trattamento.id}: non è in stato comunicato (attuale: {trattamento.get_stato_display()})')
+                            continue
+                        
+                        # Aggiorna a completato
+                        trattamento.stato = 'completato'
+                        trattamento.data_esecuzione_effettiva = timezone.now().date()
+                        trattamento.save()
+                        successi += 1
+                    
+                    elif action == 'annulla':
+                        # Verifica che il trattamento non sia già completato
+                        if trattamento.stato == 'completato':
+                            errori.append(f'Trattamento #{trattamento.id}: non può essere annullato (già completato)')
+                            continue
+                        
+                        # Aggiorna ad annullato
+                        trattamento.stato = 'annullato'
+                        trattamento.save()
+                        successi += 1
+                
+                except Exception as e:
+                    errori.append(f'Trattamento #{trattamento.id}: {str(e)}')
+        
+        # Prepara il messaggio di risposta
+        if action == 'comunica':
+            if communication_mode == 'send_only':
+                message = f'{successi} trattament{("o" if successi == 1 else "i")} comunicat{("o" if successi == 1 else "i")} via email'
+            elif communication_mode == 'download_only':
+                message = f'{successi} trattament{("o" if successi == 1 else "i")} comunicat{("o" if successi == 1 else "i")} - PDF pronti per il download'
+            else:  # send_and_download
+                message = f'{successi} trattament{("o" if successi == 1 else "i")} comunicat{("o" if successi == 1 else "i")} via email + PDF scaricati'
+            
+            if comunicazioni_inviate > 0:
+                message += f' ({comunicazioni_inviate} email inviate)'
+                
+        elif action == 'completa':
+            message = f'{successi} trattament{("o" if successi == 1 else "i")} completat{("o" if successi == 1 else "i")} con successo'
+        elif action == 'annulla':
+            message = f'{successi} trattament{("o" if successi == 1 else "i")} annullat{("o" if successi == 1 else "i")} con successo'
+        
+        # Aggiungi errori al messaggio se presenti
+        if errori:
+            message += f'\n\nErrori ({len(errori)}):\n' + '\n'.join(errori[:5])  # Mostra max 5 errori
+            if len(errori) > 5:
+                message += f'\n... e altri {len(errori) - 5} errori'
+        
+        response_data = {
+            'success': True,
+            'message': message,
+            'dettagli': {
+                'azione': action,
+                'modalita_comunicazione': communication_mode if action == 'comunica' else None,
+                'totali_selezionati': len(trattamenti_ids),
+                'successi': successi,
+                'errori': len(errori),
+                'comunicazioni_inviate': comunicazioni_inviate,
+                'lista_errori': errori
+            }
+        }
+        
+        # Aggiungi info PDF se necessario
+        if pdf_downloads:
+            response_data['pdf_downloads'] = pdf_downloads
+        
+        return JsonResponse(response_data)
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'Errore durante l\'elaborazione: {str(e)}'
+        }, status=500)
+                

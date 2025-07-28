@@ -1,0 +1,24 @@
+INFO 2025-07-28 13:52:51,236 email_utils Iniziando comunicazione per trattamento 16
+INFO 2025-07-28 13:52:51,240 email_utils Invio a 2 destinatari: marco.bianchi@prunotto.it, elena.rossi@prunotto.it
+INFO 2025-07-28 13:52:51,308 email_utils Generazione PDF con WeasyPrint per trattamento 16
+INFO 2025-07-28 13:52:51,642 email_utils PDF generato con successo con WeasyPrint per trattamento 16
+ERROR 2025-07-28 13:52:51,642 email_utils Errore generale nella comunicazione per trattamento 16: 'Trattamento' object has no attribute 'get_superficie_interessata'
+INFO 2025-07-28 13:53:16,706 email_utils Iniziando comunicazione per trattamento 16
+INFO 2025-07-28 13:53:16,708 email_utils Invio a 2 destinatari: marco.bianchi@prunotto.it, elena.rossi@prunotto.it
+INFO 2025-07-28 13:53:16,717 email_utils Generazione PDF con WeasyPrint per trattamento 16
+INFO 2025-07-28 13:53:16,977 email_utils PDF generato con successo con WeasyPrint per trattamento 16
+ERROR 2025-07-28 13:53:16,978 email_utils Errore generale nella comunicazione per trattamento 16: 'Trattamento' object has no attribute 'get_superficie_interessata'
+INFO 2025-07-28 13:53:31,132 email_utils Iniziando comunicazione per trattamento 16
+INFO 2025-07-28 13:53:31,135 email_utils Invio a 2 destinatari: marco.bianchi@prunotto.it, elena.rossi@prunotto.it
+INFO 2025-07-28 13:53:31,148 email_utils Generazione PDF con WeasyPrint per trattamento 16
+INFO 2025-07-28 13:53:31,376 email_utils PDF generato con successo con WeasyPrint per trattamento 16
+ERROR 2025-07-28 13:53:31,377 email_utils Errore generale nella comunicazione per trattamento 16: 'Trattamento' object has no attribute 'get_superficie_interessata'
+INFO 2025-07-28 13:53:42,171 email_utils Iniziando comunicazione per trattamento 16
+INFO 2025-07-28 13:53:42,174 email_utils Invio a 2 destinatari: marco.bianchi@prunotto.it, elena.rossi@prunotto.it
+INFO 2025-07-28 13:53:42,184 email_utils Generazione PDF con WeasyPrint per trattamento 16
+INFO 2025-07-28 13:53:42,442 email_utils PDF generato con successo con WeasyPrint per trattamento 16
+ERROR 2025-07-28 13:53:42,442 email_utils Errore generale nella comunicazione per trattamento 16: 'Trattamento' object has no attribute 'get_superficie_interessata'
+INFO 2025-07-28 14:56:27,887 email_utils Generazione PDF con WeasyPrint per trattamento 18
+INFO 2025-07-28 14:56:28,385 email_utils PDF generato con successo con WeasyPrint per trattamento 18
+INFO 2025-07-28 14:56:28,420 email_utils Generazione PDF con WeasyPrint per trattamento 18
+INFO 2025-07-28 14:56:28,795 email_utils PDF generato con successo con WeasyPrint per trattamento 18

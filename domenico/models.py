@@ -135,63 +135,56 @@ class Prodotto(models.Model):
         verbose_name_plural = "Prodotti"
 
 class Trattamento(models.Model):
+    # Stati del trattamento (AGGIORNATI - rimosso in_esecuzione)
     STATI_CHOICES = [
         ('programmato', 'Programmato'),
-        ('comunicato', 'Comunicato'),
-        ('in_esecuzione', 'In Esecuzione'),
+        ('comunicato', 'Comunicato'), 
         ('completato', 'Completato'),
         ('annullato', 'Annullato'),
     ]
     
-    LIVELLO_CHOICES = [
-        ('cliente', 'Cliente'),
-        ('cascina', 'Cascina'),
-        ('terreno', 'Terreno'),
-    ]
-    
-    # Relazioni gerarchiche (nullable per flessibilità)
+    # Resto dei campi rimane uguale...
     cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE, related_name='trattamenti')
     cascina = models.ForeignKey(Cascina, on_delete=models.CASCADE, null=True, blank=True, related_name='trattamenti')
-    terreni = models.ManyToManyField(Terreno, related_name='trattamenti', blank=True)
+    terreni = models.ManyToManyField(Terreno, blank=True, related_name='trattamenti')
     
-    # Informazioni del trattamento
-    livello_applicazione = models.CharField(max_length=10, choices=LIVELLO_CHOICES)
-    prodotti = models.ManyToManyField(Prodotto, through='TrattamentoProdotto')
+    # Livello di applicazione
+    LIVELLI_APPLICAZIONE = [
+        ('cliente', 'Intera Azienda'),
+        ('cascina', 'Cascina'),
+        ('terreno', 'Terreni Selezionati'),
+    ]
     
-    # Stati e date
-    stato = models.CharField(max_length=20, choices=STATI_CHOICES, default='programmato')
+    livello_applicazione = models.CharField(
+        max_length=20,
+        choices=LIVELLI_APPLICAZIONE,
+        default='cliente',
+        help_text="Specifica il livello di applicazione del trattamento"
+    )
+    
+    # Date
     data_inserimento = models.DateTimeField(auto_now_add=True)
     data_comunicazione = models.DateTimeField(null=True, blank=True)
     data_esecuzione_prevista = models.DateField(null=True, blank=True)
-    data_esecuzione_effettiva = models.DateTimeField(null=True, blank=True)
+    data_esecuzione_effettiva = models.DateField(null=True, blank=True)
     
-    # Note
-    note = models.TextField(blank=True)
+    # Stato
+    stato = models.CharField(
+        max_length=20,
+        choices=STATI_CHOICES,
+        default='programmato',
+        help_text="Stato attuale del trattamento"
+    )
+    
+    note = models.TextField(blank=True, help_text="Note aggiuntive per il trattamento")
+    
+    class Meta:
+        ordering = ['-data_inserimento']
+        verbose_name = 'Trattamento'
+        verbose_name_plural = 'Trattamenti'
     
     def __str__(self):
-        livello_desc = ""
-        if self.livello_applicazione == 'cliente':
-            livello_desc = self.cliente.nome
-        elif self.livello_applicazione == 'cascina' and self.cascina:
-            livello_desc = f"{self.cascina.nome}"
-        elif self.livello_applicazione == 'terreno':
-            terreni_nomi = ", ".join([t.nome for t in self.terreni.all()[:3]])
-            if self.terreni.count() > 3:
-                terreni_nomi += f" (+{self.terreni.count()-3} altri)"
-            livello_desc = terreni_nomi
-        
-        return f"Trattamento {self.id} - {livello_desc} ({self.get_stato_display()})"
-    
-    def save(self, *args, **kwargs):
-        # Auto-imposta data comunicazione quando stato cambia in 'comunicato'
-        if self.stato == 'comunicato' and not self.data_comunicazione:
-            self.data_comunicazione = timezone.now()
-        
-        # Auto-imposta data esecuzione quando stato cambia in 'completato'
-        if self.stato == 'completato' and not self.data_esecuzione_effettiva:
-            self.data_esecuzione_effettiva = timezone.now()
-            
-        super().save(*args, **kwargs)
+        return f"Trattamento #{self.id} - {self.cliente.nome} ({self.get_stato_display()})"
     
     def get_superficie_interessata(self):
         """Calcola la superficie totale interessata dal trattamento"""
@@ -207,57 +200,18 @@ class Trattamento(models.Model):
             else:
                 superficie = 0
             
-            # Assicurati che il risultato sia sempre un Decimal
-            if superficie is None:
-                return Decimal('0')
-            
-            return Decimal(str(superficie))
+            return Decimal(str(superficie)) if superficie else Decimal('0')
             
         except Exception as e:
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.error(f"Errore calcolo superficie per trattamento {self.id}: {e}")
+            print(f"Errore calcolo superficie trattamento {self.id}: {e}")
             return Decimal('0')
-        
     
     def get_contoterzista(self):
-        """Restituisce il contoterzista responsabile per questo trattamento"""
-        if self.livello_applicazione == 'terreno' and self.terreni.exists():
-            # Per i terreni, prendi il contoterzista della cascina del primo terreno
-            return self.terreni.first().cascina.contoterzista
-        elif self.livello_applicazione == 'cascina' and self.cascina:
+        """Restituisce il contoterzista associato al trattamento"""
+        if self.cascina and self.cascina.contoterzista:
             return self.cascina.contoterzista
-        elif self.livello_applicazione == 'cliente':
-            # Per il cliente, prendi il contoterzista della prima cascina
-            prima_cascina = self.cliente.cascine.first()
-            return prima_cascina.contoterzista if prima_cascina else None
         return None
     
-    def get_contatti_email_destinatari(self):
-        """Restituisce tutti i contatti email che devono ricevere la comunicazione"""
-        return self.cliente.get_contatti_email()
-    
-    def get_quantita_totali_prodotti(self):
-        """Restituisce le quantità totali calcolate per tutti i prodotti"""
-        superficie = self.get_superficie_interessata()
-        risultati = []
-        
-        for tp in self.trattamentoprodotto_set.all():
-            quantita_totale = tp.quantita_per_ettaro * superficie
-            risultati.append({
-                'prodotto': tp.prodotto,
-                'quantita_per_ettaro': tp.quantita_per_ettaro,
-                'quantita_totale': quantita_totale,
-                'unita_misura': tp.prodotto.unita_misura
-            })
-        
-        return risultati
-    
-    class Meta:
-        verbose_name = "Trattamento"
-        verbose_name_plural = "Trattamenti"
-        ordering = ['-data_inserimento']
-
 class TrattamentoProdotto(models.Model):
     """Tabella intermedia per gestire quantità dei prodotti nei trattamenti"""
     trattamento = models.ForeignKey(Trattamento, on_delete=models.CASCADE)
