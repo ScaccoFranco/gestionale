@@ -1341,3 +1341,204 @@ def api_bulk_action_trattamenti(request):
             'error': f'Errore durante l\'elaborazione: {str(e)}'
         }, status=500)
                 
+
+@require_http_methods(["GET"])
+def api_clienti_list(request):
+    """API per ottenere lista clienti per i select"""
+    try:
+        clienti = Cliente.objects.all().order_by('nome')
+        clienti_data = []
+        for cliente in clienti:
+            clienti_data.append({
+                'id': cliente.id,
+                'nome': cliente.nome
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'clienti': clienti_data
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_cliente_create(request):
+    """API per creare nuovo cliente (semplificata)"""
+    try:
+        # Parse JSON data
+        if request.content_type == 'application/json':
+            data = json.loads(request.body)
+        else:
+            data = request.POST
+            
+        nome = data.get('nome', '').strip()
+        
+        # Validazione
+        if not nome:
+            return JsonResponse({
+                'success': False,
+                'error': 'Il nome del cliente è obbligatorio'
+            }, status=400)
+            
+        # Verifica se esiste già
+        if Cliente.objects.filter(nome__iexact=nome).exists():
+            return JsonResponse({
+                'success': False,
+                'error': f'Esiste già un cliente con il nome "{nome}"'
+            }, status=400)
+        
+        with transaction.atomic():
+            # Crea cliente
+            cliente = Cliente.objects.create(nome=nome)
+            
+            # Gestisci contatti se presenti
+            contatti = data.get('contatti', [])
+            contatti_creati = []
+            
+            for contatto_data in contatti:
+                if contatto_data.get('nome') and contatto_data.get('email'):
+                    contatto = ContattoEmail.objects.create(
+                        cliente=cliente,
+                        nome=contatto_data['nome'],
+                        email=contatto_data['email'],
+                        ruolo=contatto_data.get('ruolo', ''),
+                        telefono=contatto_data.get('telefono', ''),
+                        priorita=contatto_data.get('priorita', 2),
+                        attivo=True
+                    )
+                    contatti_creati.append(contatto.nome)
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Cliente "{nome}" creato con successo',
+                'cliente': {
+                    'id': cliente.id,
+                    'nome': cliente.nome
+                },
+                'contatti_creati': len(contatti_creati)
+            })
+            
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': 'Dati JSON non validi'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'Errore nella creazione: {str(e)}'
+        }, status=500)
+
+@require_http_methods(["GET"])
+def api_contoterzisti_list(request):
+    """API per ottenere lista contoterzisti per i select"""
+    try:
+        contoterzisti = Contoterzista.objects.all().order_by('nome')
+        contoterzisti_data = []
+        for contoterzista in contoterzisti:
+            contoterzisti_data.append({
+                'id': contoterzista.id,
+                'nome': contoterzista.nome,
+                'telefono': contoterzista.telefono,
+                'email': contoterzista.email
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'contoterzisti': contoterzisti_data
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_cascina_create(request):
+    """API per creare nuova cascina (semplificata)"""
+    try:
+        # Parse JSON data
+        if request.content_type == 'application/json':
+            data = json.loads(request.body)
+        else:
+            data = request.POST
+            
+        cliente_id = data.get('cliente_id')
+        nome = data.get('nome', '').strip()
+        contoterzista_id = data.get('contoterzista_id') or None
+        
+        # Validazione
+        if not cliente_id:
+            return JsonResponse({
+                'success': False,
+                'error': 'Il cliente è obbligatorio'
+            }, status=400)
+            
+        if not nome:
+            return JsonResponse({
+                'success': False,
+                'error': 'Il nome della cascina è obbligatorio'
+            }, status=400)
+        
+        # Verifica che il cliente esista
+        try:
+            cliente = Cliente.objects.get(id=cliente_id)
+        except Cliente.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'error': 'Cliente non trovato'
+            }, status=404)
+        
+        # Verifica che il contoterzista esista (se specificato)
+        contoterzista = None
+        if contoterzista_id:
+            try:
+                contoterzista = Contoterzista.objects.get(id=contoterzista_id)
+            except Contoterzista.DoesNotExist:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Contoterzista non trovato'
+                }, status=404)
+        
+        # Verifica unicità nome per cliente
+        if Cascina.objects.filter(cliente=cliente, nome__iexact=nome).exists():
+            return JsonResponse({
+                'success': False,
+                'error': f'Il cliente "{cliente.nome}" ha già una cascina chiamata "{nome}"'
+            }, status=400)
+        
+        with transaction.atomic():
+            cascina = Cascina.objects.create(
+                cliente=cliente,
+                nome=nome,
+                contoterzista=contoterzista
+            )
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Cascina "{nome}" creata con successo',
+                'cascina': {
+                    'id': cascina.id,
+                    'nome': cascina.nome,
+                    'cliente': cascina.cliente.nome,
+                    'contoterzista': cascina.contoterzista.nome if cascina.contoterzista else None
+                }
+            })
+            
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': 'Dati JSON non validi'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'Errore nella creazione: {str(e)}'
+        }, status=500)
