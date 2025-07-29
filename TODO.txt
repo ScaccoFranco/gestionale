@@ -1,0 +1,5 @@
+#1       nella seleizone delle aziende per inserimento di trattmento, quelle con apostrofo non riescono ad essere selezionate. CORREGGERE
+
+#2      correggere parte di comunicazione e modificare pdf autogenerati e mail
+
+#3      rendere opzionale la parte di mail.

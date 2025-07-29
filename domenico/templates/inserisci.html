@@ -1,1227 +1,5 @@
 {% extends 'base.html' %}
 
-{% block extra_js %}
-<script>
-    // === VARIABILI GLOBALI ===
-    let currentStep = 1;
-    let maxSteps = 4;
-    let selectedTarget = null;
-    let products = [];
-    let productCounter = 0;
-    
-    // Variabili globali per selezioni multiple
-    let selectedData = {
-        clienti: [],
-        cascine: [],
-        terreni: [],
-        contoterzisti: []
-    };
-    
-    // Debug per aiutare lo sviluppo
-    console.log('Form inizializzato con clienti:', {{ clienti|length }});
-    console.log('Form inizializzato con prodotti:', {{ prodotti|length }});
-    
-    // === TARGET SELECTION ===
-    function selectTarget(target) {
-        selectedTarget = target;
-        console.log('Target selezionato:', target);
-        
-        // Update selection cards
-        document.querySelectorAll('.selection-card').forEach(card => {
-            card.classList.remove('selected');
-        });
-        event.currentTarget.classList.add('selected');
-        
-        // Show appropriate form
-        document.querySelectorAll('.target-form').forEach(form => {
-            form.style.display = 'none';
-        });
-        document.getElementById(target + '-selection').style.display = 'block';
-        
-        // Reset contoterzista info e selezioni
-        document.getElementById('contoterzista-info').classList.add('hidden');
-        resetSelections();
-    }
-    
-    function resetSelections() {
-        selectedData = {
-            clienti: [],
-            cascine: [],
-            terreni: [],
-            contoterzisti: []
-        };
-        
-        // Reset UI
-        document.querySelectorAll('.selected-summary').forEach(summary => {
-            summary.style.display = 'none';
-        });
-        
-        // Reset selection cards
-        document.querySelectorAll('.cliente-card, .cascina-card, .terreno-card').forEach(card => {
-            card.classList.remove('selected');
-            card.removeAttribute('data-selection-number');
-        });
-    }
-    
-    // === GESTIONE CLIENTI MULTIPLI ===
-    function toggleCliente(clienteId, cardElement) {
-        console.log('Toggle cliente:', clienteId);
-        
-        const clienteIndex = selectedData.clienti.findIndex(c => c.id === clienteId);
-        const clienteName = cardElement.querySelector('.selection-title').textContent;
-        
-        if (clienteIndex >= 0) {
-            // Rimuovi dalla selezione
-            selectedData.clienti.splice(clienteIndex, 1);
-            cardElement.classList.remove('selected');
-            cardElement.removeAttribute('data-selection-number');
-        } else {
-            // Aggiungi alla selezione
-            selectedData.clienti.push({
-                id: clienteId,
-                nome: clienteName
-            });
-            cardElement.classList.add('selected');
-        }
-        
-        // Aggiorna i numeri di selezione
-        updateSelectionNumbers('.cliente-card');
-        
-        // Aggiorna il riepilogo
-        updateClientiSummary();
-        
-        // Aggiorna info contoterzista
-        updateContoterzastaForMultipleClients();
-        
-        console.log('Clienti selezionati:', selectedData.clienti);
-    }
-    
-    function updateClientiSummary() {
-        const summary = document.getElementById('clienti-selected-summary');
-        const list = document.getElementById('clienti-selected-list');
-        
-        if (selectedData.clienti.length === 0) {
-            summary.style.display = 'none';
-            return;
-        }
-        
-        summary.style.display = 'block';
-        list.innerHTML = '';
-        
-        selectedData.clienti.forEach((cliente, index) => {
-            const item = document.createElement('div');
-            item.className = 'selected-item';
-            item.innerHTML = `
-                <div class="selected-item-info">
-                    <div class="selected-item-name">${cliente.nome}</div>
-                    <div class="selected-item-details">Tutte le cascine e terreni</div>
-                </div>
-                <button type="button" class="selected-item-remove" onclick="removeSelectedCliente(${cliente.id})">
-                    <i class="fas fa-times"></i>
-                </button>
-            `;
-            list.appendChild(item);
-        });
-    }
-    
-    function removeSelectedCliente(clienteId) {
-        // Trova e deseleziona la card
-        const card = document.querySelector(`[data-cliente-id="${clienteId}"]`);
-        if (card) {
-            toggleCliente(clienteId, card);
-        }
-    }
-    
-    function updateContoterzastaForMultipleClients() {
-        if (selectedData.clienti.length === 0) {
-            document.getElementById('contoterzista-info').classList.add('hidden');
-        } else if (selectedData.clienti.length === 1) {
-            showContoterzastaInfo(`Contoterzista assegnato automaticamente per ${selectedData.clienti[0].nome}`);
-        } else {
-            showContoterzastaInfo(`Contoterzisti assegnati automaticamente per ${selectedData.clienti.length} aziende`);
-        }
-    }
-    
-    // === GESTIONE CASCINE MULTIPLE ===
-    function loadCascineForSelection() {
-        const clienteId = document.getElementById('cascina-cliente-select').value;
-        const cascineList = document.getElementById('cascine-list');
-        const container = document.getElementById('cascine-selection-container');
-        
-        console.log('Caricamento cascine per cliente:', clienteId);
-        
-        // Reset
-        cascineList.innerHTML = '';
-        container.style.display = 'none';
-        selectedData.cascine = [];
-        updateCascineSummary();
-        
-        if (clienteId) {
-            // Mostra loading
-            cascineList.innerHTML = '<div class="text-center p-3">Caricamento cascine...</div>';
-            container.style.display = 'block';
-            
-            fetch(`/api/cascine/${clienteId}/`)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    console.log('Cascine caricate:', data);
-                    cascineList.innerHTML = '';
-                    
-                    if (data.length === 0) {
-                        cascineList.innerHTML = '<div class="alert alert-warning">Nessuna cascina trovata per questa azienda.</div>';
-                        return;
-                    }
-                    
-                    data.forEach(cascina => {
-                        const cascinaCard = document.createElement('div');
-                        cascinaCard.className = 'selection-card cascina-card';
-                        cascinaCard.setAttribute('data-cascina-id', cascina.id);
-                        cascinaCard.onclick = () => toggleCascina(cascina.id, cascinaCard, cascina);
-                        cascinaCard.innerHTML = `
-                            <div class="selection-icon">
-                                <i class="fas fa-home"></i>
-                            </div>
-                            <div class="selection-title">${cascina.nome}</div>
-                            <div class="selection-description">
-                                ${cascina.superficie_totale ? cascina.superficie_totale.toFixed(2) + ' ha' : 'Superficie non specificata'}
-                                ${cascina.contoterzista ? '<br><small>Contoterzista: ' + cascina.contoterzista + '</small>' : ''}
-                            </div>
-                        `;
-                        cascineList.appendChild(cascinaCard);
-                    });
-                })
-                .catch(error => {
-                    console.error('Errore nel caricamento cascine:', error);
-                    cascineList.innerHTML = '<div class="alert alert-danger">Errore nel caricamento delle cascine. Riprova.</div>';
-                });
-        }
-    }
-    
-    function toggleCascina(cascinaId, cardElement, cascinaData) {
-        console.log('Toggle cascina:', cascinaId, cascinaData);
-        
-        const cascinaIndex = selectedData.cascine.findIndex(c => c.id === cascinaId);
-        
-        if (cascinaIndex >= 0) {
-            // Rimuovi dalla selezione
-            selectedData.cascine.splice(cascinaIndex, 1);
-            cardElement.classList.remove('selected');
-            cardElement.removeAttribute('data-selection-number');
-        } else {
-            // Aggiungi alla selezione
-            selectedData.cascine.push({
-                id: cascinaId,
-                nome: cascinaData.nome,
-                superficie_totale: cascinaData.superficie_totale,
-                contoterzista: cascinaData.contoterzista,
-                cliente_id: document.getElementById('cascina-cliente-select').value
-            });
-            cardElement.classList.add('selected');
-        }
-        
-        // Aggiorna i numeri di selezione
-        updateSelectionNumbers('.cascina-card');
-        
-        // Aggiorna il riepilogo
-        updateCascineSummary();
-        
-        // Aggiorna info contoterzista
-        updateContoterzastaForMultipleCascine();
-        
-        console.log('Cascine selezionate:', selectedData.cascine);
-    }
-    
-    function updateCascineSummary() {
-        const summary = document.getElementById('cascine-selected-summary');
-        const list = document.getElementById('cascine-selected-list');
-        
-        if (selectedData.cascine.length === 0) {
-            summary.style.display = 'none';
-            return;
-        }
-        
-        summary.style.display = 'block';
-        list.innerHTML = '';
-        
-        selectedData.cascine.forEach((cascina, index) => {
-            const item = document.createElement('div');
-            item.className = 'selected-item';
-            item.innerHTML = `
-                <div class="selected-item-info">
-                    <div class="selected-item-name">${cascina.nome}</div>
-                    <div class="selected-item-details">
-                        ${cascina.superficie_totale ? cascina.superficie_totale.toFixed(2) + ' ha' : 'Superficie non specificata'}
-                        ${cascina.contoterzista ? ' • ' + cascina.contoterzista : ' • Nessun contoterzista'}
-                    </div>
-                </div>
-                <button type="button" class="selected-item-remove" onclick="removeSelectedCascina(${cascina.id})">
-                    <i class="fas fa-times"></i>
-                </button>
-            `;
-            list.appendChild(item);
-        });
-    }
-    
-    function removeSelectedCascina(cascinaId) {
-        // Trova e deseleziona la card
-        const card = document.querySelector(`[data-cascina-id="${cascinaId}"]`);
-        if (card) {
-            const cascinaData = selectedData.cascine.find(c => c.id === cascinaId);
-            if (cascinaData) {
-                toggleCascina(cascinaId, card, cascinaData);
-            }
-        }
-    }
-    
-    function updateContoterzastaForMultipleCascine() {
-        if (selectedData.cascine.length === 0) {
-            document.getElementById('contoterzista-info').classList.add('hidden');
-        } else {
-            const contoterzisti = [...new Set(selectedData.cascine.map(c => c.contoterzista).filter(Boolean))];
-            if (contoterzisti.length === 0) {
-                showContoterzastaInfo('Nessun contoterzista assegnato alle cascine selezionate');
-            } else if (contoterzisti.length === 1) {
-                showContoterzastaInfo(`Contoterzista: ${contoterzisti[0]}`);
-            } else {
-                showContoterzastaInfo(`${contoterzisti.length} contoterzisti coinvolti: ${contoterzisti.join(', ')}`);
-            }
-        }
-    }
-    
-    // === GESTIONE TERRENI MULTIPLI ===
-    function loadCascineForTerreni() {
-        const clienteId = document.getElementById('terreno-cliente-select').value;
-        const cascinaSelect = document.getElementById('terreno-cascina-select');
-        
-        console.log('Caricamento cascine per terreni, cliente:', clienteId);
-        
-        cascinaSelect.innerHTML = '<option value="">Caricamento...</option>';
-        
-        // Reset terreni
-        selectedData.terreni = [];
-        updateTerreniSummary();
-        document.getElementById('terreni-selection-container').style.display = 'none';
-        
-        if (clienteId) {
-            fetch(`/api/cascine/${clienteId}/`)
-                .then(response => response.json())
-                .then(data => {
-                    console.log('Cascine caricate per terreni:', data);
-                    cascinaSelect.innerHTML = '<option value="">Seleziona una cascina...</option>';
-                    data.forEach(cascina => {
-                        const option = document.createElement('option');
-                        option.value = cascina.id;
-                        option.textContent = cascina.nome;
-                        cascinaSelect.appendChild(option);
-                    });
-                })
-                .catch(error => {
-                    console.error('Errore nel caricamento cascine:', error);
-                    cascinaSelect.innerHTML = '<option value="">Errore nel caricamento</option>';
-                });
-        } else {
-            cascinaSelect.innerHTML = '<option value="">Prima seleziona un\'azienda...</option>';
-        }
-    }
-    
-    function loadTerreniForCascina() {
-        const cascinaId = document.getElementById('terreno-cascina-select').value;
-        const terreniList = document.getElementById('terreni-list');
-        const container = document.getElementById('terreni-selection-container');
-        
-        console.log('Caricamento terreni per cascina:', cascinaId);
-        
-        terreniList.innerHTML = '';
-        container.style.display = 'none';
-        selectedData.terreni = [];
-        updateTerreniSummary();
-        
-        if (cascinaId) {
-            terreniList.innerHTML = '<div class="text-center p-3">Caricamento terreni...</div>';
-            container.style.display = 'block';
-            
-            fetch(`/api/terreni/${cascinaId}/`)
-                .then(response => response.json())
-                .then(data => {
-                    console.log('Terreni caricati:', data);
-                    terreniList.innerHTML = '';
-                    
-                    if (data.length === 0) {
-                        terreniList.innerHTML = '<div class="alert alert-warning">Nessun terreno trovato per questa cascina.</div>';
-                        return;
-                    }
-                    
-                    data.forEach(terreno => {
-                        const terrenoCard = document.createElement('div');
-                        terrenoCard.className = 'selection-card terreno-card';
-                        terrenoCard.setAttribute('data-terreno-id', terreno.id);
-                        terrenoCard.onclick = () => toggleTerreno(terreno.id, terrenoCard, terreno);
-                        terrenoCard.innerHTML = `
-                            <div class="selection-icon">
-                                <i class="fas fa-seedling"></i>
-                            </div>
-                            <div class="selection-title">${terreno.nome}</div>
-                            <div class="selection-description">${terreno.superficie} ha</div>
-                        `;
-                        terreniList.appendChild(terrenoCard);
-                    });
-                    
-                    // Carica info contoterzista per la cascina
-                    loadContoterzastaForCascina(cascinaId);
-                })
-                .catch(error => {
-                    console.error('Errore nel caricamento terreni:', error);
-                    terreniList.innerHTML = '<div class="alert alert-danger">Errore nel caricamento dei terreni. Riprova.</div>';
-                });
-        }
-    }
-    
-    function toggleTerreno(terrenoId, cardElement, terrenoData) {
-        console.log('Toggle terreno:', terrenoId, terrenoData);
-        
-        const terrenoIndex = selectedData.terreni.findIndex(t => t.id === terrenoId);
-        
-        if (terrenoIndex >= 0) {
-            // Rimuovi dalla selezione
-            selectedData.terreni.splice(terrenoIndex, 1);
-            cardElement.classList.remove('selected');
-            cardElement.removeAttribute('data-selection-number');
-        } else {
-            // Aggiungi alla selezione
-            selectedData.terreni.push({
-                id: terrenoId,
-                nome: terrenoData.nome,
-                superficie: terrenoData.superficie,
-                cascina_nome: terrenoData.cascina_nome,
-                cascina_id: document.getElementById('terreno-cascina-select').value,
-                cliente_id: document.getElementById('terreno-cliente-select').value
-            });
-            cardElement.classList.add('selected');
-        }
-        
-        // Aggiorna i numeri di selezione
-        updateSelectionNumbers('.terreno-card');
-        
-        // Aggiorna il riepilogo
-        updateTerreniSummary();
-        
-        // Aggiorna il calcolo delle quantità per tutti i prodotti
-        updateAllQuantityCalculations();
-        
-        console.log('Terreni selezionati:', selectedData.terreni);
-    }
-    
-    function updateTerreniSummary() {
-        const summary = document.getElementById('terreni-selected-summary');
-        const list = document.getElementById('terreni-selected-list');
-        
-        if (selectedData.terreni.length === 0) {
-            summary.style.display = 'none';
-            return;
-        }
-        
-        summary.style.display = 'block';
-        list.innerHTML = '';
-        
-        const totalSuperficie = selectedData.terreni.reduce((sum, terreno) => sum + parseFloat(terreno.superficie), 0);
-        
-        selectedData.terreni.forEach((terreno, index) => {
-            const item = document.createElement('div');
-            item.className = 'selected-item';
-            item.innerHTML = `
-                <div class="selected-item-info">
-                    <div class="selected-item-name">${terreno.nome}</div>
-                    <div class="selected-item-details">
-                        ${terreno.superficie} ha • ${terreno.cascina_nome}
-                    </div>
-                </div>
-                <button type="button" class="selected-item-remove" onclick="removeSelectedTerreno(${terreno.id})">
-                    <i class="fas fa-times"></i>
-                </button>
-            `;
-            list.appendChild(item);
-        });
-        
-        // Aggiungi totale superficie
-        if (selectedData.terreni.length > 1) {
-            const totalItem = document.createElement('div');
-            totalItem.className = 'selected-item';
-            totalItem.style.background = '#e8f5e8';
-            totalItem.innerHTML = `
-                <div class="selected-item-info">
-                    <div class="selected-item-name"><strong>Totale Superficie</strong></div>
-                    <div class="selected-item-details">${totalSuperficie.toFixed(2)} ha</div>
-                </div>
-            `;
-            list.appendChild(totalItem);
-        }
-    }
-    
-    function removeSelectedTerreno(terrenoId) {
-        // Trova e deseleziona la card
-        const card = document.querySelector(`[data-terreno-id="${terrenoId}"]`);
-        if (card) {
-            const terrenoData = selectedData.terreni.find(t => t.id === terrenoId);
-            if (terrenoData) {
-                toggleTerreno(terrenoId, card, terrenoData);
-            }
-        }
-    }
-    
-    function loadContoterzastaForCascina(cascinaId) {
-        fetch(`/api/cascina/${cascinaId}/contoterzista/`)
-            .then(response => response.json())
-            .then(data => {
-                console.log('Contoterzista caricato:', data);
-                if (data.contoterzista) {
-                    showContoterzastaInfo(data.contoterzista.nome);
-                } else {
-                    showContoterzastaInfo('Nessun contoterzista assegnato');
-                }
-            })
-            .catch(error => {
-                console.error('Errore nel caricamento contoterzista:', error);
-                showContoterzastaInfo('Errore nel caricamento contoterzista');
-            });
-    }
-    
-    // === FUNZIONI DI UTILITÀ ===
-    function updateSelectionNumbers(selector) {
-        const selectedCards = document.querySelectorAll(`${selector}.selected`);
-        selectedCards.forEach((card, index) => {
-            card.setAttribute('data-selection-number', index + 1);
-        });
-    }
-    
-    function showContoterzastaInfo(info) {
-        const container = document.getElementById('contoterzista-details');
-        container.innerHTML = `
-            <div class="summary-item">
-                <span class="summary-label">Informazioni:</span>
-                <span class="summary-value">${info}</span>
-            </div>
-        `;
-        document.getElementById('contoterzista-info').classList.remove('hidden');
-    }
-    
-    // === CALCOLO SUPERFICIE TOTALE ===
-    function getSuperficieTotale() {
-        if (selectedTarget === 'cliente') {
-            // Per i clienti, somma tutte le superficie delle aziende selezionate
-            // Questo richiederebbe una chiamata API per ottenere le superfici
-            // Per ora ritorniamo 0 e calcoleremo lato server
-            return 0;
-        } else if (selectedTarget === 'cascina') {
-            // Per le cascine, somma le superfici delle cascine selezionate
-            return selectedData.cascine.reduce((sum, cascina) => sum + (cascina.superficie_totale || 0), 0);
-        } else if (selectedTarget === 'terreno') {
-            // Per i terreni, somma le superfici dei terreni selezionati
-            return selectedData.terreni.reduce((sum, terreno) => sum + parseFloat(terreno.superficie), 0);
-        }
-        return 0;
-    }
-    
-    // === NAVIGATION E STEPS ===
-    function nextStep() {
-        if (validateCurrentStep()) {
-            if (currentStep < maxSteps) {
-                currentStep++;
-                updateStepDisplay();
-                if (currentStep === 4) {
-                    generateSummary();
-                }
-            }
-        }
-    }
-    
-    function previousStep() {
-        if (currentStep > 1) {
-            currentStep--;
-            updateStepDisplay();
-        }
-    }
-    
-    function updateStepDisplay() {
-        // Update step indicator
-        document.querySelectorAll('.step').forEach((step, index) => {
-            const stepNum = index + 1;
-            step.classList.remove('active', 'completed');
-            
-            if (stepNum < currentStep) {
-                step.classList.add('completed');
-            } else if (stepNum === currentStep) {
-                step.classList.add('active');
-            }
-        });
-        
-        // Update form steps
-        document.querySelectorAll('.form-step').forEach((step, index) => {
-            step.classList.remove('active');
-            if (index + 1 === currentStep) {
-                step.classList.add('active');
-            }
-        });
-        
-        // Update navigation buttons
-        document.getElementById('prev-btn').style.display = currentStep > 1 ? 'inline-flex' : 'none';
-        document.getElementById('next-btn').style.display = currentStep < maxSteps ? 'inline-flex' : 'none';
-        document.getElementById('submit-btn').style.display = currentStep === maxSteps ? 'inline-flex' : 'none';
-    }
-    
-    // === GESTIONE PRODOTTI CON CALCOLO QUANTITÀ ===
-    function addProduct() {
-        productCounter++;
-        console.log('Aggiunta prodotto #', productCounter);
-        
-        const productItem = document.createElement('div');
-        productItem.className = 'product-item';
-        productItem.id = `product-${productCounter}`;
-        productItem.innerHTML = `
-            <button type="button" class="product-remove" onclick="removeProduct(${productCounter})">
-                <i class="fas fa-times"></i>
-            </button>
-            <div class="form-row">
-                <div class="form-group">
-                    <label class="form-label required">Prodotto</label>
-                    <select class="form-select product-select" data-product-id="${productCounter}" onchange="updateProductInfo(${productCounter})">
-                        <option value="">Seleziona un prodotto...</option>
-                        {% for prodotto in prodotti %}
-                        <option value="{{ prodotto.id }}" data-unita="{{ prodotto.unita_misura }}">{{ prodotto.nome }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label class="form-label required">Quantità per Ettaro</label>
-                    <div class="input-group">
-                        <input type="number" class="form-control quantity-input" step="0.001" min="0.001" placeholder="0.000" onchange="updateQuantityCalculation(${productCounter})">
-                        <span class="input-group-text" id="unit-${productCounter}">-</span>
-                        <span class="input-group-text">/ha</span>
-                    </div>
-                    <div class="quantity-calculation" id="calc-${productCounter}" style="margin-top: 0.5rem; font-size: 0.9rem; color: #666;">
-                        <!-- Calcolo automatico apparirà qui -->
-                    </div>
-                </div>
-            </div>
-            <div class="product-info" id="product-info-${productCounter}">
-                <!-- Info prodotto verranno mostrate qui -->
-            </div>
-        `;
-        
-        document.getElementById('products-container').appendChild(productItem);
-    }
-    
-    function removeProduct(productId) {
-        console.log('Rimozione prodotto #', productId);
-        const element = document.getElementById(`product-${productId}`);
-        if (element) {
-            element.remove();
-        }
-        products = products.filter(p => p.id !== productId);
-    }
-    
-    function updateProductInfo(productId) {
-        const select = document.querySelector(`[data-product-id="${productId}"]`);
-        const productInfo = document.getElementById(`product-info-${productId}`);
-        const unitSpan = document.getElementById(`unit-${productId}`);
-        
-        if (select.value) {
-            const selectedOption = select.options[select.selectedIndex];
-            const unita = selectedOption.getAttribute('data-unita') || 'L';
-            
-            // Aggiorna l'unità di misura
-            unitSpan.textContent = unita;
-            
-            // Mostra info prodotto
-            productInfo.innerHTML = `
-                <div class="mt-3 p-3 bg-light rounded">
-                    <small class="text-muted">
-                        <i class="fas fa-info-circle me-1"></i>
-                        Unità di misura: ${unita}/ha
-                    </small>
-                </div>
-            `;
-            
-            // Aggiorna il calcolo delle quantità
-            updateQuantityCalculation(productId);
-        } else {
-            unitSpan.textContent = '-';
-            productInfo.innerHTML = '';
-            document.getElementById(`calc-${productId}`).innerHTML = '';
-        }
-    }
-    
-    function updateQuantityCalculation(productId) {
-        const quantityInput = document.querySelector(`#product-${productId} .quantity-input`);
-        const calcDiv = document.getElementById(`calc-${productId}`);
-        const unitSpan = document.getElementById(`unit-${productId}`);
-        
-        if (!quantityInput || !quantityInput.value || unitSpan.textContent === '-') {
-            calcDiv.innerHTML = '';
-            return;
-        }
-        
-        const quantitaPerEttaro = parseFloat(quantityInput.value);
-        const superficieTotale = getSuperficieTotale();
-        
-        if (superficieTotale > 0) {
-            const quantitaTotale = quantitaPerEttaro * superficieTotale;
-            const unita = unitSpan.textContent;
-            
-            calcDiv.innerHTML = `
-                <div class="quantity-calc-box">
-                    <i class="fas fa-calculator text-primary me-1"></i>
-                    <strong>Quantità totale:</strong> ${quantitaTotale.toFixed(3)} ${unita}
-                    <br><small class="text-muted">${quantitaPerEttaro} ${unita}/ha × ${superficieTotale.toFixed(2)} ha</small>
-                </div>
-            `;
-        } else {
-            calcDiv.innerHTML = `
-                <div class="text-muted">
-                    <i class="fas fa-info-circle me-1"></i>
-                    Seleziona target per calcolare la quantità totale
-                </div>
-            `;
-        }
-    }
-    
-    function updateAllQuantityCalculations() {
-        // Aggiorna il calcolo per tutti i prodotti inseriti
-        document.querySelectorAll('.product-item').forEach(item => {
-            const productId = item.id.replace('product-', '');
-            updateQuantityCalculation(productId);
-        });
-    }
-    
-    // === VALIDAZIONE ===
-    function validateCurrentStep() {
-        console.log('Validazione step:', currentStep);
-        console.log('Selected target:', selectedTarget);
-        console.log('Selected data:', selectedData);
-        
-        if (currentStep === 1) {
-            if (!selectedTarget) {
-                alert('Seleziona il tipo di target per il trattamento');
-                return false;
-            }
-            
-            if (selectedTarget === 'cliente') {
-                console.log('Validazione clienti:', selectedData.clienti);
-                if (!selectedData.clienti || selectedData.clienti.length === 0) {
-                    alert('Seleziona almeno un\'azienda');
-                    return false;
-                }
-                console.log('✅ Validazione clienti OK:', selectedData.clienti.length, 'clienti selezionati');
-            } else if (selectedTarget === 'cascina') {
-                const cliente = document.getElementById('cascina-cliente-select').value;
-                console.log('Validazione cascine - cliente:', cliente, 'cascine:', selectedData.cascine);
-                if (!cliente) {
-                    alert('Seleziona un\'azienda');
-                    return false;
-                }
-                if (!selectedData.cascine || selectedData.cascine.length === 0) {
-                    alert('Seleziona almeno una cascina');
-                    return false;
-                }
-                console.log('✅ Validazione cascine OK:', selectedData.cascine.length, 'cascine selezionate');
-            } else if (selectedTarget === 'terreno') {
-                const cliente = document.getElementById('terreno-cliente-select').value;
-                const cascina = document.getElementById('terreno-cascina-select').value;
-                console.log('Validazione terreni - cliente:', cliente, 'cascina:', cascina, 'terreni:', selectedData.terreni);
-                if (!cliente) {
-                    alert('Seleziona un\'azienda');
-                    return false;
-                }
-                if (!cascina) {
-                    alert('Seleziona una cascina');
-                    return false;
-                }
-                if (!selectedData.terreni || selectedData.terreni.length === 0) {
-                    alert('Seleziona almeno un terreno');
-                    return false;
-                }
-                console.log('✅ Validazione terreni OK:', selectedData.terreni.length, 'terreni selezionati');
-            }
-        } else if (currentStep === 2) {
-            const productItems = document.querySelectorAll('.product-item');
-            console.log('Validazione prodotti:', productItems.length, 'prodotti');
-            if (productItems.length === 0) {
-                alert('Aggiungi almeno un prodotto');
-                return false;
-            }
-            
-            let valid = true;
-            productItems.forEach((item, index) => {
-                const select = item.querySelector('.product-select');
-                const quantity = item.querySelector('.quantity-input');
-                
-                console.log(`Prodotto ${index + 1}:`, {
-                    selected: select.value,
-                    quantity: quantity.value
-                });
-                
-                if (!select.value || !quantity.value || quantity.value <= 0) {
-                    valid = false;
-                }
-            });
-            
-            if (!valid) {
-                alert('Completa tutti i campi dei prodotti con quantità valide per ettaro');
-                return false;
-            }
-            console.log('✅ Validazione prodotti OK');
-        }
-        
-        console.log('✅ Validazione completata con successo');
-        return true;
-    }
-    
-    // === RIEPILOGO ===
-    function generateSummary() {
-        console.log('Generazione riepilogo...');
-        const summaryContainer = document.getElementById('final-summary');
-        let summaryHTML = '';
-        
-        // Target info
-        if (selectedTarget === 'cliente') {
-            summaryHTML += `
-                <div class="summary-item">
-                    <span class="summary-label">Target:</span>
-                    <span class="summary-value">Aziende Multiple (${selectedData.clienti.length})</span>
-                </div>
-            `;
-            selectedData.clienti.forEach(cliente => {
-                summaryHTML += `
-                    <div class="summary-item">
-                        <span class="summary-label">  • ${cliente.nome}:</span>
-                        <span class="summary-value">Tutte le cascine e terreni</span>
-                    </div>
-                `;
-            });
-        } else if (selectedTarget === 'cascina') {
-            const clienteSelect = document.getElementById('cascina-cliente-select');
-            const clienteNome = clienteSelect.options[clienteSelect.selectedIndex].text;
-            const superficieTotale = selectedData.cascine.reduce((sum, cascina) => sum + (cascina.superficie_totale || 0), 0);
-            summaryHTML += `
-                <div class="summary-item">
-                    <span class="summary-label">Target:</span>
-                    <span class="summary-value">Cascine Multiple (${selectedData.cascine.length}) - ${clienteNome}</span>
-                </div>
-                <div class="summary-item">
-                    <span class="summary-label">Superficie totale:</span>
-                    <span class="summary-value">${superficieTotale.toFixed(2)} ha</span>
-                </div>
-            `;
-            selectedData.cascine.forEach(cascina => {
-                summaryHTML += `
-                    <div class="summary-item">
-                        <span class="summary-label">  • ${cascina.nome}:</span>
-                        <span class="summary-value">${cascina.superficie_totale ? cascina.superficie_totale.toFixed(2) + ' ha' : 'N/A'}</span>
-                    </div>
-                `;
-            });
-        } else if (selectedTarget === 'terreno') {
-            const totalSuperficie = selectedData.terreni.reduce((sum, terreno) => sum + parseFloat(terreno.superficie), 0);
-            summaryHTML += `
-                <div class="summary-item">
-                    <span class="summary-label">Target:</span>
-                    <span class="summary-value">Terreni Multipli (${selectedData.terreni.length}) - ${totalSuperficie.toFixed(2)} ha</span>
-                </div>
-            `;
-            selectedData.terreni.forEach(terreno => {
-                summaryHTML += `
-                    <div class="summary-item">
-                        <span class="summary-label">  • ${terreno.nome}:</span>
-                        <span class="summary-value">${terreno.superficie} ha (${terreno.cascina_nome})</span>
-                    </div>
-                `;
-            });
-        }
-        
-        // Products info con calcoli
-        const productItems = document.querySelectorAll('.product-item');
-        summaryHTML += `
-            <div class="summary-item">
-                <span class="summary-label">Prodotti:</span>
-                <span class="summary-value">${productItems.length} prodotti</span>
-            </div>
-        `;
-        
-        // Products details con quantità per ettaro e totali
-        const superficieTotale = getSuperficieTotale();
-        productItems.forEach((item, index) => {
-            const select = item.querySelector('.product-select');
-            const quantity = item.querySelector('.quantity-input');
-            const unit = item.querySelector('.input-group-text');
-            
-            if (select.value && quantity.value) {
-                const quantitaPerEttaro = parseFloat(quantity.value);
-                const quantitaTotale = quantitaPerEttaro * superficieTotale;
-                const unita = unit.textContent;
-                
-                summaryHTML += `
-                    <div class="summary-item">
-                        <span class="summary-label">  • ${select.options[select.selectedIndex].text}:</span>
-                        <span class="summary-value">
-                            ${quantitaPerEttaro} ${unita}/ha
-                            ${superficieTotale > 0 ? ` = <strong>${quantitaTotale.toFixed(3)} ${unita} totali</strong>` : ''}
-                        </span>
-                    </div>
-                `;
-            }
-        });
-        
-        // Date info
-        const dataEsecuzione = document.getElementById('data-esecuzione').value;
-        if (dataEsecuzione) {
-            summaryHTML += `
-                <div class="summary-item">
-                    <span class="summary-label">Data Esecuzione:</span>
-                    <span class="summary-value">${new Date(dataEsecuzione).toLocaleDateString('it-IT')}</span>
-                </div>
-            `;
-        }
-        
-        // Notes
-        const note = document.getElementById('note').value;
-        if (note) {
-            summaryHTML += `
-                <div class="summary-item">
-                    <span class="summary-label">Note:</span>
-                    <span class="summary-value">${note.substring(0, 100)}${note.length > 100 ? '...' : ''}</span>
-                </div>
-            `;
-        }
-        
-        summaryHTML += `
-            <div class="summary-item">
-                <span class="summary-label">Stato:</span>
-                <span class="summary-value">Programmato</span>
-            </div>
-        `;
-        
-        summaryContainer.innerHTML = summaryHTML;
-    }
-    
-    // === SUBMIT FORM ===
-    function submitForm() {
-        console.log('Invio form con selezioni multiple e quantità per ettaro...');
-        if (!validateCurrentStep()) return;
-        
-        document.getElementById('loading').classList.add('show');
-        document.getElementById('submit-btn').disabled = true;
-        
-        // Preparazione dati prodotti con quantità per ettaro
-        const productItems = document.querySelectorAll('.product-item');
-        const prodottiData = [];
-        productItems.forEach(item => {
-            const select = item.querySelector('.product-select');
-            const quantity = item.querySelector('.quantity-input');
-            
-            if (select.value && quantity.value) {
-                prodottiData.push({
-                    prodotto_id: select.value,
-                    quantita_per_ettaro: quantity.value  // Ora salvamo quantità per ettaro
-                });
-            }
-        });
-        
-        const dataEsecuzione = document.getElementById('data-esecuzione').value;
-        const note = document.getElementById('note').value;
-        
-        // Strategia: Creare trattamenti multipli in base al tipo di selezione
-        let trattamentiDaCreare = [];
-        
-        if (selectedTarget === 'cliente') {
-            // Un trattamento per ogni cliente selezionato
-            selectedData.clienti.forEach(cliente => {
-                trattamentiDaCreare.push({
-                    livello_applicazione: 'cliente',
-                    cliente: cliente.id,
-                    cascina: null,
-                    terreni_selezionati: [],
-                    prodotti_data: JSON.stringify(prodottiData),
-                    data_esecuzione_prevista: dataEsecuzione || null,
-                    note: note + ` [Auto-generato per ${cliente.nome}]`
-                });
-            });
-        } else if (selectedTarget === 'cascina') {
-            // Un trattamento per ogni cascina selezionata
-            selectedData.cascine.forEach(cascina => {
-                trattamentiDaCreare.push({
-                    livello_applicazione: 'cascina',
-                    cliente: cascina.cliente_id,
-                    cascina: cascina.id,
-                    terreni_selezionati: [],
-                    prodotti_data: JSON.stringify(prodottiData),
-                    data_esecuzione_prevista: dataEsecuzione || null,
-                    note: note + ` [Auto-generato per ${cascina.nome}]`
-                });
-            });
-        } else if (selectedTarget === 'terreno') {
-            // Un singolo trattamento con tutti i terreni selezionati
-            trattamentiDaCreare.push({
-                livello_applicazione: 'terreno',
-                cliente: selectedData.terreni[0].cliente_id,
-                cascina: selectedData.terreni[0].cascina_id,
-                terreni_selezionati: selectedData.terreni.map(t => t.id),
-                prodotti_data: JSON.stringify(prodottiData),
-                data_esecuzione_prevista: dataEsecuzione || null,
-                note: note + ` [${selectedData.terreni.length} terreni selezionati]`
-            });
-        }
-        
-        console.log('Trattamenti da creare:', trattamentiDaCreare);
-        
-        // Invio sequenziale dei trattamenti
-        createTrattamentiSequentially(trattamentiDaCreare);
-    }
-    
-    function createTrattamentiSequentially(trattamentiDaCreare) {
-        let createdCount = 0;
-        let errors = [];
-        
-        // Ottieni il CSRF token
-        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-        
-        function createNext(index) {
-            if (index >= trattamentiDaCreare.length) {
-                // Tutti i trattamenti processati
-                document.getElementById('loading').classList.remove('show');
-                document.getElementById('submit-btn').disabled = false;
-                
-                if (errors.length === 0) {
-                    alert(`${createdCount} trattamenti creati con successo!`);
-                    window.location.href = '{% url "trattamenti" %}';
-                } else {
-                    alert(`${createdCount} trattamenti creati, ${errors.length} errori:\n${errors.join('\n')}`);
-                    console.error('Errori dettagliati:', errors);
-                }
-                return;
-            }
-            
-            const trattamento = trattamentiDaCreare[index];
-            const formData = new FormData();
-            
-            // Aggiungi CSRF token
-            formData.append('csrfmiddlewaretoken', csrfToken);
-            
-            // Prepara FormData
-            Object.keys(trattamento).forEach(key => {
-                if (key === 'terreni_selezionati') {
-                    trattamento[key].forEach(terrenoId => {
-                        formData.append('terreni_selezionati', terrenoId);
-                    });
-                } else if (trattamento[key] !== null && trattamento[key] !== undefined) {
-                    formData.append(key, trattamento[key]);
-                }
-            });
-            
-            console.log(`Invio trattamento ${index + 1}:`, trattamento);
-            
-            // Invio richiesta
-            fetch('/api/trattamenti/', {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-CSRFToken': csrfToken,
-                },
-                credentials: 'same-origin'
-            })
-            .then(response => {
-                console.log(`Risposta trattamento ${index + 1}:`, response.status, response.statusText);
-                
-                // Prima controlla se la risposta è ok
-                if (!response.ok) {
-                    // Per errori, prova a leggere come testo prima
-                    return response.text().then(text => {
-                        console.error(`Errore HTTP ${response.status}:`, text);
-                        
-                        // Prova a parsare come JSON se possibile
-                        try {
-                            const errorData = JSON.parse(text);
-                            throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
-                        } catch (jsonError) {
-                            // Se non è JSON, usa il testo raw
-                            throw new Error(`HTTP ${response.status}: ${text || response.statusText}`);
-                        }
-                    });
-                }
-                
-                // Se ok, parsa come JSON
-                return response.json();
-            })
-            .then(data => {
-                console.log(`Dati risposta trattamento ${index + 1}:`, data);
-                
-                if (data.success) {
-                    createdCount++;
-                    console.log(`✅ Trattamento ${index + 1} creato con successo: ID ${data.trattamento_id}`);
-                } else {
-                    errors.push(`Trattamento ${index + 1}: ${data.error || 'Errore sconosciuto'}`);
-                    console.error(`❌ Errore trattamento ${index + 1}:`, data.error);
-                }
-                
-                // Procedi al prossimo
-                setTimeout(() => createNext(index + 1), 500);
-            })
-            .catch(error => {
-                console.error(`💥 Errore completo trattamento ${index + 1}:`, error);
-                errors.push(`Trattamento ${index + 1}: ${error.message}`);
-                
-                // Procedi al prossimo anche in caso di errore
-                setTimeout(() => createNext(index + 1), 500);
-            });
-        }
-        
-        // Inizia la creazione
-        createNext(0);
-    }
-    
-    // === FUNZIONI DI DEBUG ===
-    function debugCurrentState() {
-        console.log('=== DEBUG STATE ===');
-        console.log('Current Step:', currentStep);
-        console.log('Selected Target:', selectedTarget);
-        console.log('Selected Data:', selectedData);
-        
-        // Mostra alert con info di debug
-        let debugInfo = `
-=== DEBUG INFO ===
-Step Corrente: ${currentStep}
-Target Selezionato: ${selectedTarget || 'NESSUNO'}
-
-SELEZIONI:
-• Clienti: ${selectedData.clienti ? selectedData.clienti.length : 0}
-• Cascine: ${selectedData.cascine ? selectedData.cascine.length : 0}  
-• Terreni: ${selectedData.terreni ? selectedData.terreni.length : 0}
-
-SUPERFICIE TOTALE: ${getSuperficieTotale().toFixed(2)} ha
-
-DETTAGLI CLIENTI:
-${selectedData.clienti ? selectedData.clienti.map(c => `- ${c.nome} (ID: ${c.id})`).join('\n') : 'Nessuno'}
-
-DETTAGLI CASCINE:
-${selectedData.cascine ? selectedData.cascine.map(c => `- ${c.nome} (ID: ${c.id}) - ${c.superficie_totale?.toFixed(2) || 'N/A'} ha`).join('\n') : 'Nessune'}
-
-DETTAGLI TERRENI:
-${selectedData.terreni ? selectedData.terreni.map(t => `- ${t.nome} (${t.superficie} ha)`).join('\n') : 'Nessuno'}
-
-PRODOTTI:
-${document.querySelectorAll('.product-item').length} prodotti inseriti
-        `;
-        
-        alert(debugInfo);
-        
-        // Test validazione
-        console.log('Test validazione step corrente:', validateCurrentStep());
-        
-        // Verifica elementi DOM
-        console.log('Cards selezionate clienti:', document.querySelectorAll('.cliente-card.selected').length);
-        console.log('Cards selezionate cascine:', document.querySelectorAll('.cascina-card.selected').length);
-        console.log('Cards selezionate terreni:', document.querySelectorAll('.terreno-card.selected').length);
-        
-        // Verifica dropdowns
-        if (selectedTarget === 'cascina') {
-            const clienteSelect = document.getElementById('cascina-cliente-select');
-            console.log('Dropdown cliente cascina:', clienteSelect.value);
-        }
-        
-        if (selectedTarget === 'terreno') {
-            const clienteSelect = document.getElementById('terreno-cliente-select');
-            const cascinaSelect = document.getElementById('terreno-cascina-select');
-            console.log('Dropdown cliente terreno:', clienteSelect.value);
-            console.log('Dropdown cascina terreno:', cascinaSelect.value);
-        }
-    }
-    
-    // Test dell'API trattamenti
-    function testApiTrattamenti() {
-        console.log('🧪 Test API Trattamenti...');
-        
-        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-        const formData = new FormData();
-        
-        // Dati di test semplici
-        formData.append('csrfmiddlewaretoken', csrfToken);
-        formData.append('livello_applicazione', 'cliente');
-        formData.append('cliente', '1'); // Primo cliente
-        formData.append('prodotti_data', JSON.stringify([{
-            prodotto_id: '1',
-            quantita_per_ettaro: '1.0'  // Ora specifichiamo per ettaro
-        }]));
-        formData.append('note', 'Test API da JavaScript - quantità per ettaro');
-        
-        fetch('/api/trattamenti/', {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-CSRFToken': csrfToken,
-            },
-            credentials: 'same-origin'
-        })
-        .then(response => {
-            console.log('Risposta test API:', response.status, response.statusText);
-            return response.text();
-        })
-        .then(text => {
-            console.log('Contenuto risposta:', text);
-            try {
-                const data = JSON.parse(text);
-                console.log('Dati JSON:', data);
-            } catch (e) {
-                console.error('Risposta non è JSON valido:', e);
-            }
-        })
-        .catch(error => {
-            console.error('Errore test API:', error);
-        });
-    }
-    
-    // Funzione per forzare il passaggio al prossimo step (solo per debug)
-    function forceNextStep() {
-        console.log('🚀 FORCE NEXT STEP');
-        if (currentStep < maxSteps) {
-            currentStep++;
-            updateStepDisplay();
-            if (currentStep === 4) {
-                generateSummary();
-            }
-        }
-    }
-    
-    // === INIZIALIZZAZIONE ===
-    document.addEventListener('DOMContentLoaded', function() {
-        console.log('Inizializzazione form inserisci con selezioni multiple e quantità per ettaro...');
-        
-        // Add first product by default
-        addProduct();
-        
-        // Set minimum date to today
-        const today = new Date().toISOString().split('T')[0];
-        document.getElementById('data-esecuzione').min = today;
-        
-        // Debug iniziale
-        console.log('Clienti disponibili:', {{ clienti|length }});
-        console.log('Prodotti disponibili:', {{ prodotti|length }});
-        
-        // Aggiungi shortcuts per debug (rimuovi in produzione)
-        window.debugState = debugCurrentState;
-        window.forceNext = forceNextStep;
-        window.testApi = testApiTrattamenti;
-        window.selectedData = selectedData;
-        window.getSuperficie = getSuperficieTotale;
-        
-        console.log('Form pronto con selezioni multiple e calcolo quantità per ettaro!');
-        console.log('💡 Per debug usa: debugState(), forceNext(), getSuperficie(), o testApi()');
-    });
-</script>
-{% endblock %}
-
 {% block page_title %}Inserisci Nuovo Trattamento{% endblock %}
 {% block page_icon %}<i class="fas fa-plus-circle"></i>{% endblock %}
 
@@ -1306,12 +84,15 @@ ${document.querySelectorAll('.product-item').length} prodotti inseriti
         padding: 2.5rem;
     }
 
-    /* Step Indicator */
+    /* Step Indicator - Aggiornato per 3 step */
     .step-indicator {
         display: flex;
         justify-content: center;
         margin-bottom: 3rem;
         position: relative;
+        max-width: 450px;
+        margin-left: auto;
+        margin-right: auto;
     }
 
     .step {
@@ -1320,12 +101,11 @@ ${document.querySelectorAll('.product-item').length} prodotti inseriti
         align-items: center;
         position: relative;
         flex: 1;
-        max-width: 150px;
     }
 
     .step-number {
-        width: 50px;
-        height: 50px;
+        width: 60px;
+        height: 60px;
         border-radius: 50%;
         background: #e9ecef;
         color: #6c757d;
@@ -1333,7 +113,7 @@ ${document.querySelectorAll('.product-item').length} prodotti inseriti
         align-items: center;
         justify-content: center;
         font-weight: 600;
-        font-size: 1.1rem;
+        font-size: 1.2rem;
         margin-bottom: 0.5rem;
         transition: all 0.3s ease;
         position: relative;
@@ -1344,6 +124,7 @@ ${document.querySelectorAll('.product-item').length} prodotti inseriti
         background: var(--primary-color);
         color: white;
         transform: scale(1.1);
+        box-shadow: 0 4px 8px rgba(0,123,255,0.3);
     }
 
     .step.completed .step-number {
@@ -1352,10 +133,11 @@ ${document.querySelectorAll('.product-item').length} prodotti inseriti
     }
 
     .step-label {
-        font-size: 0.9rem;
+        font-size: 0.95rem;
         color: #6c757d;
         text-align: center;
         font-weight: 500;
+        line-height: 1.3;
     }
 
     .step.active .step-label {
@@ -1365,12 +147,13 @@ ${document.querySelectorAll('.product-item').length} prodotti inseriti
 
     .step-connector {
         position: absolute;
-        top: 25px;
-        left: 50%;
-        right: -50%;
-        height: 2px;
+        top: 30px;
+        left: 60%;
+        right: -60%;
+        height: 3px;
         background: #e9ecef;
         z-index: 1;
+        border-radius: 1.5px;
     }
 
     .step.completed .step-connector {
@@ -1434,122 +217,41 @@ ${document.querySelectorAll('.product-item').length} prodotti inseriti
         outline: none;
     }
 
-    /* Input Group Styling */
-    .input-group {
-        display: flex;
-        position: relative;
-    }
-
-    .input-group .form-control {
-        border-top-right-radius: 0;
-        border-bottom-right-radius: 0;
-        border-right: 0;
-    }
-
-    .input-group-text {
-        border: 2px solid #e9ecef;
-        border-left: 0;
-        background: #f8f9fa;
-        padding: 0.75rem 1rem;
-        font-size: 1rem;
-        color: #6c757d;
-        font-weight: 500;
-        min-width: 50px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .input-group-text:last-child {
-        border-top-right-radius: 10px;
-        border-bottom-right-radius: 10px;
-    }
-
-    .input-group .form-control:focus + .input-group-text,
-    .input-group .form-control:focus ~ .input-group-text {
-        border-color: var(--primary-color);
-    }
-
-    /* Quantity Calculation Box */
-    .quantity-calc-box {
-        background: #e8f5e8;
-        border: 1px solid #28a745;
-        border-radius: 8px;
-        padding: 0.8rem;
-        margin-top: 0.5rem;
-    }
-
-    .form-row {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 1.5rem;
-        margin-bottom: 1.5rem;
-    }
-
-    /* Selection Cards */
+    /* Selection Cards - LAYOUT ORIZZONTALE FORZATO */
     .selection-cards {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        display: flex;
+        justify-content: space-between;
         gap: 1rem;
         margin-bottom: 2rem;
     }
 
     .selection-card {
+        background: white;
         border: 2px solid #e9ecef;
         border-radius: 15px;
         padding: 1.5rem;
         text-align: center;
         cursor: pointer;
         transition: all 0.3s ease;
-        background: white;
         position: relative;
+        overflow: hidden;
+        flex: 1;
+        min-height: 180px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
     }
 
     .selection-card:hover {
         border-color: var(--primary-color);
         transform: translateY(-5px);
-        box-shadow: var(--shadow);
+        box-shadow: 0 8px 25px rgba(0,123,255,0.15);
     }
 
     .selection-card.selected {
         border-color: var(--success-color);
-        background: #f8fff9;
-        transform: translateY(-5px);
-        box-shadow: 0 8px 25px rgba(40, 167, 69, 0.15);
-    }
-
-    .selection-card.selected::before {
-        content: '✓';
-        position: absolute;
-        top: 10px;
-        right: 15px;
-        background: var(--success-color);
-        color: white;
-        width: 25px;
-        height: 25px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: bold;
-        font-size: 0.9rem;
-    }
-
-    .selection-card.selected::after {
-        content: attr(data-selection-number);
-        position: absolute;
-        top: 10px;
-        left: 15px;
-        background: #007bff;
-        color: white;
-        width: 25px;
-        height: 25px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: bold;
-        font-size: 0.9rem;
+        background: linear-gradient(135deg, #f0fff4 0%, #e8f5e8 100%);
+        box-shadow: 0 8px 25px rgba(40,167,69,0.2);
     }
 
     .selection-icon {
@@ -1558,206 +260,174 @@ ${document.querySelectorAll('.product-item').length} prodotti inseriti
         margin-bottom: 1rem;
     }
 
+    .selection-card.selected .selection-icon {
+        color: var(--success-color);
+    }
+
     .selection-title {
+        font-size: 1.1rem;
         font-weight: 600;
         color: #333;
         margin-bottom: 0.5rem;
     }
 
     .selection-description {
-        color: #666;
-        font-size: 0.9rem;
-    }
-
-    /* Selected Summary */
-    .selected-summary {
-        background: #f8fff9;
-        border: 1px solid #28a745;
-        border-radius: 15px;
-        padding: 1.5rem;
-        margin-top: 2rem;
-    }
-
-    .selected-summary .summary-title {
-        font-weight: 600;
-        color: #333;
+        color: #6c757d;
+        line-height: 1.4;
         margin-bottom: 1rem;
-        display: flex;
-        align-items: center;
+        font-size: 0.85rem;
+        flex-grow: 1;
     }
 
-    .selected-summary .summary-title i {
-        margin-right: 0.5rem;
-        color: #28a745;
-    }
-
-    .selected-item {
-        background: white;
-        border: 1px solid #28a745;
-        border-radius: 8px;
-        padding: 1rem;
-        margin-bottom: 0.5rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .selected-item:last-child {
-        margin-bottom: 0;
-    }
-
-    .selected-item-info {
-        flex: 1;
-    }
-
-    .selected-item-name {
-        font-weight: 600;
-        color: #333;
-        margin-bottom: 0.25rem;
-    }
-
-    .selected-item-details {
-        font-size: 0.9rem;
-        color: #666;
-    }
-
-    .selected-item-remove {
-        background: #dc3545;
+    .selection-badge {
+        background: var(--primary-color);
         color: white;
-        border: none;
-        width: 30px;
-        height: 30px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        margin-left: 1rem;
+        padding: 0.4rem 0.8rem;
+        border-radius: 15px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        display: inline-block;
     }
 
-    .selected-item-remove:hover {
-        background: #c82333;
-        transform: scale(1.1);
+    .selection-card.selected .selection-badge {
+        background: var(--success-color);
+    }
+
+    /* Nascondi le card dopo la selezione */
+    .selection-cards.hidden {
+        display: none;
+        animation: fadeOut 0.3s ease-out;
+    }
+
+    @keyframes fadeOut {
+        from {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        to {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
     }
 
     /* Product List */
     .product-list {
-        border: 2px solid #e9ecef;
-        border-radius: 15px;
-        padding: 1.5rem;
-        margin-bottom: 2rem;
-        background: #fafafa;
+        space-y: 1rem;
     }
 
     .product-item {
-        background: white;
-        border-radius: 10px;
+        background: #f8f9fa;
+        border-radius: 15px;
         padding: 1.5rem;
-        margin-bottom: 1rem;
-        border: 1px solid #e9ecef;
+        border: 2px solid #e9ecef;
         position: relative;
-        transition: all 0.3s ease;
-    }
-
-    .product-item:hover {
-        box-shadow: var(--shadow);
-        transform: translateX(5px);
-    }
-
-    .product-item:last-child {
-        margin-bottom: 0;
+        margin-bottom: 1rem;
     }
 
     .product-remove {
         position: absolute;
-        top: 10px;
-        right: 15px;
+        top: 1rem;
+        right: 1rem;
         background: var(--danger-color);
         color: white;
         border: none;
+        border-radius: 50%;
         width: 30px;
         height: 30px;
-        border-radius: 50%;
+        cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
-        cursor: pointer;
         transition: all 0.3s ease;
     }
 
     .product-remove:hover {
-        background: #c82333;
         transform: scale(1.1);
     }
 
-    /* Add Product Button */
     .add-product-btn {
+        background: linear-gradient(135deg, #e3f2fd 0%, #f1f8e9 100%);
         border: 2px dashed var(--primary-color);
-        background: rgba(0, 123, 255, 0.05);
-        color: var(--primary-color);
         border-radius: 15px;
         padding: 2rem;
         text-align: center;
         cursor: pointer;
         transition: all 0.3s ease;
-        margin-bottom: 2rem;
+        margin-top: 1rem;
     }
 
     .add-product-btn:hover {
-        background: rgba(0, 123, 255, 0.1);
-        transform: translateY(-3px);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,123,255,0.15);
     }
 
-    .add-product-btn i {
-        font-size: 2rem;
-        margin-bottom: 1rem;
-        display: block;
+    /* Summary */
+    .summary-box {
+        background: #f8f9fa;
+        border-radius: 15px;
+        padding: 2rem;
+        border: 2px solid #e9ecef;
     }
 
-    /* Navigation Buttons */
-    .form-navigation {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding-top: 2rem;
-        border-top: 1px solid #e9ecef;
-        margin-top: 2rem;
-    }
-
-    .btn {
-        padding: 0.75rem 2rem;
-        border-radius: 50px;
+    .summary-title {
+        font-size: 1.2rem;
         font-weight: 600;
-        transition: all 0.3s ease;
-        border: none;
-        cursor: pointer;
-        text-decoration: none;
-        display: inline-flex;
+        color: #333;
+        margin-bottom: 1.5rem;
+        display: flex;
         align-items: center;
         gap: 0.5rem;
     }
 
-    .btn-primary {
-        background: var(--gradient-primary);
-        color: white;
-        box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
+    .summary-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid #dee2e6;
     }
 
-    .btn-primary:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(0, 123, 255, 0.4);
+    .summary-item:last-child {
+        border-bottom: none;
+    }
+
+    .summary-label {
+        font-weight: 600;
+        color: #6c757d;
+    }
+
+    .summary-value {
+        color: #333;
+        text-align: right;
+    }
+
+    /* Navigation */
+    .form-navigation {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 3rem;
+        padding-top: 2rem;
+        border-top: 2px solid #e9ecef;
+    }
+
+    .btn {
+        padding: 0.75rem 2rem;
+        border-radius: 10px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        border: none;
+        cursor: pointer;
+        font-size: 1rem;
+    }
+
+    .btn-primary {
+        background: var(--primary-color);
+        color: white;
     }
 
     .btn-success {
-        background: var(--gradient-success);
+        background: var(--success-color);
         color: white;
-        box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
-    }
-
-    .btn-success:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
     }
 
     .btn-secondary {
@@ -1765,84 +435,23 @@ ${document.querySelectorAll('.product-item').length} prodotti inseriti
         color: white;
     }
 
-    .btn-secondary:hover {
-        background: #5a6268;
+    .btn:hover {
         transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
     }
 
-    .btn-warning {
-        background: #ffc107;
-        color: #212529;
+    .btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
     }
 
-    .btn-warning:hover {
-        background: #e0a800;
-        transform: translateY(-2px);
-    }
-
-    /* Summary Box */
-    .summary-box {
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        border-radius: 15px;
-        padding: 2rem;
-        margin-bottom: 2rem;
-        border: 1px solid #e9ecef;
-    }
-
-    .summary-title {
-        font-weight: 600;
-        color: #333;
-        margin-bottom: 1.5rem;
-        display: flex;
-        align-items: center;
-    }
-
-    .summary-title i {
-        margin-right: 0.5rem;
-        color: var(--primary-color);
-    }
-
-    .summary-item {
-        display: flex;
-        justify-content: space-between;
-        padding: 0.5rem 0;
-        border-bottom: 1px solid #dee2e6;
-    }
-
-    .summary-item:last-child {
-        border-bottom: none;
-        font-weight: 600;
-        font-size: 1.1rem;
-        color: var(--primary-color);
-    }
-
-    .summary-label {
-        color: #666;
-    }
-
-    .summary-value {
-        font-weight: 500;
-        color: #333;
-    }
-
-    /* Contoterzista Info */
-    .contoterzista-info {
-        background: #e8f5e8;
-        border: 1px solid #28a745;
-        border-radius: 10px;
-        padding: 1rem;
-        margin-top: 1rem;
-    }
-
-    .contoterzista-info.hidden {
-        display: none;
-    }
-
-    /* Loading Animation */
+    /* Loading */
     .loading {
         display: none;
         text-align: center;
         padding: 2rem;
+        color: var(--primary-color);
     }
 
     .loading.show {
@@ -1850,8 +459,8 @@ ${document.querySelectorAll('.product-item').length} prodotti inseriti
     }
 
     .spinner {
-        width: 50px;
-        height: 50px;
+        width: 40px;
+        height: 40px;
         border: 4px solid #f3f3f3;
         border-top: 4px solid var(--primary-color);
         border-radius: 50%;
@@ -1864,31 +473,197 @@ ${document.querySelectorAll('.product-item').length} prodotti inseriti
         100% { transform: rotate(360deg); }
     }
 
-    /* Alert styles */
-    .alert {
+    /* Form Row */
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+    }
+
+    .input-group {
+        display: flex;
+        position: relative;
+    }
+
+    .input-group .form-control {
+        border-top-right-radius: 0;
+        border-bottom-right-radius: 0;
+    }
+
+    .input-group-text {
+        background: #e9ecef;
+        border: 2px solid #e9ecef;
+        border-left: none;
+        border-top-right-radius: 10px;
+        border-bottom-right-radius: 10px;
+        padding: 0.75rem 1rem;
+        font-weight: 600;
+        color: #6c757d;
+    }
+
+    /* Interface Header */
+    .interface-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid #e9ecef;
+    }
+
+    .interface-header h5 {
+        margin: 0;
+        color: #333;
+    }
+
+    /* Search and Filter Styling */
+    .search-box {
+        max-width: 400px;
+        margin: 0 auto;
+    }
+
+    .filters-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1rem;
+        background: #f8f9fa;
         padding: 1rem;
-        margin-bottom: 1rem;
-        border-radius: 8px;
+        border-radius: 10px;
+        border: 1px solid #e9ecef;
     }
 
-    .alert-warning {
-        background-color: #fff3cd;
-        border: 1px solid #ffeaa7;
-        color: #856404;
+    .filters-row .form-group {
+        margin-bottom: 0;
     }
 
-    .alert-success {
-        background-color: #d4edda;
-        border: 1px solid #c3e6cb;
-        color: #155724;
+    .filters-row .form-label {
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
+        color: #495057;
     }
 
-    /* Responsive */
-    @media (max-width: 768px) {
-        .form-content {
-            padding: 1.5rem;
+    /* Selection Interface */
+    .selection-interface {
+        background: #f8f9fa;
+        border-radius: 15px;
+        padding: 2rem;
+        border: 2px solid #e9ecef;
+        animation: fadeInUp 0.5s ease-out;
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
         }
-        
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .clients-grid,
+    .cascine-grid,
+    .terreni-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 1rem;
+        max-height: 400px;
+        overflow-y: auto;
+        padding: 0.5rem;
+        border-radius: 10px;
+        background: white;
+        border: 1px solid #e9ecef;
+    }
+
+    .selection-item {
+        background: white;
+        border: 2px solid #e9ecef;
+        border-radius: 10px;
+        padding: 1rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        position: relative;
+    }
+
+    .selection-item:hover {
+        border-color: var(--primary-color);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,123,255,0.15);
+    }
+
+    .selection-item.selected {
+        border-color: var(--success-color);
+        background: linear-gradient(135deg, #f0fff4 0%, #e8f5e8 100%);
+    }
+
+    .selection-checkbox {
+        width: 30px;
+        height: 30px;
+        border: 2px solid #dee2e6;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s ease;
+        flex-shrink: 0;
+    }
+
+    .selection-item.selected .selection-checkbox {
+        background: var(--success-color);
+        border-color: var(--success-color);
+        color: white;
+    }
+
+    .selection-item:not(.selected) .selection-checkbox i {
+        display: none;
+    }
+
+    .selection-content {
+        flex: 1;
+    }
+
+    .selection-name {
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 0.25rem;
+    }
+
+    .selection-info {
+        font-size: 0.9rem;
+        color: #6c757d;
+        margin-bottom: 0.125rem;
+    }
+
+    .selection-extra {
+        font-size: 0.8rem;
+        color: #adb5bd;
+        font-style: italic;
+    }
+
+    .selection-item.selected .selection-name {
+        color: var(--success-color);
+        margin-bottom: 0.25rem;
+    }
+
+    .selection-info {
+        font-size: 0.9rem;
+        color: #6c757d;
+        margin-bottom: 0.125rem;
+    }
+
+    .selection-extra {
+        font-size: 0.8rem;
+        color: #adb5bd;
+        font-style: italic;
+    }
+
+    .selection-item.selected .selection-name {
+        color: var(--success-color);
+    }
         .form-row {
             grid-template-columns: 1fr;
         }
@@ -1904,12 +679,21 @@ ${document.querySelectorAll('.product-item').length} prodotti inseriti
         
         .step {
             flex: none;
+            min-width: 120px;
         }
         
         .step-connector {
             display: none;
         }
-    }
+
+        .form-navigation {
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .btn {
+            width: 100%;
+        }
 </style>
 {% endblock %}
 
@@ -1918,18 +702,18 @@ ${document.querySelectorAll('.product-item').length} prodotti inseriti
 <div class="page-header">
     <div class="page-header-content">
         <h1><i class="fas fa-seedling me-3"></i>Nuovo Trattamento</h1>
-        <p>Crea un nuovo trattamento con calcolo automatico delle quantità per ettaro</p>
+        <p>Programmazione semplice e veloce - Solo 3 passaggi</p>
     </div>
 </div>
 
 <!-- Main Form -->
 <div class="form-container">
     <div class="form-header">
-        <h2><i class="fas fa-plus-circle me-2"></i>Configurazione Trattamento</h2>
+        <h2><i class="fas fa-plus-circle me-2"></i>Creazione Rapida Trattamento</h2>
     </div>
     
     <div class="form-content">
-        <!-- Step Indicator -->
+        <!-- Step Indicator - Solo 3 step -->
         <div class="step-indicator">
             <div class="step active" id="step1">
                 <div class="step-number">1</div>
@@ -1943,12 +727,7 @@ ${document.querySelectorAll('.product-item').length} prodotti inseriti
             </div>
             <div class="step" id="step3">
                 <div class="step-number">3</div>
-                <div class="step-label">Dettagli<br>Aggiuntivi</div>
-                <div class="step-connector"></div>
-            </div>
-            <div class="step" id="step4">
-                <div class="step-number">4</div>
-                <div class="step-label">Riepilogo<br>Conferma</div>
+                <div class="step-label">Conferma<br>& Crea</div>
             </div>
         </div>
 
@@ -1967,7 +746,12 @@ ${document.querySelectorAll('.product-item').length} prodotti inseriti
                             <i class="fas fa-building"></i>
                         </div>
                         <div class="selection-title">Intera Azienda</div>
-                        <div class="selection-description">Applica il trattamento a tutti i terreni dell'azienda selezionata</div>
+                        <div class="selection-description">
+                            Applica il trattamento a tutti i terreni dell'azienda selezionata
+                        </div>
+                        <div class="selection-badge">
+                            <i class="fas fa-users"></i> Per Cliente
+                        </div>
                     </div>
                     
                     <div class="selection-card" onclick="selectTarget('cascina')">
@@ -1975,127 +759,38 @@ ${document.querySelectorAll('.product-item').length} prodotti inseriti
                             <i class="fas fa-home"></i>
                         </div>
                         <div class="selection-title">Cascina Specifica</div>
-                        <div class="selection-description">Applica il trattamento a tutti i terreni di una cascina</div>
+                        <div class="selection-description">
+                            Applica il trattamento a tutti i terreni di una cascina
+                        </div>
+                        <div class="selection-badge">
+                            <i class="fas fa-map-marker-alt"></i> Per Cascina
+                        </div>
                     </div>
                     
                     <div class="selection-card" onclick="selectTarget('terreno')">
                         <div class="selection-icon">
                             <i class="fas fa-seedling"></i>
                         </div>
-                        <div class="selection-title">Terreni Selezionati</div>
-                        <div class="selection-description">Scegli specifici terreni per il trattamento</div>
+                        <div class="selection-title">Terreni Specifici</div>
+                        <div class="selection-description">
+                            Seleziona manualmente i terreni da trattare
+                        </div>
+                        <div class="selection-badge">
+                            <i class="fas fa-list-check"></i> Selezione Manuale
+                        </div>
                     </div>
                 </div>
-
-                <!-- Dynamic Selection Forms -->
-                <div id="cliente-selection" class="target-form" style="display: none;">
-                    <div class="form-group">
-                        <label class="form-label required">Seleziona Aziende</label>
-                        <p class="text-muted mb-3">Puoi selezionare una o più aziende per il trattamento</p>
-                        <div id="clienti-list" class="selection-cards">
-                            {% for cliente in clienti %}
-                            <div class="selection-card cliente-card" data-cliente-id="{{ cliente.id }}" onclick="toggleCliente({{ cliente.id }}, this)">
-                                <div class="selection-icon">
-                                    <i class="fas fa-building"></i>
-                                </div>
-                                <div class="selection-title">{{ cliente.nome }}</div>
-                                <div class="selection-description">Tutte le cascine e terreni</div>
-                            </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                    
-                    <!-- Riepilogo selezioni clienti -->
-                    <div id="clienti-selected-summary" class="selected-summary" style="display: none;">
-                        <div class="summary-title">
-                            <i class="fas fa-check-circle text-success"></i>
-                            Aziende Selezionate
-                        </div>
-                        <div id="clienti-selected-list"></div>
-                    </div>
-                </div>
-
-                <div id="cascina-selection" class="target-form" style="display: none;">
-                    <div class="form-group">
-                        <label class="form-label required">Seleziona Azienda per visualizzare le Cascine</label>
-                        <select class="form-select" id="cascina-cliente-select" onchange="loadCascineForSelection()">
-                            <option value="">Scegli un'azienda...</option>
-                            {% for cliente in clienti %}
-                            <option value="{{ cliente.id }}">{{ cliente.nome }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    
-                    <div class="form-group" id="cascine-selection-container" style="display: none;">
-                        <label class="form-label required">Seleziona Cascine</label>
-                        <p class="text-muted mb-3">Puoi selezionare una o più cascine per il trattamento</p>
-                        <div id="cascine-list" class="selection-cards">
-                            <!-- Le cascine verranno caricate dinamicamente -->
-                        </div>
-                    </div>
-                    
-                    <!-- Riepilogo selezioni cascine -->
-                    <div id="cascine-selected-summary" class="selected-summary" style="display: none;">
-                        <div class="summary-title">
-                            <i class="fas fa-check-circle text-success"></i>
-                            Cascine Selezionate
-                        </div>
-                        <div id="cascine-selected-list"></div>
-                    </div>
-                </div>
-
-                <div id="terreno-selection" class="target-form" style="display: none;">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label required">Seleziona Azienda</label>
-                            <select class="form-select" id="terreno-cliente-select" onchange="loadCascineForTerreni()">
-                                <option value="">Scegli un'azienda...</option>
-                                {% for cliente in clienti %}
-                                <option value="{{ cliente.id }}">{{ cliente.nome }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label required">Seleziona Cascina</label>
-                            <select class="form-select" id="terreno-cascina-select" onchange="loadTerreniForCascina()">
-                                <option value="">Prima seleziona un'azienda...</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="form-group" id="terreni-selection-container" style="display: none;">
-                        <label class="form-label required">Seleziona Terreni</label>
-                        <p class="text-muted mb-3">Puoi selezionare uno o più terreni per il trattamento</p>
-                        <div id="terreni-list" class="selection-cards" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
-                            <!-- I terreni verranno caricati dinamicamente -->
-                        </div>
-                    </div>
-                    
-                    <!-- Riepilogo selezioni terreni -->
-                    <div id="terreni-selected-summary" class="selected-summary" style="display: none;">
-                        <div class="summary-title">
-                            <i class="fas fa-check-circle text-success"></i>
-                            Terreni Selezionati
-                        </div>
-                        <div id="terreni-selected-list"></div>
-                    </div>
-                </div>
-
-                <!-- Contoterzista Info -->
-                <div id="contoterzista-info" class="contoterzista-info hidden">
-                    <div class="summary-title">
-                        <i class="fas fa-user-tie"></i>
-                        Contoterzista Assegnato
-                    </div>
-                    <div id="contoterzista-details">
-                        <!-- Verrà popolato dinamicamente -->
-                    </div>
+                
+                <!-- Dynamic content area -->
+                <div id="target-selection-area" class="mt-4">
+                    <!-- Content will be populated based on selection -->
                 </div>
             </div>
 
             <!-- Step 2: Products -->
             <div class="form-step" id="form-step-2">
-                <h3><i class="fas fa-flask text-primary me-2"></i>Seleziona i Prodotti e le Quantità per Ettaro</h3>
-                <p class="text-muted mb-4">Aggiungi i prodotti fitosanitari specificando la quantità per ettaro. Il sistema calcolerà automaticamente la quantità totale.</p>
+                <h3><i class="fas fa-flask text-primary me-2"></i>Prodotti e Quantità per Ettaro</h3>
+                <p class="text-muted mb-4">Seleziona i prodotti da utilizzare e specifica le quantità per ettaro. Il sistema calcolerà automaticamente la quantità totale.</p>
                 
                 <div class="product-list" id="products-container">
                     <!-- I prodotti verranno aggiunti dinamicamente -->
@@ -2108,36 +803,10 @@ ${document.querySelectorAll('.product-item').length} prodotti inseriti
                 </div>
             </div>
 
-            <!-- Step 3: Additional Details -->
+            <!-- Step 3: Summary (era step 4) -->
             <div class="form-step" id="form-step-3">
-                <h3><i class="fas fa-calendar-alt text-primary me-2"></i>Dettagli Aggiuntivi</h3>
-                <p class="text-muted mb-4">Specifica la data di esecuzione e aggiungi eventuali note per il contoterzista.</p>
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label">Data Esecuzione Prevista</label>
-                        <input type="date" class="form-control" id="data-esecuzione">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Priorità</label>
-                        <select class="form-select" id="priorita">
-                            <option value="normale">Normale</option>
-                            <option value="alta">Alta</option>
-                            <option value="urgente">Urgente</option>
-                        </select>
-                    </div>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Note per il Contoterzista</label>
-                    <textarea class="form-control" id="note" rows="4" placeholder="Inserisci eventuali istruzioni speciali, condizioni meteorologiche da rispettare, o altre informazioni utili per l'esecuzione del trattamento..."></textarea>
-                </div>
-            </div>
-
-            <!-- Step 4: Summary -->
-            <div class="form-step" id="form-step-4">
                 <h3><i class="fas fa-check-circle text-success me-2"></i>Riepilogo e Conferma</h3>
-                <p class="text-muted mb-4">Verifica tutti i dettagli del trattamento prima di confermarlo. Le quantità sono calcolate automaticamente per ettaro.</p>
+                <p class="text-muted mb-4">Verifica tutti i dettagli del trattamento prima di confermarlo. Il trattamento verrà creato con stato "Programmato".</p>
                 
                 <div class="summary-box">
                     <div class="summary-title">
@@ -2161,11 +830,6 @@ ${document.querySelectorAll('.product-item').length} prodotti inseriti
                     <i class="fas fa-arrow-left"></i> Indietro
                 </button>
                 
-                <!-- Debug button (rimuovi in produzione) -->
-                <button type="button" class="btn btn-warning" id="debug-btn" onclick="debugCurrentState()" style="display: inline-flex;">
-                    <i class="fas fa-bug"></i> Debug
-                </button>
-                
                 <div></div> <!-- Spacer -->
                 
                 <button type="button" class="btn btn-primary" id="next-btn" onclick="nextStep()">
@@ -2179,5 +843,909 @@ ${document.querySelectorAll('.product-item').length} prodotti inseriti
         </form>
     </div>
 </div>
+
+<script>
+// === GLOBAL VARIABLES ===
+let currentStep = 1;
+let maxSteps = 3; // ✅ Aggiornato a 3 step
+let selectedTarget = null;
+let selectedData = {
+    clienti: [],
+    cascine: [],
+    terreni: []
+};
+let productCounter = 0;
+
+// === STEP MANAGEMENT ===
+function nextStep() {
+    if (!validateCurrentStep()) return;
+    
+    if (currentStep < maxSteps) {
+        currentStep++;
+        updateStepDisplay();
+        if (currentStep === 3) { // ✅ Aggiornato
+            generateSummary();
+        }
+    }
+}
+
+function previousStep() {
+    if (currentStep > 1) {
+        currentStep--;
+        updateStepDisplay();
+    }
+}
+
+function updateStepDisplay() {
+    // Update step indicator
+    for (let i = 1; i <= maxSteps; i++) {
+        const step = document.getElementById(`step${i}`);
+        const formStep = document.getElementById(`form-step-${i}`);
+        
+        step.classList.remove('active', 'completed');
+        formStep.classList.remove('active');
+        
+        if (i < currentStep) {
+            step.classList.add('completed');
+        } else if (i === currentStep) {
+            step.classList.add('active');
+            formStep.classList.add('active');
+        }
+    }
+    
+    // Update navigation buttons
+    document.getElementById('prev-btn').style.display = currentStep > 1 ? 'inline-flex' : 'none';
+    document.getElementById('next-btn').style.display = currentStep < maxSteps ? 'inline-flex' : 'none';
+    document.getElementById('submit-btn').style.display = currentStep === maxSteps ? 'inline-flex' : 'none';
+}
+
+// === VALIDATION ===
+function validateCurrentStep() {
+    if (currentStep === 1) {
+        return validateStep1();
+    } else if (currentStep === 2) {
+        return validateStep2();
+    } else if (currentStep === 3) { // ✅ Aggiornato
+        return true; // Summary step
+    }
+    return false;
+}
+
+function validateStep1() {
+    if (!selectedTarget) {
+        showError('Seleziona un tipo di target per il trattamento');
+        return false;
+    }
+    
+    if (selectedTarget === 'cliente' && selectedData.clienti.length === 0) {
+        showError('Seleziona almeno un cliente');
+        return false;
+    }
+    
+    if (selectedTarget === 'cascina' && selectedData.cascine.length === 0) {
+        showError('Seleziona almeno una cascina');
+        return false;
+    }
+    
+    if (selectedTarget === 'terreno' && selectedData.terreni.length === 0) {
+        showError('Seleziona almeno un terreno');
+        return false;
+    }
+    
+    return true;
+}
+
+function validateStep2() {
+    const productItems = document.querySelectorAll('.product-item');
+    
+    if (productItems.length === 0) {
+        showError('Aggiungi almeno un prodotto al trattamento');
+        return false;
+    }
+    
+    let hasValidProduct = false;
+    productItems.forEach(item => {
+        const select = item.querySelector('.product-select');
+        const quantity = item.querySelector('.quantity-input');
+        
+        if (select.value && quantity.value && parseFloat(quantity.value) > 0) {
+            hasValidProduct = true;
+        }
+    });
+    
+    if (!hasValidProduct) {
+        showError('Specifica almeno un prodotto con quantità valida');
+        return false;
+    }
+    
+    return true;
+}
+
+// === SUMMARY GENERATION (SEMPLIFICATA) ===
+function generateSummary() {
+    console.log('Generazione riepilogo finale semplificato...');
+    const summaryContainer = document.getElementById('final-summary');
+    let summaryHTML = '';
+    
+    // Target info
+    summaryHTML += `
+        <div class="summary-item">
+            <span class="summary-label">Target:</span>
+            <span class="summary-value">${getTargetDescription()}</span>
+        </div>
+    `;
+    
+    // Surface info
+    const superficie = getSuperficieTotale();
+    summaryHTML += `
+        <div class="summary-item">
+            <span class="summary-label">Superficie Totale:</span>
+            <span class="summary-value">${superficie.toFixed(2)} ettari</span>
+        </div>
+    `;
+    
+    // Products info
+    const productItems = document.querySelectorAll('.product-item');
+    productItems.forEach((item, index) => {
+        const select = item.querySelector('.product-select');
+        const quantity = item.querySelector('.quantity-input');
+        
+        if (select.value && quantity.value) {
+            const productName = select.options[select.selectedIndex].text;
+            const unita = select.options[select.selectedIndex].dataset.unita || '';
+            const quantitaTotale = parseFloat(quantity.value) * superficie;
+            
+            summaryHTML += `
+                <div class="summary-item">
+                    <span class="summary-label">Prodotto ${index + 1}:</span>
+                    <span class="summary-value">
+                        ${productName} - ${quantity.value} ${unita}/ha
+                        ${superficie > 0 ? ` = <strong>${quantitaTotale.toFixed(3)} ${unita} totali</strong>` : ''}
+                    </span>
+                </div>
+            `;
+        }
+    });
+    
+    summaryHTML += `
+        <div class="summary-item">
+            <span class="summary-label">Stato:</span>
+            <span class="summary-value">Programmato</span>
+        </div>
+    `;
+    
+    summaryContainer.innerHTML = summaryHTML;
+}
+
+// === SUBMIT FORM (SEMPLIFICATO) ===
+function submitForm() {
+    console.log('Invio form ultra semplificato...');
+    if (!validateCurrentStep()) return;
+    
+    document.getElementById('loading').classList.add('show');
+    document.getElementById('submit-btn').disabled = true;
+    
+    // Preparazione dati prodotti
+    const productItems = document.querySelectorAll('.product-item');
+    const prodottiData = [];
+    productItems.forEach(item => {
+        const select = item.querySelector('.product-select');
+        const quantity = item.querySelector('.quantity-input');
+        
+        if (select.value && quantity.value) {
+            prodottiData.push({
+                prodotto_id: select.value,
+                quantita_per_ettaro: quantity.value
+            });
+        }
+    });
+    
+    // Note minime automatiche
+    let noteAutomatiche = 'Trattamento programmato';
+    
+    // Strategia: Creare trattamenti multipli in base al tipo di selezione
+    let trattamentiDaCreare = [];
+    
+    if (selectedTarget === 'cliente') {
+        selectedData.clienti.forEach(cliente => {
+            trattamentiDaCreare.push({
+                livello_applicazione: 'cliente',
+                cliente: cliente.id,
+                cascina: null,
+                terreni_selezionati: [],
+                prodotti_data: JSON.stringify(prodottiData),
+                data_esecuzione_prevista: null,
+                note: noteAutomatiche + ` [${cliente.nome}]`
+            });
+        });
+    } else if (selectedTarget === 'cascina') {
+        selectedData.cascine.forEach(cascina => {
+            trattamentiDaCreare.push({
+                livello_applicazione: 'cascina',
+                cliente: cascina.cliente_id,
+                cascina: cascina.id,
+                terreni_selezionati: [],
+                prodotti_data: JSON.stringify(prodottiData),
+                data_esecuzione_prevista: null,
+                note: noteAutomatiche + ` [${cascina.nome}]`
+            });
+        });
+    } else if (selectedTarget === 'terreno') {
+        trattamentiDaCreare.push({
+            livello_applicazione: 'terreno',
+            cliente: selectedData.terreni[0].cliente_id,
+            cascina: selectedData.terreni[0].cascina_id,
+            terreni_selezionati: selectedData.terreni.map(t => t.id),
+            prodotti_data: JSON.stringify(prodottiData),
+            data_esecuzione_prevista: null,
+            note: noteAutomatiche + ` [${selectedData.terreni.length} terreni]`
+        });
+    }
+    
+    console.log('Trattamenti da creare:', trattamentiDaCreare);
+    createTrattamentiSequentially(trattamentiDaCreare);
+}
+
+// === UTILITY FUNCTIONS ===
+function showError(message) {
+    alert(message); // Sostituisci con una notifica più elegante se preferisci
+}
+
+function getTargetDescription() {
+    if (selectedTarget === 'cliente') {
+        return `${selectedData.clienti.length} Cliente${selectedData.clienti.length > 1 ? 'i' : ''}`;
+    } else if (selectedTarget === 'cascina') {
+        return `${selectedData.cascine.length} Cascina${selectedData.cascine.length > 1 ? 'e' : ''}`;
+    } else if (selectedTarget === 'terreno') {
+        return `${selectedData.terreni.length} Terreno${selectedData.terreni.length > 1 ? 'i' : ''}`;
+    }
+    return 'Non selezionato';
+}
+
+function getSuperficieTotale() {
+    let superficie = 0;
+    if (selectedTarget === 'terreno') {
+        superficie = selectedData.terreni.reduce((sum, terreno) => sum + parseFloat(terreno.superficie || 0), 0);
+    } else if (selectedTarget === 'cascina') {
+        superficie = selectedData.cascine.reduce((sum, cascina) => sum + parseFloat(cascina.superficie_totale || 0), 0);
+    } else if (selectedTarget === 'cliente') {
+        superficie = selectedData.clienti.reduce((sum, cliente) => sum + parseFloat(cliente.superficie_totale || 0), 0);
+    }
+    return superficie;
+}
+
+// === TARGET SELECTION ===
+function selectTarget(type) {
+    selectedTarget = type;
+    
+    // Reset previous selections
+    selectedData = {
+        clienti: [],
+        cascine: [],
+        terreni: []
+    };
+    
+    // Update UI
+    document.querySelectorAll('.selection-card').forEach(card => {
+        card.classList.remove('selected');
+    });
+    event.currentTarget.classList.add('selected');
+    
+    // Nascondi le card dopo 500ms per permettere di vedere la selezione
+    setTimeout(() => {
+        document.querySelector('.selection-cards').classList.add('hidden');
+        
+        // Mostra l'interfaccia di selezione appropriata
+        setTimeout(() => {
+            loadTargetSelection(type);
+        }, 300);
+    }, 500);
+}
+
+function loadTargetSelection(type) {
+    const container = document.getElementById('target-selection-area');
+    
+    if (type === 'cliente') {
+        container.innerHTML = `
+            <div class="selection-interface">
+                <div class="interface-header">
+                    <h5><i class="fas fa-building text-primary me-2"></i>Seleziona Clienti con Terreni</h5>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="resetTargetSelection()">
+                        <i class="fas fa-arrow-left me-1"></i>Cambia Tipo
+                    </button>
+                </div>
+                
+                <!-- Ricerca Clienti -->
+                <div class="search-box mb-3">
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="search-clienti" placeholder="Cerca cliente per nome..." onkeyup="filterClients()">
+                        <span class="input-group-text">
+                            <i class="fas fa-search"></i>
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="clients-grid" id="clients-container">
+                    {% for cliente in clienti %}
+                    {% if cliente.get_superficie_totale > 0 %}
+                    <div class="selection-item" 
+                         data-name="{{ cliente.nome|lower }}" 
+                         data-cliente-id="{{ cliente.id }}"
+                         data-cliente-nome="{{ cliente.nome }}"
+                         data-superficie="{{ cliente.get_superficie_totale }}"
+                         onclick="toggleClienteSelectionSafe(this)">
+                        <div class="selection-checkbox">
+                            <i class="fas fa-check"></i>
+                        </div>
+                        <div class="selection-content">
+                            <div class="selection-name">{{ cliente.nome }}</div>
+                            <div class="selection-info">{{ cliente.get_superficie_totale|floatformat:2 }} ha totali</div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        `;
+    } else if (type === 'cascina') {
+        container.innerHTML = `
+            <div class="selection-interface">
+                <div class="interface-header">
+                    <h5><i class="fas fa-home text-primary me-2"></i>Seleziona Cascine</h5>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="resetTargetSelection()">
+                        <i class="fas fa-arrow-left me-1"></i>Cambia Tipo
+                    </button>
+                </div>
+                
+                <!-- Filtri per Cascine -->
+                <div class="filters-row mb-3">
+                    <div class="form-group">
+                        <label class="form-label">Filtra per Cliente</label>
+                        <select class="form-select" id="filter-cliente-cascine" onchange="filterCascineByCliente()">
+                            <option value="">Tutti i clienti</option>
+                            {% for cliente in clienti %}
+                            {% if cliente.cascine.exists %}
+                            <option value="{{ cliente.id }}">{{ cliente.nome }}</option>
+                            {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Ricerca Cascina</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="search-cascine" placeholder="Cerca cascina per nome..." onkeyup="filterCascine()">
+                            <span class="input-group-text">
+                                <i class="fas fa-search"></i>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="cascine-grid" id="cascine-container">
+                    {% for cascina in cascine %}
+                    <div class="selection-item" 
+                         data-name="{{ cascina.nome|lower }}" 
+                         data-cliente-id="{{ cascina.cliente.id }}"
+                         data-cascina-id="{{ cascina.id }}"
+                         data-cascina-nome="{{ cascina.nome }}"
+                         data-cliente-nome="{{ cascina.cliente.nome }}"
+                         data-superficie="{{ cascina.get_superficie_totale }}"
+                         onclick="toggleCascinaSelectionSafe(this)">
+                        <div class="selection-checkbox">
+                            <i class="fas fa-check"></i>
+                        </div>
+                        <div class="selection-content">
+                            <div class="selection-name">{{ cascina.nome }}</div>
+                            <div class="selection-info">{{ cascina.cliente.nome }} - {{ cascina.get_superficie_totale|floatformat:2 }} ha</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        `;
+    } else if (type === 'terreno') {
+        container.innerHTML = `
+            <div class="selection-interface">
+                <div class="interface-header">
+                    <h5><i class="fas fa-seedling text-primary me-2"></i>Seleziona Terreni</h5>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="resetTargetSelection()">
+                        <i class="fas fa-arrow-left me-1"></i>Cambia Tipo
+                    </button>
+                </div>
+                
+                <!-- Filtri per Terreni -->
+                <div class="filters-row mb-3">
+                    <div class="form-group">
+                        <label class="form-label">Filtra per Cliente</label>
+                        <select class="form-select" id="filter-cliente-terreni" onchange="filterTerreniByCliente()">
+                            <option value="">Tutti i clienti</option>
+                            {% for cliente in clienti %}
+                            {% if cliente.get_superficie_totale > 0 %}
+                            <option value="{{ cliente.id }}">{{ cliente.nome }}</option>
+                            {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Filtra per Cascina</label>
+                        <select class="form-select" id="filter-cascina-terreni" onchange="filterTerreniByCliente()">
+                            <option value="">Tutte le cascine</option>
+                            {% for cascina in cascine %}
+                            <option value="{{ cascina.id }}" data-cliente-id="{{ cascina.cliente.id }}">{{ cascina.nome }} ({{ cascina.cliente.nome }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Ricerca Terreno</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="search-terreni" placeholder="Cerca terreno per nome..." onkeyup="filterTerreni()">
+                            <span class="input-group-text">
+                                <i class="fas fa-search"></i>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="terreni-grid" id="terreni-container">
+                    {% for terreno in terreni %}
+                    <div class="selection-item" 
+                         data-name="{{ terreno.nome|lower }}" 
+                         data-cliente-id="{{ terreno.cascina.cliente.id }}"
+                         data-cascina-id="{{ terreno.cascina.id }}"
+                         data-terreno-id="{{ terreno.id }}"
+                         data-terreno-nome="{{ terreno.nome }}"
+                         data-superficie="{{ terreno.superficie }}"
+                         onclick="toggleTerrenoSelectionSafe(this)">
+                        <div class="selection-checkbox">
+                            <i class="fas fa-check"></i>
+                        </div>
+                        <div class="selection-content">
+                            <div class="selection-name">{{ terreno.nome }}</div>
+                            <div class="selection-info">{{ terreno.cascina.nome }} - {{ terreno.superficie }} ha</div>
+                            <div class="selection-extra">{{ terreno.cascina.cliente.nome }}</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        `;
+    }
+}
+
+// === FUNZIONE PER TORNARE ALLA SELEZIONE DEL TIPO ===
+function resetTargetSelection() {
+    selectedTarget = null;
+    selectedData = {
+        clienti: [],
+        cascine: [],
+        terreni: []
+    };
+    
+    // Mostra di nuovo le card
+    const selectionCards = document.querySelector('.selection-cards');
+    selectionCards.classList.remove('hidden');
+    
+    // Rimuovi selezioni
+    document.querySelectorAll('.selection-card').forEach(card => {
+        card.classList.remove('selected');
+    });
+    
+    // Pulisci l'area di selezione
+    document.getElementById('target-selection-area').innerHTML = '';
+}
+
+// === SELECTION TOGGLES SICURE (leggono da data attributes) ===
+function toggleClienteSelectionSafe(element) {
+    const id = parseInt(element.dataset.clienteId);
+    const nome = element.dataset.clienteNome;
+    const superficie = parseFloat(element.dataset.superficie);
+    
+    console.log('Toggle cliente sicuro:', id, nome, superficie);
+    
+    const index = selectedData.clienti.findIndex(c => c.id === id);
+    if (index > -1) {
+        selectedData.clienti.splice(index, 1);
+        element.classList.remove('selected');
+    } else {
+        selectedData.clienti.push({id, nome, superficie_totale: superficie});
+        element.classList.add('selected');
+    }
+    
+    updateSelectionUI();
+    console.log('Clienti selezionati:', selectedData.clienti);
+}
+
+function toggleCascinaSelectionSafe(element) {
+    const id = parseInt(element.dataset.cascinaId);
+    const nome = element.dataset.cascinaNome;
+    const clienteId = parseInt(element.dataset.clienteId);
+    const clienteNome = element.dataset.clienteNome;
+    const superficie = parseFloat(element.dataset.superficie);
+    
+    console.log('Toggle cascina sicuro:', id, nome, clienteId, clienteNome, superficie);
+    
+    const index = selectedData.cascine.findIndex(c => c.id === id);
+    if (index > -1) {
+        selectedData.cascine.splice(index, 1);
+        element.classList.remove('selected');
+    } else {
+        selectedData.cascine.push({
+            id, 
+            nome, 
+            cliente_id: clienteId, 
+            cliente_nome: clienteNome,
+            superficie_totale: superficie
+        });
+        element.classList.add('selected');
+    }
+    
+    updateSelectionUI();
+    console.log('Cascine selezionate:', selectedData.cascine);
+}
+
+function toggleTerrenoSelectionSafe(element) {
+    const id = parseInt(element.dataset.terrenoId);
+    const nome = element.dataset.terrenoNome;
+    const cascinaId = parseInt(element.dataset.cascinaId);
+    const clienteId = parseInt(element.dataset.clienteId);
+    const superficie = parseFloat(element.dataset.superficie);
+    
+    console.log('Toggle terreno sicuro:', id, nome, cascinaId, clienteId, superficie);
+    
+    const index = selectedData.terreni.findIndex(t => t.id === id);
+    if (index > -1) {
+        selectedData.terreni.splice(index, 1);
+        element.classList.remove('selected');
+    } else {
+        selectedData.terreni.push({
+            id, 
+            nome, 
+            cascina_id: cascinaId, 
+            cliente_id: clienteId, 
+            superficie
+        });
+        element.classList.add('selected');
+    }
+    
+    updateSelectionUI();
+    console.log('Terreni selezionati:', selectedData.terreni);
+}
+
+// === SELECTION TOGGLES LEGACY (mantieni per compatibilità) ===
+function toggleClienteSelection(id, nome, superficie) {
+    console.log('ATTENZIONE: Usando metodo legacy per cliente', id, nome);
+    const index = selectedData.clienti.findIndex(c => c.id === id);
+    if (index > -1) {
+        selectedData.clienti.splice(index, 1);
+    } else {
+        selectedData.clienti.push({id, nome, superficie_totale: superficie});
+    }
+    updateSelectionUI();
+}
+
+function toggleCascinaSelection(id, nome, clienteId, clienteNome, superficie) {
+    console.log('ATTENZIONE: Usando metodo legacy per cascina', id, nome);
+    const index = selectedData.cascine.findIndex(c => c.id === id);
+    if (index > -1) {
+        selectedData.cascine.splice(index, 1);
+    } else {
+        selectedData.cascine.push({
+            id, 
+            nome, 
+            cliente_id: clienteId, 
+            cliente_nome: clienteNome,
+            superficie_totale: superficie
+        });
+    }
+    updateSelectionUI();
+}
+
+function toggleTerrenoSelection(id, nome, cascinaId, clienteId, superficie) {
+    console.log('ATTENZIONE: Usando metodo legacy per terreno', id, nome);
+    const index = selectedData.terreni.findIndex(t => t.id === id);
+    if (index > -1) {
+        selectedData.terreni.splice(index, 1);
+    } else {
+        selectedData.terreni.push({
+            id, 
+            nome, 
+            cascina_id: cascinaId, 
+            cliente_id: clienteId, 
+            superficie
+        });
+    }
+    updateSelectionUI();
+}
+
+function updateSelectionUI() {
+    document.querySelectorAll('.selection-item').forEach(item => {
+        item.classList.remove('selected');
+    });
+    
+    // Mark selected items
+    if (selectedTarget === 'cliente') {
+        selectedData.clienti.forEach(cliente => {
+            const item = document.querySelector(`[onclick*="toggleClienteSelection(${cliente.id}"]`);
+            if (item) item.classList.add('selected');
+        });
+    } else if (selectedTarget === 'cascina') {
+        selectedData.cascine.forEach(cascina => {
+            const item = document.querySelector(`[onclick*="toggleCascinaSelection(${cascina.id}"]`);
+            if (item) item.classList.add('selected');
+        });
+    } else if (selectedTarget === 'terreno') {
+        selectedData.terreni.forEach(terreno => {
+            const item = document.querySelector(`[onclick*="toggleTerrenoSelection(${terreno.id}"]`);
+            if (item) item.classList.add('selected');
+        });
+    }
+}
+
+// === PRODUCT MANAGEMENT ===
+function addProduct() {
+    productCounter++;
+    console.log('Aggiunta prodotto #', productCounter);
+    
+    const productItem = document.createElement('div');
+    productItem.className = 'product-item';
+    productItem.id = `product-${productCounter}`;
+    productItem.innerHTML = `
+        <button type="button" class="product-remove" onclick="removeProduct(${productCounter})">
+            <i class="fas fa-times"></i>
+        </button>
+        <div class="form-row">
+            <div class="form-group">
+                <label class="form-label required">Prodotto</label>
+                <select class="form-select product-select" data-product-id="${productCounter}" onchange="updateProductInfo(${productCounter})">
+                    <option value="">Seleziona un prodotto...</option>
+                    {% for prodotto in prodotti %}
+                    <option value="{{ prodotto.id }}" data-unita="{{ prodotto.unita_misura }}">{{ prodotto.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label required">Quantità per Ettaro</label>
+                <div class="input-group">
+                    <input type="number" class="form-control quantity-input" step="0.001" min="0.001" placeholder="0.000" onchange="updateQuantityCalculation(${productCounter})">
+                    <span class="input-group-text" id="unit-${productCounter}">-</span>
+                    <span class="input-group-text">/ha</span>
+                </div>
+                <div class="quantity-calculation" id="calc-${productCounter}" style="margin-top: 0.5rem; font-size: 0.9rem; color: #666;">
+                    <!-- Calcolo automatico apparirà qui -->
+                </div>
+            </div>
+        </div>
+        <div class="product-info" id="product-info-${productCounter}">
+            <!-- Info prodotto verranno mostrate qui -->
+        </div>
+    `;
+    
+    document.getElementById('products-container').appendChild(productItem);
+}
+
+function removeProduct(id) {
+    const productItem = document.getElementById(`product-${id}`);
+    if (productItem) {
+        productItem.remove();
+    }
+}
+
+function updateProductInfo(productId) {
+    const select = document.querySelector(`[data-product-id="${productId}"]`);
+    const selectedOption = select.options[select.selectedIndex];
+    const unitSpan = document.getElementById(`unit-${productId}`);
+    
+    if (selectedOption.value) {
+        const unita = selectedOption.dataset.unita || '';
+        unitSpan.textContent = unita;
+        updateQuantityCalculation(productId);
+    } else {
+        unitSpan.textContent = '-';
+        document.getElementById(`calc-${productId}`).innerHTML = '';
+    }
+}
+
+function updateQuantityCalculation(productId) {
+    const quantityInput = document.querySelector(`#product-${productId} .quantity-input`);
+    const calcDiv = document.getElementById(`calc-${productId}`);
+    const unitSpan = document.getElementById(`unit-${productId}`);
+    
+    const quantityPerHa = parseFloat(quantityInput.value) || 0;
+    const superficie = getSuperficieTotale();
+    const unita = unitSpan.textContent;
+    
+    if (quantityPerHa > 0 && superficie > 0) {
+        const quantityTotal = quantityPerHa * superficie;
+        calcDiv.innerHTML = `
+            <i class="fas fa-calculator text-info me-1"></i>
+            <strong>Totale: ${quantityTotal.toFixed(3)} ${unita}</strong>
+            <small class="text-muted"> (${superficie.toFixed(2)} ha)</small>
+        `;
+    } else {
+        calcDiv.innerHTML = '';
+    }
+}
+
+// === SEQUENTIAL CREATION ===
+function createTrattamentiSequentially(trattamentiDaCreare) {
+    let createdCount = 0;
+    let errors = [];
+    
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    
+    function createNext(index) {
+        if (index >= trattamentiDaCreare.length) {
+            // Tutti i trattamenti processati
+            document.getElementById('loading').classList.remove('show');
+            document.getElementById('submit-btn').disabled = false;
+            
+            if (createdCount > 0) {
+                alert(`✅ Creati ${createdCount} trattamenti con successo!`);
+                // Redirect alla pagina trattamenti
+                window.location.href = '/trattamenti/?view=programmati';
+            } else {
+                alert('❌ Nessun trattamento è stato creato. Errori: ' + errors.join(', '));
+            }
+            return;
+        }
+        
+        const trattamento = trattamentiDaCreare[index];
+        const formData = new FormData();
+        
+        // Aggiungi tutti i dati del trattamento
+        Object.keys(trattamento).forEach(key => {
+            if (trattamento[key] !== null && trattamento[key] !== undefined) {
+                formData.append(key, trattamento[key]);
+            }
+        });
+        formData.append('csrfmiddlewaretoken', csrfToken);
+        
+        fetch('/api/trattamenti/', {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                createdCount++;
+                console.log(`✅ Trattamento ${index + 1} creato:`, data);
+            } else {
+                errors.push(data.error || 'Errore sconosciuto');
+                console.error(`❌ Errore trattamento ${index + 1}:`, data.error);
+            }
+            
+            // Procedi al prossimo
+            createNext(index + 1);
+        })
+        .catch(error => {
+            errors.push(error.message);
+            console.error(`❌ Errore rete trattamento ${index + 1}:`, error);
+            createNext(index + 1);
+        });
+    }
+    
+    createNext(0);
+}
+
+// === INITIALIZATION ===
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Inizializzazione form ultra semplificato (3 step)...');
+    
+    // Add first product by default
+    addProduct();
+    
+    // Debug info
+    console.log('📊 Dati disponibili:');
+    console.log('- Clienti:', {{ clienti|length }});
+    console.log('- Prodotti:', {{ prodotti|length }});
+    
+    console.log('✅ Form pronto! Solo 3 step: Target → Prodotti → Conferma');
+});
+
+// === FILTER FUNCTIONS ===
+function filterClients() {
+    const searchTerm = document.getElementById('search-clienti').value.toLowerCase();
+    const items = document.querySelectorAll('#clients-container .selection-item');
+    
+    items.forEach(item => {
+        const name = item.dataset.name;
+        if (name.includes(searchTerm)) {
+            item.style.display = 'flex';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+}
+
+function filterCascineByCliente() {
+    const selectedClienteId = document.getElementById('filter-cliente-cascine').value;
+    const searchTerm = document.getElementById('search-cascine').value.toLowerCase();
+    const items = document.querySelectorAll('#cascine-container .selection-item');
+    
+    items.forEach(item => {
+        const clienteId = item.dataset.clienteId;
+        const name = item.dataset.name;
+        
+        let showByCliente = !selectedClienteId || clienteId === selectedClienteId;
+        let showBySearch = !searchTerm || name.includes(searchTerm);
+        
+        if (showByCliente && showBySearch) {
+            item.style.display = 'flex';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+}
+
+function filterCascine() {
+    filterCascineByCliente(); // Riusa la logica combinata
+}
+
+function filterTerreniByCliente() {
+    const selectedClienteId = document.getElementById('filter-cliente-terreni').value;
+    const selectedCascinaId = document.getElementById('filter-cascina-terreni').value;
+    const searchTerm = document.getElementById('search-terreni').value.toLowerCase();
+    const items = document.querySelectorAll('#terreni-container .selection-item');
+    
+    // Aggiorna il filtro cascine basato sul cliente selezionato
+    if (selectedClienteId) {
+        const cascinaOptions = document.querySelectorAll('#filter-cascina-terreni option[data-cliente-id]');
+        cascinaOptions.forEach(option => {
+            if (option.dataset.clienteId === selectedClienteId) {
+                option.style.display = 'block';
+            } else {
+                option.style.display = 'none';
+            }
+        });
+        
+        // Reset cascina selection se non più valida
+        const cascinaSelect = document.getElementById('filter-cascina-terreni');
+        const currentCascina = cascinaSelect.querySelector(`option[value="${cascinaSelect.value}"]`);
+        if (currentCascina && currentCascina.dataset.clienteId !== selectedClienteId) {
+            cascinaSelect.value = '';
+        }
+    } else {
+        // Mostra tutte le cascine
+        const cascinaOptions = document.querySelectorAll('#filter-cascina-terreni option[data-cliente-id]');
+        cascinaOptions.forEach(option => {
+            option.style.display = 'block';
+        });
+    }
+    
+    // Filtra i terreni
+    items.forEach(item => {
+        const clienteId = item.dataset.clienteId;
+        const cascinaId = item.dataset.cascinaId;
+        const name = item.dataset.name;
+        
+        let showByCliente = !selectedClienteId || clienteId === selectedClienteId;
+        let showByCascina = !selectedCascinaId || cascinaId === selectedCascinaId;
+        let showBySearch = !searchTerm || name.includes(searchTerm);
+        
+        if (showByCliente && showByCascina && showBySearch) {
+            item.style.display = 'flex';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+}
+
+function filterTerreni() {
+    filterTerreniByCliente(); // Riusa la logica combinata
+}
+function debugCurrentState() {
+    console.log('🔍 DEBUG - Stato corrente:');
+    console.log('Step corrente:', currentStep);
+    console.log('Target selezionato:', selectedTarget);
+    console.log('Dati selezionati:', selectedData);
+    console.log('Superficie totale:', getSuperficieTotale());
+    
+    const productItems = document.querySelectorAll('.product-item');
+    console.log('Prodotti configurati:', productItems.length);
+}
+
+window.debugState = debugCurrentState;
+</script>
 
 {% endblock %}
