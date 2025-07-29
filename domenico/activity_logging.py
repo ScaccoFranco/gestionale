@@ -131,7 +131,6 @@ def log_contoterzista_created(contoterzista, request=None):
         extra_data={
             'contoterzista_id': contoterzista.id,
             'contoterzista_nome': contoterzista.nome,
-            'telefono': contoterzista.telefono,
             'email': contoterzista.email
         }
     )
@@ -150,8 +149,6 @@ def log_contatto_created(contatto, request=None):
             'contatto_email': contatto.email,
             'cliente_id': contatto.cliente.id,
             'cliente_nome': contatto.cliente.nome,
-            'ruolo': contatto.ruolo,
-            'priorita': contatto.priorita
         }
     )
 

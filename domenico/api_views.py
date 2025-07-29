@@ -115,11 +115,7 @@ def api_clienti_create(request):
                         contatto = ContattoEmail.objects.create(
                             cliente=cliente,
                             nome=contatto_data['nome'],
-                            email=contatto_data['email'],
-                            ruolo=contatto_data.get('ruolo', ''),
-                            telefono=contatto_data.get('telefono', ''),
-                            priorita=contatto_data.get('priorita', 2),
-                            attivo=True
+                            email=contatto_data['email']
                         )
                         contatti_creati += 1
                         
@@ -196,21 +192,27 @@ def api_cascine_list(request):
             'success': False,
             'error': 'Errore nel recupero delle cascine'
         }, status=500)
-
+    
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_cascine_create(request):
-    """API per creare una nuova cascina"""
+    """API per creare una nuova cascina con logging"""
     try:
-        # Parse JSON data
+        print(f"🔍 DEBUG Cascina - Content-Type: {request.content_type}")
+        
+        # Parse JSON data o form data
         if request.content_type == 'application/json':
             data = json.loads(request.body)
+            print(f"🔍 DEBUG Cascina - JSON data: {data}")
         else:
             data = request.POST
+            print(f"🔍 DEBUG Cascina - Form data: {dict(data)}")
             
         cliente_id = data.get('cliente_id')
         nome = data.get('nome', '').strip()
         contoterzista_id = data.get('contoterzista_id') or None
+        
+        print(f"🔍 DEBUG Cascina - Parsed: cliente_id={cliente_id}, nome='{nome}', contoterzista_id={contoterzista_id}")
         
         # Validazione
         if not cliente_id:
@@ -234,7 +236,6 @@ def api_cascine_create(request):
                 'error': 'Cliente non trovato'
             }, status=404)
         
-        # Verifica che il contoterzista esista (se specificato)
         contoterzista = None
         if contoterzista_id:
             try:
@@ -245,21 +246,30 @@ def api_cascine_create(request):
                     'error': 'Contoterzista non trovato'
                 }, status=404)
         
-        # Verifica se esiste già una cascina con lo stesso nome per lo stesso cliente
+        # Verifica che non esista già una cascina con lo stesso nome per questo cliente
         if Cascina.objects.filter(cliente=cliente, nome__iexact=nome).exists():
             return JsonResponse({
                 'success': False,
-                'error': f'Il cliente "{cliente.nome}" ha già una cascina chiamata "{nome}"'
+                'error': f'Esiste già una cascina chiamata "{nome}" per questo cliente'
             }, status=400)
         
         with transaction.atomic():
             cascina = Cascina.objects.create(
-                cliente=cliente,
                 nome=nome,
+                cliente=cliente,
                 contoterzista=contoterzista
             )
             
-            logger.info(f"Cascina creata: {cascina.nome} per cliente {cliente.nome} (ID: {cascina.id})")
+            print(f"✅ Cascina creata: {cascina.nome} (ID: {cascina.id})")
+            
+            # 🔥 Log dell'attività
+            try:
+                log_cascina_created(cascina, request)
+                print(f"✅ Log cascina creato con successo")
+            except Exception as log_error:
+                logger.error(f"Errore nel logging cascina: {str(log_error)}")
+                print(f"❌ Errore nel logging: {log_error}")
+                # Non bloccare la creazione se il log fallisce
             
             return JsonResponse({
                 'success': True,
@@ -267,8 +277,9 @@ def api_cascine_create(request):
                 'cascina': {
                     'id': cascina.id,
                     'nome': cascina.nome,
-                    'cliente': cascina.cliente.nome,
-                    'contoterzista': cascina.contoterzista.nome if cascina.contoterzista else None
+                    'cliente_id': cliente.id,
+                    'cliente_nome': cliente.nome,
+                    'contoterzista_nome': contoterzista.nome if contoterzista else None
                 }
             })
             
@@ -279,11 +290,14 @@ def api_cascine_create(request):
         }, status=400)
     except Exception as e:
         logger.error(f"Errore nella creazione cascina: {str(e)}")
+        print(f"❌ Errore generale nella creazione cascina: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return JsonResponse({
             'success': False,
             'error': 'Errore nella creazione della cascina'
         }, status=500)
-
+    
 # ============ API TERRENI ============
 
 @require_http_methods(["GET"])
@@ -442,79 +456,6 @@ def api_contoterzisti_list(request):
         return JsonResponse({
             'success': False,
             'error': 'Errore nel recupero dei contoterzisti'
-        }, status=500)
-
-@csrf_exempt
-@require_http_methods(["POST"])
-def api_contoterzisti_create(request):
-    """API per creare un nuovo contoterzista"""
-    try:
-        # Parse JSON data
-        if request.content_type == 'application/json':
-            data = json.loads(request.body)
-        else:
-            data = request.POST
-            
-        nome = data.get('nome', '').strip()
-        email = data.get('email', '').strip()
-        
-        # Validazione
-        if not nome:
-            return JsonResponse({
-                'success': False,
-                'error': 'Il nome è obbligatorio'
-            }, status=400)
-        
-        if not email:
-            return JsonResponse({
-                'success': False,
-                'error': 'L\'email è obbligatoria'
-            }, status=400)
-        
-        # Validazione email
-        try:
-            validate_email(email)
-        except ValidationError:
-            return JsonResponse({
-                'success': False,
-                'error': 'Indirizzo email non valido'
-            }, status=400)
-        
-        # Verifica se esiste già un contoterzista con la stessa email
-        if Contoterzista.objects.filter(email__iexact=email).exists():
-            return JsonResponse({
-                'success': False,
-                'error': f'Esiste già un contoterzista con l\'email "{email}"'
-            }, status=400)
-        
-        with transaction.atomic():
-            contoterzista = Contoterzista.objects.create(
-                nome=nome,
-                email=email
-            )
-            
-            logger.info(f"Contoterzista creato: {contoterzista.nome} (ID: {contoterzista.id})")
-            
-            return JsonResponse({
-                'success': True,
-                'message': 'Contoterzista creato con successo',
-                'contoterzista': {
-                    'id': contoterzista.id,
-                    'nome': contoterzista.nome,
-                    'email': contoterzista.email
-                }
-            })
-            
-    except json.JSONDecodeError:
-        return JsonResponse({
-            'success': False,
-            'error': 'Dati JSON non validi'
-        }, status=400)
-    except Exception as e:
-        logger.error(f"Errore nella creazione contoterzista: {str(e)}")
-        return JsonResponse({
-            'success': False,
-            'error': 'Errore nella creazione del contoterzista'
         }, status=500)
 
 # ============ API PRODOTTI ============
@@ -1102,18 +1043,21 @@ def api_prodotti_create(request):
             'success': False,
             'error': 'Errore nella creazione del prodotto'
         }, status=500)
-
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_contoterzisti_create(request):
     """API per creare un nuovo contoterzista con logging"""
     try:
-        # ... codice di validazione esistente ...
-        nome = request.POST.get('nome', '').strip()
-        telefono = request.POST.get('telefono', '').strip()
-        email = request.POST.get('email', '').strip()
+        # Parse JSON data o form data
+        if request.content_type == 'application/json':
+            data = json.loads(request.body)
+        else:
+            data = request.POST
+            
+        nome = data.get('nome', '').strip()
+        email = data.get('email', '').strip()
         
-        # Validazione (mantieni quella esistente)
+        # Validazione
         if not nome:
             return JsonResponse({
                 'success': False,
@@ -1145,11 +1089,10 @@ def api_contoterzisti_create(request):
         with transaction.atomic():
             contoterzista = Contoterzista.objects.create(
                 nome=nome,
-                telefono=telefono,
                 email=email
             )
             
-            # 🔥 NUOVO: Log dell'attività
+            # 🔥 Log dell'attività
             log_contoterzista_created(contoterzista, request)
             
             logger.info(f"Contoterzista creato con logging: {contoterzista.nome}")
@@ -1160,18 +1103,21 @@ def api_contoterzisti_create(request):
                 'contoterzista': {
                     'id': contoterzista.id,
                     'nome': contoterzista.nome,
-                    'telefono': contoterzista.telefono,
                     'email': contoterzista.email
                 }
             })
             
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': 'Dati JSON non validi'
+        }, status=400)
     except Exception as e:
         logger.error(f"Errore nella creazione contoterzista: {str(e)}")
         return JsonResponse({
             'success': False,
             'error': 'Errore nella creazione del contoterzista'
         }, status=500)
-
 # ============ AGGIORNA ANCHE API CONTATTI ESISTENTI ============
 
 @csrf_exempt
@@ -1471,19 +1417,6 @@ def api_add_contatto_cliente(request, cliente_id):
         # Ottieni dati dal form
         nome = request.POST.get('nome', '').strip()
         email = request.POST.get('email', '').strip()
-        ruolo = request.POST.get('ruolo', '').strip()
-        telefono = request.POST.get('telefono', '').strip()
-        note = request.POST.get('note', '').strip()
-        
-        # Gestione priorità
-        try:
-            priorita = int(request.POST.get('priorita', 2))
-        except (ValueError, TypeError):
-            priorita = 2
-        
-        # Gestione attivo
-        attivo_value = request.POST.get('attivo', 'true').lower()
-        attivo = attivo_value == 'true'
         
         # Validazione
         if not nome:
@@ -1519,12 +1452,7 @@ def api_add_contatto_cliente(request, cliente_id):
             contatto = ContattoEmail.objects.create(
                 cliente=cliente,
                 nome=nome,
-                email=email,
-                ruolo=ruolo,
-                telefono=telefono,
-                priorita=priorita,
-                attivo=attivo,
-                note=note
+                email=email
             )
             
             # 🔥 NUOVO: Log dell'attività
@@ -1539,11 +1467,6 @@ def api_add_contatto_cliente(request, cliente_id):
                     'id': contatto.id,
                     'nome': contatto.nome,
                     'email': contatto.email,
-                    'ruolo': contatto.ruolo,
-                    'telefono': contatto.telefono,
-                    'priorita': contatto.priorita,
-                    'attivo': contatto.attivo,
-                    'note': contatto.note,
                     'cliente_nome': cliente.nome
                 }
             })
@@ -1604,11 +1527,7 @@ def api_cliente_create(request):
                     contatto = ContattoEmail.objects.create(
                         cliente=cliente,
                         nome=contatto_data['nome'],
-                        email=contatto_data['email'],
-                        ruolo=contatto_data.get('ruolo', ''),
-                        telefono=contatto_data.get('telefono', ''),
-                        priorita=contatto_data.get('priorita', 2),
-                        attivo=True
+                        email=contatto_data['email']
                     )
                     contatti_creati.append(contatto.nome)
                     
@@ -1638,79 +1557,6 @@ def api_cliente_create(request):
             'success': False,
             'error': 'Errore nella creazione del cliente'
         }, status=500)
-
-
-@csrf_exempt
-@require_http_methods(["POST"])
-def api_cascina_create(request):
-    """API per creare nuova cascina con logging"""
-    try:
-        cliente_id = request.POST.get('cliente_id')
-        nome = request.POST.get('nome', '').strip()
-        contoterzista_id = request.POST.get('contoterzista_id') or None
-        
-        # Validazione
-        if not cliente_id:
-            return JsonResponse({
-                'success': False,
-                'error': 'Cliente è obbligatorio'
-            }, status=400)
-            
-        if not nome:
-            return JsonResponse({
-                'success': False,
-                'error': 'Nome cascina è obbligatorio'
-            }, status=400)
-        
-        cliente = get_object_or_404(Cliente, id=cliente_id)
-        contoterzista = None
-        
-        if contoterzista_id:
-            contoterzista = get_object_or_404(Contoterzista, id=contoterzista_id)
-        
-        # Verifica che non esista già una cascina con lo stesso nome per questo cliente
-        if Cascina.objects.filter(cliente=cliente, nome__iexact=nome).exists():
-            return JsonResponse({
-                'success': False,
-                'error': f'Esiste già una cascina chiamata "{nome}" per questo cliente'
-            }, status=400)
-        
-        with transaction.atomic():
-            cascina = Cascina.objects.create(
-                nome=nome,
-                cliente=cliente,
-                contoterzista=contoterzista
-            )
-            
-            # 🔥 NUOVO: Log dell'attività
-            log_cascina_created(cascina, request)
-            
-            print(f"✅ Cascina creata con logging: {cascina.nome}")
-            
-            return JsonResponse({
-                'success': True,
-                'message': 'Cascina creata con successo',
-                'cascina': {
-                    'id': cascina.id,
-                    'nome': cascina.nome,
-                    'cliente_id': cliente.id,
-                    'cliente_nome': cliente.nome,
-                    'contoterzista_nome': contoterzista.nome if contoterzista else None
-                }
-            })
-            
-    except (Cliente.DoesNotExist, Contoterzista.DoesNotExist) as e:
-        return JsonResponse({
-            'success': False,
-            'error': 'Oggetto non trovato'
-        }, status=404)
-    except Exception as e:
-        print(f"❌ Errore nella creazione cascina: {str(e)}")
-        return JsonResponse({
-            'success': False,
-            'error': 'Errore nella creazione della cascina'
-        }, status=500)
-    
 
 @csrf_exempt
 @require_http_methods(["POST"])

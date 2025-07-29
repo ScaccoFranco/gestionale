@@ -74,7 +74,6 @@ urlpatterns = [
     path('api/clienti/create/', api_views.api_cliente_create, name='api_cliente_create'),
     path('api/contoterzisti/create/', views.api_contoterzista_create, name='api_contoterzista_create'),
     path('api/contoterzisti/list/', views.api_contoterzisti_list, name='api_contoterzisti_list'),
-    path('api/cascine/create/', api_views.api_cascina_create, name='api_cascina_create'),
 
 
     

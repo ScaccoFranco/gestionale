@@ -186,29 +186,6 @@
         color: #999;
     }
 
-    .priorita-badge {
-        padding: 0.25rem 0.75rem;
-        border-radius: 15px;
-        font-size: 0.8rem;
-        font-weight: 600;
-        margin-right: 0.5rem;
-    }
-
-    .priorita-1 {
-        background: #dc3545;
-        color: white;
-    }
-
-    .priorita-2 {
-        background: #ffc107;
-        color: #212529;
-    }
-
-    .priorita-3 {
-        background: #6c757d;
-        color: white;
-    }
-
     .contatto-actions {
         display: flex;
         gap: 0.5rem;
@@ -1468,12 +1445,7 @@
         getCurrentFormData: () => {
             return {
                 nome: document.getElementById('contatto-nome')?.value,
-                email: document.getElementById('contatto-email')?.value,
-                ruolo: document.getElementById('contatto-ruolo')?.value,
-                telefono: document.getElementById('contatto-telefono')?.value,
-                priorita: document.getElementById('contatto-priorita')?.value,
-                attivo: document.getElementById('contatto-attivo')?.value,
-                note: document.getElementById('contatto-note')?.value
+                email: document.getElementById('contatto-email')?.value
             };
         }
     };
