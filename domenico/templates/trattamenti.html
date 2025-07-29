@@ -17,13 +17,36 @@
         border-radius: 12px;
         padding: 1.5rem;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        transition: all 0.3s ease;
         border-left: 4px solid;
+        text-decoration: none;
+        color: inherit;
+        display: block;
+        position: relative;
+        overflow: hidden;
     }
     
     .stat-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        transform: translateY(-4px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+        text-decoration: none;
+        color: inherit;
+    }
+    
+    .stat-card::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: -50px;
+        width: 100px;
+        height: 100%;
+        background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+        transform: skewX(-25deg);
+        transition: right 0.5s ease;
+    }
+    
+    .stat-card:hover::after {
+        right: 100%;
     }
     
     .stat-card.totali { border-left-color: #6c757d; }
@@ -36,6 +59,20 @@
         font-size: 2rem;
         margin-bottom: 1rem;
         opacity: 0.8;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    
+    .stat-icon .nav-indicator {
+        font-size: 1rem;
+        opacity: 0.6;
+        transition: all 0.3s ease;
+    }
+    
+    .stat-card:hover .nav-indicator {
+        opacity: 1;
+        transform: translateX(5px);
     }
     
     .stat-number {
@@ -44,36 +81,31 @@
         margin-bottom: 0.5rem;
     }
     
-    .navigation-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 1.5rem;
-        margin-bottom: 2rem;
+    .stat-label {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 0.25rem;
     }
     
-    .nav-card {
-        background: white;
-        border-radius: 12px;
-        padding: 2rem;
-        text-decoration: none;
-        color: inherit;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        transition: all 0.3s ease;
-        border-left: 4px solid;
+    .stat-sublabel {
+        font-size: 0.9rem;
+        opacity: 0.7;
+        margin-bottom: 0.5rem;
     }
     
-    .nav-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-        text-decoration: none;
-        color: inherit;
+    .stat-action {
+        font-size: 0.85rem;
+        color: #007bff;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
     }
     
-    .nav-card.tutti { border-left-color: #6c757d; }
-    .nav-card.programmati { border-left-color: #ffc107; }
-    .nav-card.comunicati { border-left-color: #17a2b8; }
-    .nav-card.completati { border-left-color: #28a745; }
-    .nav-card.annullati { border-left-color: #dc3545; }
+    .stat-card:hover .stat-action {
+        color: #0056b3;
+    }
 </style>
 {% endblock %}
 
@@ -81,7 +113,7 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h1><i class="fas fa-flask me-2"></i>Dashboard Trattamenti</h1>
-        <p class="text-muted">Panoramica generale sui trattamenti agricoli</p>
+        <p class="text-muted">Clicca su una categoria per visualizzare e gestire i trattamenti</p>
     </div>
     <div>
         <a href="{% url 'inserisci' %}" class="btn btn-primary">
@@ -90,122 +122,81 @@
     </div>
 </div>
 
-<!-- Statistiche -->
+<!-- Statistiche Navigabili -->
 <div class="stats-overview">
     <h2 class="mb-3">
-        <i class="fas fa-chart-bar me-2"></i>Statistiche Generali
+        <i class="fas fa-chart-bar me-2"></i>Gestione Trattamenti per Categoria
     </h2>
     
     <div class="stats-grid">
-        <div class="stat-card totali">
+        <a href="?view=tutti" class="stat-card totali">
             <div class="stat-icon">
                 <i class="fas fa-list-ul text-secondary"></i>
+                <i class="fas fa-arrow-right nav-indicator"></i>
             </div>
             <div class="stat-number text-secondary">{{ stats.totali }}</div>
-            <div class="stat-label">Totali</div>
-            <div class="stat-sublabel">Tutti i trattamenti nel sistema</div>
-        </div>
+            <div class="stat-label">Tutti i Trattamenti</div>
+            <div class="stat-sublabel">Visualizza tutto il database</div>
+            <div class="stat-action">
+                <i class="fas fa-search"></i>
+                Visualizza tutti con filtri avanzati
+            </div>
+        </a>
         
-        <div class="stat-card programmati">
+        <a href="?view=programmati" class="stat-card programmati">
             <div class="stat-icon">
                 <i class="fas fa-calendar-plus text-warning"></i>
+                <i class="fas fa-arrow-right nav-indicator"></i>
             </div>
             <div class="stat-number text-warning">{{ stats.programmati }}</div>
             <div class="stat-label">Programmati</div>
             <div class="stat-sublabel">Da comunicare ai contoterzisti</div>
-        </div>
+            <div class="stat-action">
+                <i class="fas fa-paper-plane"></i>
+                Comunica ai contoterzisti
+            </div>
+        </a>
         
-        <div class="stat-card comunicati">
+        <a href="?view=comunicati" class="stat-card comunicati">
             <div class="stat-icon">
                 <i class="fas fa-paper-plane text-info"></i>
+                <i class="fas fa-arrow-right nav-indicator"></i>
             </div>
             <div class="stat-number text-info">{{ stats.comunicati }}</div>
             <div class="stat-label">Comunicati</div>
             <div class="stat-sublabel">Pronti per l'esecuzione</div>
-        </div>
+            <div class="stat-action">
+                <i class="fas fa-check"></i>
+                Segna come completati
+            </div>
+        </a>
         
-        <div class="stat-card completati">
+        <a href="?view=completati" class="stat-card completati">
             <div class="stat-icon">
                 <i class="fas fa-check-circle text-success"></i>
+                <i class="fas fa-arrow-right nav-indicator"></i>
             </div>
             <div class="stat-number text-success">{{ stats.completati }}</div>
             <div class="stat-label">Completati</div>
             <div class="stat-sublabel">Eseguiti con successo</div>
-        </div>
+            <div class="stat-action">
+                <i class="fas fa-history"></i>
+                Visualizza storico esecuzioni
+            </div>
+        </a>
         
-        <div class="stat-card annullati">
+        <a href="?view=annullati" class="stat-card annullati">
             <div class="stat-icon">
                 <i class="fas fa-times-circle text-danger"></i>
+                <i class="fas fa-arrow-right nav-indicator"></i>
             </div>
             <div class="stat-number text-danger">{{ stats.annullati }}</div>
             <div class="stat-label">Annullati</div>
             <div class="stat-sublabel">Trattamenti cancellati</div>
-        </div>
-    </div>
-</div>
-
-<!-- Navigation to Detail Views -->
-<div class="navigation-section">
-    <h2 class="navigation-title mb-3">
-        <i class="fas fa-list me-2"></i>Visualizza Trattamenti per Categoria
-    </h2>
-    
-    <div class="navigation-grid">
-        <a href="?view=tutti" class="nav-card tutti">
-            <div class="nav-icon">
-                <i class="fas fa-list-ul fa-2x text-secondary mb-3"></i>
+            <div class="stat-action">
+                <i class="fas fa-analytics"></i>
+                Analizza motivi annullamento
             </div>
-            <h3 class="nav-title">Tutti i Trattamenti</h3>
-            <p class="nav-description">
-                Visualizza l'elenco completo di tutti i trattamenti con filtri avanzati e opzioni di ricerca
-            </p>
-            <div class="nav-count"><strong>{{ stats.totali }}</strong> trattamenti</div>
-        </a>
-        
-        <a href="?view=programmati" class="nav-card programmati">
-            <div class="nav-icon">
-                <i class="fas fa-calendar-plus fa-2x text-warning mb-3"></i>
-            </div>
-            <h3 class="nav-title">Programmati</h3>
-            <p class="nav-description">
-                Trattamenti pianificati che necessitano di essere comunicati ai contoterzisti. 
-                <strong>Azione disponibile: Comunica</strong>
-            </p>
-            <div class="nav-count"><strong>{{ stats.programmati }}</strong> da comunicare</div>
-        </a>
-        
-        <a href="?view=comunicati" class="nav-card comunicati">
-            <div class="nav-icon">
-                <i class="fas fa-paper-plane fa-2x text-info mb-3"></i>
-            </div>
-            <h3 class="nav-title">Comunicati</h3>
-            <p class="nav-description">
-                Trattamenti già comunicati ai contoterzisti e pronti per l'esecuzione.
-                <strong>Azione disponibile: Completa</strong>
-            </p>
-            <div class="nav-count"><strong>{{ stats.comunicati }}</strong> comunicati</div>
-        </a>
-        
-        <a href="?view=completati" class="nav-card completati">
-            <div class="nav-icon">
-                <i class="fas fa-check-circle fa-2x text-success mb-3"></i>
-            </div>
-            <h3 class="nav-title">Completati</h3>
-            <p class="nav-description">
-                Trattamenti eseguiti con successo. Visualizza lo storico dei trattamenti completati.
-            </p>
-            <div class="nav-count"><strong>{{ stats.completati }}</strong> completati</div>
-        </a>
-        
-        <a href="?view=annullati" class="nav-card annullati">
-            <div class="nav-icon">
-                <i class="fas fa-times-circle fa-2x text-danger mb-3"></i>
-            </div>
-            <h3 class="nav-title">Annullati</h3>
-            <p class="nav-description">
-                Trattamenti cancellati o non eseguiti. Visualizza i trattamenti annullati per analisi.
-            </p>
-            <div class="nav-count"><strong>{{ stats.annullati }}</strong> annullati</div>
         </a>
     </div>
 </div>
@@ -282,4 +273,23 @@
     </div>
 </div>
 {% endif %}
+
+<script>
+// Aggiunge effetti di feedback visivo
+document.addEventListener('DOMContentLoaded', function() {
+    const statCards = document.querySelectorAll('.stat-card');
+    
+    statCards.forEach(card => {
+        card.addEventListener('click', function(e) {
+            // Effetto click
+            this.style.transform = 'translateY(-2px) scale(0.98)';
+            
+            setTimeout(() => {
+                this.style.transform = '';
+            }, 150);
+        });
+    });
+});
+</script>
+
 {% endblock %}

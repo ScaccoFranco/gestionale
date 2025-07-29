@@ -1,6 +1,7 @@
 # domenico/templatetags/aziende_extras.py (aggiorna il file esistente)
 
 from django import template
+from urllib.parse import urlencode
 
 register = template.Library()
 
@@ -52,7 +53,6 @@ def get_stato_badge_class(stato):
     stato_classes = {
         'programmato': 'status-programmato',
         'comunicato': 'status-comunicato',
-        'in_esecuzione': 'status-in_esecuzione',
         'completato': 'status-completato',
         'annullato': 'status-annullato',
     }
@@ -64,7 +64,6 @@ def get_stato_icon(stato):
     stato_icons = {
         'programmato': 'fas fa-calendar-plus',
         'comunicato': 'fas fa-paper-plane',
-        'in_esecuzione': 'fas fa-cogs',
         'completato': 'fas fa-check-circle',
         'annullato': 'fas fa-times-circle',
     }
@@ -176,3 +175,70 @@ def failure_rate(stats):
     totali = stats.get('totali', 1)
     
     return round((fallite / totali) * 100, 1)
+
+@register.filter
+def get_querystring_with_view(request, view_type=None):
+    """
+    Genera la querystring preservando il parametro view e tutti gli altri parametri
+    tranne 'page' (usato per paginazione)
+    """
+    params = request.GET.copy()
+    
+    # Rimuovi il parametro page se presente (per la paginazione)
+    if 'page' in params:
+        del params['page']
+    
+    # Aggiungi o aggiorna il parametro view se specificato
+    if view_type and view_type != 'dashboard':
+        params['view'] = view_type
+    elif 'view' not in params and hasattr(request, 'resolver_match'):
+        # Prendi il view_type dal context se disponibile
+        pass
+    
+    # Genera la querystring
+    if params:
+        return '&' + urlencode(params)
+    return ''
+
+@register.filter
+def preserve_filters(request, exclude_param=None):
+    """
+    Preserva tutti i filtri tranne quello specificato in exclude_param
+    """
+    params = request.GET.copy()
+    
+    if exclude_param and exclude_param in params:
+        del params[exclude_param]
+    
+    if params:
+        return urlencode(params) + '&'
+    return ''
+
+@register.simple_tag
+def url_with_params(request, **kwargs):
+    """
+    Genera URL preservando i parametri esistenti e aggiungendo/modificando quelli specificati
+    """
+    params = request.GET.copy()
+    
+    # Aggiorna i parametri con quelli specificati
+    for key, value in kwargs.items():
+        if value is not None:
+            params[key] = value
+        elif key in params:
+            del params[key]
+    
+    if params:
+        return '?' + urlencode(params)
+    return '?'
+
+@register.inclusion_tag('snippets/pagination.html')
+def paginate_with_filters(page_obj, request):
+    """
+    Tag per renderizzare la paginazione preservando tutti i filtri
+    """
+    return {
+        'page_obj': page_obj,
+        'request': request,
+        'is_paginated': page_obj.has_other_pages() if page_obj else False
+    }

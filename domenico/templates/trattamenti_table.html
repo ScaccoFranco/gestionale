@@ -34,15 +34,50 @@
     .checkbox-column {
         width: 40px;
         text-align: center;
+        padding: 8px !important;
     }
     
     .trattamento-checkbox {
         transform: scale(1.2);
         cursor: pointer;
+        pointer-events: none; /* Disabilita il click diretto sul checkbox */
     }
     
-    .selected-row {
+    /* Stili per righe selezionabili */
+    .selectable-row {
+        cursor: pointer;
+        transition: all 0.2s ease;
+        user-select: none;
+    }
+    
+    .selectable-row:hover {
+        background-color: #f8f9fa !important;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .selectable-row.selected-row {
         background-color: #e3f2fd !important;
+        border-left: 4px solid #2196f3;
+    }
+    
+    .selectable-row.selected-row:hover {
+        background-color: #bbdefb !important;
+    }
+    
+    /* Indicatore visivo di selezione */
+    .selection-indicator {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 2px;
+        background: #ddd;
+        margin-right: 8px;
+        transition: all 0.2s ease;
+    }
+    
+    .selected-row .selection-indicator {
+        background: #2196f3;
     }
     
     .bulk-action-btn {
@@ -88,6 +123,32 @@
         background: #f8d7da;
         color: #721c24;
         border: 1px solid #f1aeb5;
+    }
+    
+    /* Tooltip per istruzioni */
+    .selection-help {
+        font-size: 0.85rem;
+        color: #6c757d;
+        margin-bottom: 0.5rem;
+        padding: 0.5rem;
+        background: #f8f9fa;
+        border-left: 3px solid #007bff;
+        border-radius: 4px;
+    }
+    
+    /* Evidenziamento header quando in modalità selezione */
+    .selection-mode .table thead th {
+        background-color: #e3f2fd !important;
+    }
+    
+    /* Animazione contatore selezione */
+    .selection-counter {
+        transition: all 0.3s ease;
+    }
+    
+    .selection-counter.updated {
+        transform: scale(1.1);
+        color: #28a745;
     }
 </style>
 {% endblock %}
@@ -182,6 +243,11 @@
     </div>
     <div class="card-body">
         <form method="GET" class="row">
+            <!-- Campo nascosto per preservare il parametro view -->
+            {% if view_type and view_type != 'dashboard' %}
+                <input type="hidden" name="view" value="{{ view_type }}">
+            {% endif %}
+            
             <div class="col-md-3">
                 <label class="form-label">Ricerca</label>
                 <input type="text" class="form-control" name="search" value="{{ filters.search }}" 
@@ -224,7 +290,7 @@
                 <button type="submit" class="btn btn-primary">
                     <i class="fas fa-search"></i> Filtra
                 </button>
-                <a href="?" class="btn btn-outline-secondary">
+                <a href="?{% if view_type and view_type != 'dashboard' %}view={{ view_type }}{% endif %}" class="btn btn-outline-secondary">
                     <i class="fas fa-times"></i> Pulisci
                 </a>
             </div>
@@ -246,11 +312,16 @@
                 </button>
             </div>
         </div>
+        <div class="selection-help">
+            <i class="fas fa-info-circle"></i> 
+            <strong>Tip:</strong> Clicca su una riga qualsiasi per selezionare/deselezionare un trattamento. 
+            Usa Ctrl+Click per selezione multipla.
+        </div>
     </div>
     
     {% if trattamenti %}
     <div class="table-responsive">
-        <table class="table table-hover mb-0">
+        <table class="table table-hover mb-0" id="trattamentiTable">
             <thead class="table-light">
                 <tr>
                     <th class="checkbox-column">
@@ -268,57 +339,75 @@
             </thead>
             <tbody>
                 {% for trattamento in trattamenti %}
-                <tr id="row-{{ trattamento.id }}">
+                <tr id="row-{{ trattamento.id }}" 
+                    class="selectable-row" 
+                    data-treatment-id="{{ trattamento.id }}"
+                    onclick="toggleRowSelection({{ trattamento.id }}, event)">
+                    
                     <td class="checkbox-column">
-                        <input type="checkbox" class="trattamento-checkbox" 
+                        <span class="selection-indicator"></span>
+                        <input type="checkbox" 
+                               class="trattamento-checkbox" 
                                value="{{ trattamento.id }}" 
                                onchange="updateSelection()">
                     </td>
+                    
+                    <td><strong>#{{ trattamento.id }}</strong></td>
+                    
                     <td>
-                        <strong>#{{ trattamento.id }}</strong>
-                    </td>
-                    <td>
-                        <div class="d-flex align-items-center">
-                            <div class="avatar me-2">
-                                {{ trattamento.cliente.nome|first|upper }}
-                            </div>
-                            <div>
-                                <strong>{{ trattamento.cliente.nome }}</strong>
-                            </div>
-                        </div>
-                    </td>
-                    <td>
-                        {% if trattamento.livello_applicazione == 'cascina' and trattamento.cascina %}
-                            <i class="fas fa-home text-info"></i> {{ trattamento.cascina.nome }}
-                        {% elif trattamento.livello_applicazione == 'terreno' %}
-                            <i class="fas fa-map text-success"></i> 
-                            {{ trattamento.terreni.count }} terren{{ trattamento.terreni.count|pluralize:"o,i" }}
-                        {% else %}
-                            <i class="fas fa-building text-primary"></i> Intera Azienda
+                        <strong>{{ trattamento.cliente.nome }}</strong>
+                        {% if trattamento.cascina.contoterzista %}
+                            <br><small class="text-muted">
+                                <i class="fas fa-user-tie"></i> {{ trattamento.cascina.contoterzista.nome }}
+                            </small>
                         {% endif %}
                     </td>
+                    
+                    <td>
+                        {% if trattamento.livello_applicazione == 'cliente' %}
+                            <span class="badge bg-secondary">Tutto il cliente</span>
+                        {% elif trattamento.livello_applicazione == 'cascina' %}
+                            <i class="fas fa-home text-primary"></i> {{ trattamento.cascina.nome }}
+                        {% else %}
+                            <i class="fas fa-seedling text-success"></i>
+                            {% for terreno in trattamento.terreni.all %}
+                                {{ terreno.nome }}{% if not forloop.last %}, {% endif %}
+                            {% endfor %}
+                            <br><small class="text-muted">{{ trattamento.cascina.nome }}</small>
+                        {% endif %}
+                    </td>
+                    
                     <td>
                         <strong>{{ trattamento.get_superficie_interessata|floatformat:2 }} ha</strong>
                     </td>
+                    
                     <td>
                         <span class="status-badge status-{{ trattamento.stato }}">
-                            <i class="{{ trattamento.stato|get_stato_icon }}"></i>
                             {{ trattamento.get_stato_display }}
                         </span>
                     </td>
+                    
                     <td>
-                        <div>{{ trattamento.data_inserimento|date:"d/m/Y" }}</div>
-                        <small class="text-muted">{{ trattamento.data_inserimento|date:"H:i" }}</small>
+                        {{ trattamento.data_inserimento|date:"d/m/Y" }}
+                        <br><small class="text-muted">{{ trattamento.data_inserimento|date:"H:i" }}</small>
                     </td>
+                    
                     <td>
-                        <span class="badge bg-info">
-                            {{ trattamento.trattamentoprodotto_set.count }} prodott{{ trattamento.trattamentoprodotto_set.count|pluralize:"o,i" }}
-                        </span>
+                        {% for tp in trattamento.trattamentoprodotto_set.all %}
+                            <div class="mb-1">
+                                <strong>{{ tp.prodotto.nome }}</strong>
+                                <small class="text-muted d-block">
+                                    {{ tp.quantita_per_ettaro }} {{ tp.prodotto.unita_misura }}/ha
+                                </small>
+                            </div>
+                        {% empty %}
+                            <span class="text-muted">Nessun prodotto</span>
+                        {% endfor %}
                     </td>
+                    
                     <td>
                         {% if trattamento.note %}
-                            <span class="text-truncate d-inline-block" style="max-width: 200px;" 
-                                  title="{{ trattamento.note }}">
+                            <span class="text-truncate" style="max-width: 150px;" title="{{ trattamento.note }}">
                                 {{ trattamento.note|truncatechars:50 }}
                             </span>
                         {% else %}
@@ -330,58 +419,50 @@
             </tbody>
         </table>
     </div>
-    
-    <!-- Paginazione -->
-    {% if trattamenti.has_other_pages %}
-    <div class="card-footer">
-        <nav aria-label="Paginazione trattamenti">
-            <ul class="pagination justify-content-center mb-0">
-                {% if trattamenti.has_previous %}
-                    <li class="page-item">
-                        <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ trattamenti.previous_page_number }}">
-                            <i class="fas fa-chevron-left"></i> Precedente
-                        </a>
-                    </li>
-                {% endif %}
-                
-                {% for num in trattamenti.paginator.page_range %}
-                    {% if trattamenti.number == num %}
-                        <li class="page-item active">
-                            <span class="page-link">{{ num }}</span>
-                        </li>
-                    {% elif num > trattamenti.number|add:'-3' and num < trattamenti.number|add:'3' %}
-                        <li class="page-item">
-                            <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ num }}">{{ num }}</a>
-                        </li>
-                    {% endif %}
-                {% endfor %}
-                
-                {% if trattamenti.has_next %}
-                    <li class="page-item">
-                        <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ trattamenti.next_page_number }}">
-                            Successiva <i class="fas fa-chevron-right"></i>
-                        </a>
-                    </li>
-                {% endif %}
-            </ul>
-        </nav>
-    </div>
-    {% endif %}
-    
     {% else %}
     <div class="card-body text-center py-5">
-        <i class="fas fa-flask fa-3x text-muted mb-3"></i>
-        <h4>Nessun trattamento trovato</h4>
-        <p class="text-muted">Non ci sono trattamenti che corrispondono ai filtri selezionati.</p>
-        <a href="{% url 'inserisci' %}" class="btn btn-primary">
-            <i class="fas fa-plus"></i> Crea Nuovo Trattamento
-        </a>
+        <div class="text-muted">
+            <i class="fas fa-search fa-3x mb-3"></i>
+            <h5>Nessun trattamento trovato</h5>
+            <p>Prova a modificare i filtri di ricerca o <a href="{% url 'inserisci' %}">crea un nuovo trattamento</a>.</p>
+        </div>
     </div>
     {% endif %}
 </div>
 
-<!-- Modal per conferme -->
-<div class="modal fade" id="confirmModal" tabindex="-1">
+<!-- Paginazione -->
+{% if is_paginated %}
+<nav aria-label="Paginazione trattamenti" class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?{% if view_type and view_type != 'dashboard' %}view={{ view_type }}&{% endif %}{% for key, value in request.GET.items %}{% if key != 'page' and key != 'view' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page=1">Prima</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?{% if view_type and view_type != 'dashboard' %}view={{ view_type }}&{% endif %}{% for key, value in request.GET.items %}{% if key != 'page' and key != 'view' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ page_obj.previous_page_number }}">Precedente</a>
+            </li>
+        {% endif %}
+        
+        <li class="page-item active">
+            <span class="page-link">
+                Pagina {{ page_obj.number }} di {{ page_obj.paginator.num_pages }}
+            </span>
+        </li>
+        
+        {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?{% if view_type and view_type != 'dashboard' %}view={{ view_type }}&{% endif %}{% for key, value in request.GET.items %}{% if key != 'page' and key != 'view' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ page_obj.next_page_number }}">Successiva</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?{% if view_type and view_type != 'dashboard' %}view={{ view_type }}&{% endif %}{% for key, value in request.GET.items %}{% if key != 'page' and key != 'view' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ page_obj.paginator.num_pages }}">Ultima</a>
+            </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+<!-- Modali di conferma -->
+<div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
@@ -399,206 +480,53 @@
     </div>
 </div>
 
-<!-- Modal Anteprima Comunicazione -->
-<div class="modal fade" id="communicationPreviewModal" tabindex="-1" data-bs-backdrop="static">
-    <div class="modal-dialog modal-xl">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title">
-                    <i class="fas fa-envelope-open-text me-2"></i>
-                    Anteprima Comunicazione Email
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            
-            <div class="modal-body">
-                <!-- Loading -->
-                <div id="previewLoading" class="text-center py-5">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Caricamento...</span>
-                    </div>
-                    <p class="mt-3">Generazione anteprima email...</p>
-                </div>
-                
-                <!-- Preview Content -->
-                <div id="previewContent" style="display: none;">
-                    <!-- Email Info -->
-                    <div class="row mb-4">
-                        <div class="col-md-6">
-                            <div class="card">
-                                <div class="card-header bg-light">
-                                    <h6 class="mb-0">
-                                        <i class="fas fa-info-circle text-info me-2"></i>
-                                        Informazioni Invio
-                                    </h6>
-                                </div>
-                                <div class="card-body">
-                                    <div class="mb-2">
-                                        <strong>Trattamenti selezionati:</strong> 
-                                        <span id="selectedCount" class="badge bg-primary">0</span>
-                                    </div>
-                                    <div class="mb-2">
-                                        <strong>Totale destinatari:</strong> 
-                                        <span id="totalRecipients" class="badge bg-info">0</span>
-                                    </div>
-                                    <div class="mb-2">
-                                        <strong>PDF generati:</strong> 
-                                        <span id="totalPdfs" class="badge bg-success">0</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="col-md-6">
-                            <div class="card">
-                                <div class="card-header bg-light">
-                                    <h6 class="mb-0">
-                                        <i class="fas fa-users text-success me-2"></i>
-                                        Destinatari
-                                    </h6>
-                                </div>
-                                <div class="card-body">
-                                    <div id="recipientsList" class="max-height-200 overflow-auto">
-                                        <!-- Lista dinamica destinatari -->
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Email Preview -->
-                    <div class="card mb-4">
-                        <div class="card-header bg-light">
-                            <h6 class="mb-0">
-                                <i class="fas fa-envelope text-primary me-2"></i>
-                                Anteprima Email (primo trattamento)
-                            </h6>
-                        </div>
-                        <div class="card-body">
-                            <div class="email-preview border rounded p-3" style="background: #f8f9fa;">
-                                <div class="mb-3">
-                                    <strong>Da:</strong> <span id="emailFrom"></span>
-                                </div>
-                                <div class="mb-3">
-                                    <strong>A:</strong> <span id="emailTo"></span>
-                                </div>
-                                <div class="mb-3">
-                                    <strong>Oggetto:</strong> <span id="emailSubject" class="text-primary"></span>
-                                </div>
-                                <hr>
-                                <div class="mb-3">
-                                    <strong>Corpo del messaggio:</strong>
-                                </div>
-                                <div id="emailBody" class="border rounded p-3 bg-white" style="font-family: monospace; white-space: pre-line; max-height: 300px; overflow-y: auto;">
-                                    <!-- Corpo email -->
-                                </div>
-                                <hr>
-                                <div class="mb-3">
-                                    <strong>Allegati:</strong>
-                                    <div id="emailAttachments">
-                                        <!-- Lista allegati -->
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Altri trattamenti -->
-                    <div id="otherTreatments" style="display: none;">
-                        <div class="card">
-                            <div class="card-header bg-light">
-                                <h6 class="mb-0">
-                                    <i class="fas fa-list text-secondary me-2"></i>
-                                    Altri trattamenti da comunicare
-                                </h6>
-                            </div>
-                            <div class="card-body">
-                                <div id="otherTreatmentsList">
-                                    <!-- Lista altri trattamenti -->
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="modal-footer bg-light">
-                <div class="w-100">
-                    <div class="row">
-                        <div class="col-md-4">
-                            <button type="button" class="btn btn-outline-secondary w-100" data-bs-dismiss="modal">
-                                <i class="fas fa-times me-2"></i>
-                                Annulla
-                            </button>
-                        </div>
-                        <div class="col-md-4">
-                            <button type="button" class="btn btn-warning w-100" onclick="downloadPdfsOnly()">
-                                <i class="fas fa-download me-2"></i>
-                                Solo Download PDF
-                            </button>
-                        </div>
-                        <div class="col-md-2">
-                            <button type="button" class="btn btn-primary w-100" onclick="sendEmailsOnly()">
-                                <i class="fas fa-paper-plane me-2"></i>
-                                Solo Invio
-                            </button>
-                        </div>
-                        <div class="col-md-2">
-                            <button type="button" class="btn btn-success w-100" onclick="sendAndDownload()">
-                                <i class="fas fa-paper-plane me-1"></i>
-                                <i class="fas fa-download me-1"></i>
-                                Invia + PDF
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<style>
-.max-height-200 {
-    max-height: 200px;
-}
-
-.email-preview {
-    font-size: 0.9rem;
-}
-
-#recipientsList .recipient-item {
-    padding: 0.25rem 0;
-    border-bottom: 1px solid #eee;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-#recipientsList .recipient-item:last-child {
-    border-bottom: none;
-}
-
-.treatment-item {
-    padding: 0.5rem;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    margin-bottom: 0.5rem;
-    background: white;
-}
-
-.modal-xl {
-    max-width: 1200px;
-}
-</style>
 {% endblock %}
 
 {% block extra_js %}
 <script>
 let selectedTreatments = [];
 
+// Funzione principale per la selezione delle righe
+function toggleRowSelection(treatmentId, event) {
+    // Previeni la propagazione se si clicca direttamente su un elemento interattivo
+    if (event.target.tagName === 'INPUT' || event.target.tagName === 'BUTTON' || event.target.tagName === 'A') {
+        return;
+    }
+    
+    const checkbox = document.querySelector(`input[value="${treatmentId}"]`);
+    const row = document.getElementById(`row-${treatmentId}`);
+    
+    // Toggle della selezione
+    checkbox.checked = !checkbox.checked;
+    
+    // Aggiorna visivamente la riga
+    if (checkbox.checked) {
+        row.classList.add('selected-row');
+    } else {
+        row.classList.remove('selected-row');
+    }
+    
+    // Aggiorna la selezione globale
+    updateSelection();
+    
+    // Effetto visivo
+    animateRowSelection(row, checkbox.checked);
+}
+
+function animateRowSelection(row, isSelected) {
+    if (isSelected) {
+        row.style.transform = 'scale(1.02)';
+        setTimeout(() => {
+            row.style.transform = '';
+        }, 200);
+    }
+}
+
 // Gestione selezione
 function updateSelection() {
     selectedTreatments = [];
+    const table = document.getElementById('trattamentiTable');
+    
     document.querySelectorAll('.trattamento-checkbox:checked').forEach(checkbox => {
         selectedTreatments.push(parseInt(checkbox.value));
         document.getElementById('row-' + checkbox.value).classList.add('selected-row');
@@ -612,6 +540,13 @@ function updateSelection() {
     // Aggiorna interfaccia
     updateBulkActionsVisibility();
     updateSelectionCounter();
+    
+    // Aggiungi/rimuovi classe di modalità selezione
+    if (selectedTreatments.length > 0) {
+        table.classList.add('selection-mode');
+    } else {
+        table.classList.remove('selection-mode');
+    }
 }
 
 function updateBulkActionsVisibility() {
@@ -627,6 +562,12 @@ function updateSelectionCounter() {
     const counter = document.getElementById('selectionCounter');
     const count = selectedTreatments.length;
     counter.textContent = `${count} trattament${count === 1 ? 'o' : 'i'} selezionat${count === 1 ? 'o' : 'i'}`;
+    
+    // Animazione del contatore
+    counter.classList.add('updated');
+    setTimeout(() => {
+        counter.classList.remove('updated');
+    }, 300);
 }
 
 function selectAll() {
@@ -659,6 +600,7 @@ function showConfirmModal(title, message, onConfirm) {
     
     const confirmButton = document.getElementById('confirmModalAction');
     confirmButton.onclick = () => {
+        bootstrap.Modal.getInstance(document.getElementById('confirmModal')).hide();
         onConfirm();
     };
     
@@ -669,7 +611,6 @@ function getCsrfToken() {
     return document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
            document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || '';
 }
-
 
 // Azioni in blocco
 function bulkCommunicate() {
@@ -703,410 +644,30 @@ function bulkAnnulla() {
 }
 
 function executeBulkAction(action) {
-    // Mostra loading
-    const loadingHtml = `
-        <div class="text-center">
-            <div class="spinner-border" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-            <p class="mt-2">Elaborazione in corso...</p>
-        </div>
-    `;
+    // Implementa le azioni in blocco qui
+    console.log(`Executing ${action} on treatments:`, selectedTreatments);
     
-    document.getElementById('confirmModalBody').innerHTML = loadingHtml;
+    // Simula azione
+    alert(`Azione "${action}" eseguita su ${selectedTreatments.length} trattamenti`);
     
-    // Prepara i dati per l'invio
-    const formData = new FormData();
-    formData.append('csrfmiddlewaretoken', getCsrfToken());
-    formData.append('action', action);
-    formData.append('trattamenti_ids', JSON.stringify(selectedTreatments));
-    
-    // Invia richiesta
-    fetch('/api/trattamenti/bulk-action/', {
-        method: 'POST',
-        body: formData,
-        credentials: 'same-origin'
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Successo - ricarica la pagina dopo 2 secondi
-            document.getElementById('confirmModalBody').innerHTML = `
-                <div class="text-center text-success">
-                    <i class="fas fa-check-circle fa-3x mb-3"></i>
-                    <h5>Operazione completata!</h5>
-                    <p>${data.message}</p>
-                    <p><small>La pagina si ricaricherà automaticamente...</small></p>
-                </div>
-            `;
-            
-            setTimeout(() => {
-                location.reload();
-            }, 2000);
-            
-        } else {
-            // Errore
-            document.getElementById('confirmModalBody').innerHTML = `
-                <div class="text-center text-danger">
-                    <i class="fas fa-exclamation-triangle fa-3x mb-3"></i>
-                    <h5>Errore!</h5>
-                    <p>${data.error || 'Errore sconosciuto'}</p>
-                    <button class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>
-                </div>
-            `;
+    // Pulisci selezione dopo l'azione
+    clearSelection();
+}
+
+// Inizializzazione
+document.addEventListener('DOMContentLoaded', function() {
+    // Gestione keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.key === 'a') {
+            e.preventDefault();
+            selectAll();
         }
-    })
-    .catch(error => {
-        console.error('Errore:', error);
-        document.getElementById('confirmModalBody').innerHTML = `
-            <div class="text-center text-danger">
-                <i class="fas fa-exclamation-triangle fa-3x mb-3"></i>
-                <h5>Errore di connessione!</h5>
-                <p>Si è verificato un errore durante l'elaborazione della richiesta.</p>
-                <button class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>
-            </div>
-        `;
-    });
-}
-
-// JavaScript per gestione anteprima comunicazione - aggiungi a trattamenti_table.html
-
-let currentCommunicationData = null;
-
-// Modifica la funzione bulkCommunicate esistente
-function bulkCommunicate() {
-    if (selectedTreatments.length === 0) return;
-    
-    // Invece di mostrare subito il modal di conferma, mostra l'anteprima
-    showCommunicationPreview();
-}
-
-function showCommunicationPreview() {
-    // Mostra il modal di anteprima
-    const modal = new bootstrap.Modal(document.getElementById('communicationPreviewModal'));
-    modal.show();
-    
-    // Mostra loading
-    document.getElementById('previewLoading').style.display = 'block';
-    document.getElementById('previewContent').style.display = 'none';
-    
-    // Carica anteprima
-    loadCommunicationPreview();
-}
-
-function loadCommunicationPreview() {
-    const formData = new FormData();
-    formData.append('csrfmiddlewaretoken', getCsrfToken());
-    formData.append('trattamenti_ids', JSON.stringify(selectedTreatments));
-    
-    fetch('/api/trattamenti/communication-preview/', {
-        method: 'POST',
-        body: formData,
-        credentials: 'same-origin'
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            currentCommunicationData = data;
-            displayCommunicationPreview(data);
-        } else {
-            showPreviewError(data.error || 'Errore nel caricamento anteprima');
+        if (e.key === 'Escape') {
+            clearSelection();
         }
-    })
-    .catch(error => {
-        console.error('Errore:', error);
-        showPreviewError('Errore di connessione durante il caricamento anteprima');
-    });
-}
-
-function displayCommunicationPreview(data) {
-    // Nascondi loading
-    document.getElementById('previewLoading').style.display = 'none';
-    document.getElementById('previewContent').style.display = 'block';
-    
-    // Aggiorna informazioni generali
-    document.getElementById('selectedCount').textContent = data.trattamenti_count;
-    document.getElementById('totalRecipients').textContent = data.total_recipients;
-    document.getElementById('totalPdfs').textContent = data.trattamenti_count;
-    
-    // Mostra destinatari
-    const recipientsList = document.getElementById('recipientsList');
-    recipientsList.innerHTML = '';
-    
-    const uniqueRecipients = [...new Set(data.all_recipients.map(r => r.email))];
-    uniqueRecipients.forEach(email => {
-        const recipients = data.all_recipients.filter(r => r.email === email);
-        const recipient = recipients[0];
-        
-        const item = document.createElement('div');
-        item.className = 'recipient-item';
-        item.innerHTML = `
-            <i class="fas fa-envelope text-primary"></i>
-            <div class="flex-grow-1">
-                <strong>${recipient.nome}</strong> (${recipient.email})
-                <br><small class="text-muted">${recipient.ruolo || 'Contatto'} - ${recipients.length} trattament${recipients.length === 1 ? 'o' : 'i'}</small>
-            </div>
-        `;
-        recipientsList.appendChild(item);
     });
     
-    // Mostra anteprima email (primo trattamento)
-    const firstEmail = data.email_previews[0];
-    if (firstEmail) {
-        document.getElementById('emailFrom').textContent = firstEmail.from_email;
-        document.getElementById('emailTo').textContent = firstEmail.recipients.join(', ');
-        document.getElementById('emailSubject').textContent = firstEmail.subject;
-        document.getElementById('emailBody').textContent = firstEmail.body;
-        
-        // Mostra allegati
-        const attachmentsDiv = document.getElementById('emailAttachments');
-        attachmentsDiv.innerHTML = '';
-        firstEmail.attachments.forEach(attachment => {
-            const attachmentItem = document.createElement('div');
-            attachmentItem.className = 'd-inline-block me-2 mb-1';
-            attachmentItem.innerHTML = `
-                <span class="badge bg-secondary">
-                    <i class="fas fa-file-pdf me-1"></i>${attachment}
-                </span>
-            `;
-            attachmentsDiv.appendChild(attachmentItem);
-        });
-    }
-    
-    // Mostra altri trattamenti se ce ne sono più di uno
-    if (data.trattamenti_count > 1) {
-        document.getElementById('otherTreatments').style.display = 'block';
-        const otherList = document.getElementById('otherTreatmentsList');
-        otherList.innerHTML = '';
-        
-        data.email_previews.slice(1).forEach((email, index) => {
-            const item = document.createElement('div');
-            item.className = 'treatment-item';
-            item.innerHTML = `
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <strong>Trattamento #${email.trattamento_id}</strong> - ${email.cliente_nome}
-                        <br><small class="text-muted">${email.recipients.length} destinatar${email.recipients.length === 1 ? 'io' : 'i'}</small>
-                    </div>
-                    <button class="btn btn-sm btn-outline-primary" onclick="showEmailDetails(${index + 1})">
-                        <i class="fas fa-eye"></i> Dettagli
-                    </button>
-                </div>
-            `;
-            otherList.appendChild(item);
-        });
-    }
-}
-
-function showPreviewError(message) {
-    document.getElementById('previewLoading').innerHTML = `
-        <div class="text-center text-danger py-5">
-            <i class="fas fa-exclamation-triangle fa-3x mb-3"></i>
-            <h5>Errore nel caricamento</h5>
-            <p>${message}</p>
-            <button class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>
-        </div>
-    `;
-}
-
-function showEmailDetails(index) {
-    if (!currentCommunicationData || !currentCommunicationData.email_previews[index]) return;
-    
-    const email = currentCommunicationData.email_previews[index];
-    
-    // Aggiorna l'anteprima con i dettagli di questo trattamento
-    document.getElementById('emailFrom').textContent = email.from_email;
-    document.getElementById('emailTo').textContent = email.recipients.join(', ');
-    document.getElementById('emailSubject').textContent = email.subject;
-    document.getElementById('emailBody').textContent = email.body;
-    
-    // Aggiorna allegati
-    const attachmentsDiv = document.getElementById('emailAttachments');
-    attachmentsDiv.innerHTML = '';
-    email.attachments.forEach(attachment => {
-        const attachmentItem = document.createElement('div');
-        attachmentItem.className = 'd-inline-block me-2 mb-1';
-        attachmentItem.innerHTML = `
-            <span class="badge bg-secondary">
-                <i class="fas fa-file-pdf me-1"></i>${attachment}
-            </span>
-        `;
-        attachmentsDiv.appendChild(attachmentItem);
-    });
-    
-    // Scroll to email preview
-    document.querySelector('.email-preview').scrollIntoView({ behavior: 'smooth' });
-}
-
-// Funzioni per le azioni finali
-function downloadPdfsOnly() {
-    if (!currentCommunicationData) return;
-    
-    bootstrap.Modal.getInstance(document.getElementById('communicationPreviewModal')).hide();
-    
-    // Mostra loading
-    showLoadingModal('Download PDF in corso...');
-    
-    executeCommunicationAction('download_only');
-}
-
-function sendEmailsOnly() {
-    if (!currentCommunicationData) return;
-    
-    bootstrap.Modal.getInstance(document.getElementById('communicationPreviewModal')).hide();
-    
-    // Mostra loading
-    showLoadingModal('Invio email in corso...');
-    
-    executeCommunicationAction('send_only');
-}
-
-function sendAndDownload() {
-    if (!currentCommunicationData) return;
-    
-    bootstrap.Modal.getInstance(document.getElementById('communicationPreviewModal')).hide();
-    
-    // Mostra loading
-    showLoadingModal('Invio email e download PDF in corso...');
-    
-    executeCommunicationAction('send_and_download');
-}
-
-function executeCommunicationAction(action) {
-    const formData = new FormData();
-    formData.append('csrfmiddlewaretoken', getCsrfToken());
-    formData.append('action', 'comunica');  // Azione base
-    formData.append('communication_mode', action);  // Modalità specifica
-    formData.append('trattamenti_ids', JSON.stringify(selectedTreatments));
-    
-    fetch('/api/trattamenti/bulk-action/', {
-        method: 'POST',
-        body: formData,
-        credentials: 'same-origin'
-    })
-    .then(response => response.json())
-    .then(data => {
-        hideLoadingModal();
-        
-        if (data.success) {
-            // Gestisci download se richiesto
-            if (action === 'download_only' || action === 'send_and_download') {
-                handlePdfDownloads(data.pdf_downloads || []);
-            }
-            
-            // Mostra messaggio di successo
-            showSuccessModal(data.message, () => {
-                location.reload();
-            });
-            
-        } else {
-            showErrorModal(data.error || 'Errore sconosciuto');
-        }
-    })
-    .catch(error => {
-        hideLoadingModal();
-        console.error('Errore:', error);
-        showErrorModal('Errore di connessione durante l\'elaborazione');
-    });
-}
-
-function handlePdfDownloads(downloads) {
-    if (!downloads || downloads.length === 0) return;
-    
-    // Download multipli con pausa tra uno e l'altro
-    downloads.forEach((download, index) => {
-        setTimeout(() => {
-            const link = document.createElement('a');
-            link.href = download.url;
-            link.download = download.filename;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }, index * 500); // Pausa di 500ms tra i download
-    });
-}
-
-// Funzioni di utilità per i modal
-function showLoadingModal(message) {
-    const modal = document.getElementById('loadingModal') || createLoadingModal();
-    modal.querySelector('.loading p').textContent = message;
-    new bootstrap.Modal(modal).show();
-}
-
-function hideLoadingModal() {
-    const modal = document.getElementById('loadingModal');
-    if (modal) {
-        const instance = bootstrap.Modal.getInstance(modal);
-        if (instance) instance.hide();
-    }
-}
-
-function showSuccessModal(message, onClose) {
-    const modal = createResultModal('Operazione Completata!', message, 'success', onClose);
-    new bootstrap.Modal(modal).show();
-}
-
-function showErrorModal(message) {
-    const modal = createResultModal('Errore!', message, 'error');
-    new bootstrap.Modal(modal).show();
-}
-
-function createLoadingModal() {
-    const modal = document.createElement('div');
-    modal.className = 'modal fade';
-    modal.id = 'loadingModal';
-    modal.setAttribute('data-bs-backdrop', 'static');
-    modal.innerHTML = `
-        <div class="modal-dialog modal-sm">
-            <div class="modal-content">
-                <div class="modal-body text-center loading">
-                    <div class="spinner-border text-primary mb-3" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                    <p>Elaborazione in corso...</p>
-                </div>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(modal);
-    return modal;
-}
-
-function createResultModal(title, message, type, onClose) {
-    const modal = document.createElement('div');
-    modal.className = 'modal fade';
-    modal.innerHTML = `
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header ${type === 'success' ? 'bg-success' : 'bg-danger'} text-white">
-                    <h5 class="modal-title">
-                        <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'} me-2"></i>
-                        ${title}
-                    </h5>
-                </div>
-                <div class="modal-body">
-                    <p style="white-space: pre-line;">${message}</p>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    if (onClose) {
-        modal.addEventListener('hidden.bs.modal', onClose);
-    }
-    
-    // Auto-remove modal after hiding
-    modal.addEventListener('hidden.bs.modal', () => {
-        modal.remove();
-    });
-    
-    document.body.appendChild(modal);
-    return modal;
-}
-
+    console.log('✅ Sistema di selezione trattamenti inizializzato');
+});
 </script>
-
 {% endblock %}

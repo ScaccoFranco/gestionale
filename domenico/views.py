@@ -279,12 +279,14 @@ def trattamenti_table(request, view_type):
     
     context = {
         'trattamenti': page_obj,
+        'page_obj': page_obj,  # Aggiunto per la paginazione
+        'is_paginated': page_obj.has_other_pages(),  # Aggiunto per la paginazione
         'stats': stats,
         'filters': filters,
         'clienti': clienti,
         'cascine': cascine,
         'contoterzisti': contoterzisti,
-        'view_type': view_type,
+        'view_type': view_type,  # ✅ IMPORTANTE: Assicurati che sia sempre presente
         'view_title': current_view['title'],
         'view_description': current_view['description'],
         'next_action': current_view['next_action'],
