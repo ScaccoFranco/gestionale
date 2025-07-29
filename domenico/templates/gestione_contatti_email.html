@@ -165,11 +165,6 @@
         margin-bottom: 0;
     }
 
-    .contatto-item.inattivo {
-        opacity: 0.6;
-        background: #f8f9fa;
-    }
-
     .contatto-info {
         flex: 1;
     }
@@ -371,6 +366,62 @@
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
     }
+
+
+    /* Search Bar */
+    .search-section {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .search-box .input-group-text {
+        background-color: #f8f9fa;
+        border-color: #ced4da;
+        color: #6c757d;
+    }
+
+    .search-box .form-control {
+        border-color: #ced4da;
+        font-size: 0.95rem;
+    }
+
+    .search-box .form-control:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    }
+
+    .cliente-card.hidden {
+        display: none !important;
+    }
+
+    .cliente-card.highlighted {
+        box-shadow: 0 6px 20px rgba(0, 123, 255, 0.3);
+        transform: translateY(-2px);
+        border: 2px solid #007bff;
+    }
+
+    .search-match {
+        background-color: #fff3cd;
+        padding: 0.1rem 0.3rem;
+        border-radius: 3px;
+        font-weight: bold;
+    }
+
+    .no-results {
+        text-align: center;
+        padding: 3rem;
+        color: #6c757d;
+    }
+
+    .no-results i {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+
+
 </style>
 {% endblock %}
 
@@ -397,9 +448,43 @@
         <span class="stat-number">{{ stats.contatti_totali }}</span>
         <div class="stat-label">Contatti Totali</div>
     </div>
-    <div class="stat-item">
-        <span class="stat-number">{{ stats.contatti_attivi }}</span>
-        <div class="stat-label">Contatti Attivi</div>
+</div>
+
+<!-- Barra di ricerca -->
+<div class="search-section mb-4">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="search-box">
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="fas fa-search"></i>
+                    </span>
+                    <input type="text" class="form-control" id="searchInput" 
+                           placeholder="Cerca per nome azienda, contatto o email...">
+                    <button class="btn btn-outline-secondary" type="button" id="clearSearch">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="search-filters">
+                <select class="form-select" id="filterSelect">
+                    <option value="all">Tutti i contatti</option>
+                    <option value="active">Solo attivi</option>
+                    <option value="inactive">Solo inattivi</option>
+                    <option value="no-contacts">Senza contatti</option>
+                    <option value="with-contacts">Con contatti</option>
+                </select>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Contatori dinamici -->
+    <div class="search-results-info mt-2" id="searchResults" style="display: none;">
+        <small class="text-muted">
+            <span id="visibleCount">0</span> di <span id="totalCount">0</span> aziende visualizzate
+        </small>
     </div>
 </div>
 
@@ -429,27 +514,13 @@
             {% if cliente.contatti_email.all %}
                 <ul class="contatti-list">
                     {% for contatto in cliente.contatti_email.all %}
-                    <li class="contatto-item {% if not contatto.attivo %}inattivo{% endif %}">
+                    <li class="contatto-item">
                         <div class="contatto-info">
                             <div class="contatto-nome">
-                                <span class="priorita-badge priorita-{{ contatto.priorita }}">
-                                    {% if contatto.priorita == 1 %}Alta{% elif contatto.priorita == 2 %}Media{% else %}Bassa{% endif %}
-                                </span>
                                 {{ contatto.nome }}
-                                {% if not contatto.attivo %}
-                                    <small class="text-muted">(Inattivo)</small>
-                                {% endif %}
                             </div>
                             <div class="contatto-email">
                                 <i class="fas fa-envelope me-1"></i>{{ contatto.email }}
-                            </div>
-                            <div class="contatto-dettagli">
-                                {% if contatto.ruolo %}
-                                    <i class="fas fa-user-tag me-1"></i>{{ contatto.ruolo }}
-                                {% endif %}
-                                {% if contatto.telefono %}
-                                    <i class="fas fa-phone ms-2 me-1"></i>{{ contatto.telefono }}
-                                {% endif %}
                             </div>
                         </div>
                         
@@ -511,48 +582,6 @@
                         <label class="form-label">Email *</label>
                         <input type="email" class="form-control" id="contatto-email" required>
                     </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label class="form-label">Ruolo</label>
-                                <input type="text" class="form-control" id="contatto-ruolo" placeholder="es. Contoterzista, Agronomo">
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label class="form-label">Telefono</label>
-                                <input type="tel" class="form-control" id="contatto-telefono">
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label class="form-label">Priorità</label>
-                                <select class="form-select" id="contatto-priorita">
-                                    <option value="1">Alta (riceve sempre le comunicazioni)</option>
-                                    <option value="2" selected>Media (riceve comunicazioni normali)</option>
-                                    <option value="3">Bassa (riceve solo comunicazioni importanti)</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label class="form-label">Stato</label>
-                                <select class="form-select" id="contatto-attivo">
-                                    <option value="true" selected>Attivo</option>
-                                    <option value="false">Inattivo</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">Note</label>
-                        <textarea class="form-control" id="contatto-note" rows="3" placeholder="Note aggiuntive o istruzioni speciali..."></textarea>
-                    </div>
                 </form>
             </div>
             <div class="modal-footer">
@@ -594,8 +623,6 @@
         
         // Reset form
         document.getElementById('contattoForm').reset();
-        document.getElementById('contatto-priorita').value = '2';
-        document.getElementById('contatto-attivo').value = 'true';
         
         // Update modal title
         document.getElementById('contattoModalTitle').innerHTML = `
@@ -607,48 +634,81 @@
     }
     
     function editContatto(contattoId) {
+        console.log('editContatto chiamata per ID:', contattoId);
+        
         currentContattoId = contattoId;
         isEditing = true;
         
-        // Show loading
+        // Show loading PRIMA di fare la chiamata
         showLoading();
         
         // Carica i dati del contatto
         fetch(`/api/contatti/${contattoId}/`)
-            .then(response => response.json())
+            .then(response => {
+                console.log('Response status:', response.status);
+                
+                // Verifica se la risposta è OK
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                return response.json();
+            })
             .then(data => {
+                console.log('Dati ricevuti:', data);
+                
+                // SEMPRE nascondi il loading, anche in caso di errore nei dati
                 hideLoading();
                 
-                if (data.success) {
+                if (data.success && data.contatto) {
                     const contatto = data.contatto;
                     
-                    // Popola il form
-                    document.getElementById('contatto-nome').value = contatto.nome;
-                    document.getElementById('contatto-email').value = contatto.email;
-                    document.getElementById('contatto-ruolo').value = contatto.ruolo || '';
-                    document.getElementById('contatto-telefono').value = contatto.telefono || '';
-                    document.getElementById('contatto-priorita').value = contatto.priorita;
-                    document.getElementById('contatto-attivo').value = contatto.attivo ? 'true' : 'false';
-                    document.getElementById('contatto-note').value = contatto.note || '';
+                    // Popola il form - verifica che gli elementi esistano
+                    const nomeField = document.getElementById('contatto-nome');
+                    const emailField = document.getElementById('contatto-email');
                     
+                    if (!nomeField || !emailField) {
+                        throw new Error('Campi del form non trovati');
+                    }
+                    
+                    // Popola i campi
+                    nomeField.value = contatto.nome || '';
+                    emailField.value = contatto.email || '';
                     // Update modal title
-                    document.getElementById('contattoModalTitle').innerHTML = `
-                        <i class="fas fa-user-edit me-2"></i>Modifica Contatto - ${contatto.nome}
-                    `;
+                    const titleElement = document.getElementById('contattoModalTitle');
+                    if (titleElement) {
+                        titleElement.innerHTML = `
+                            <i class="fas fa-user-edit me-2"></i>Modifica Contatto - ${contatto.nome}
+                        `;
+                    }
                     
                     // Show modal
-                    new bootstrap.Modal(document.getElementById('contattoModal')).show();
+                    const modalElement = document.getElementById('contattoModal');
+                    if (modalElement) {
+                        const modal = new bootstrap.Modal(modalElement);
+                        modal.show();
+                    } else {
+                        throw new Error('Modal contattoModal non trovato');
+                    }
+                    
                 } else {
-                    alert('Errore nel caricamento del contatto: ' + data.error);
+                    // Errore nei dati ricevuti
+                    const errorMsg = data.error || 'Errore sconosciuto nel caricamento del contatto';
+                    console.error('Errore nei dati:', errorMsg);
+                    alert('Errore nel caricamento del contatto: ' + errorMsg);
                 }
             })
             .catch(error => {
+                console.error('Errore nella fetch:', error);
+                
+                // SEMPRE nascondi il loading in caso di errore
                 hideLoading();
-                console.error('Errore:', error);
-                alert('Errore di connessione');
+                
+                // Mostra errore all'utente
+                alert('Errore di connessione nel caricamento del contatto: ' + error.message);
             });
     }
-    
+
     function deleteContatto(contattoId, nomeContatto) {
         if (!confirm(`Sei sicuro di voler eliminare il contatto "${nomeContatto}"?`)) {
             return;
@@ -667,9 +727,6 @@
         .then(data => {
             hideLoading();
             
-        .then(data => {
-            hideLoading();
-            
             if (data.success) {
                 alert('Contatto eliminato con successo');
                 location.reload();
@@ -684,7 +741,10 @@
         });
     }
     
+ 
     function saveContatto() {
+        console.log('💾 saveContatto - inizio');
+        
         // Validazione form
         const nome = document.getElementById('contatto-nome').value.trim();
         const email = document.getElementById('contatto-email').value.trim();
@@ -706,29 +766,38 @@
             return;
         }
         
-        showLoading();
+        // Mostra loading
+        console.log('💾 Mostrando loading...');
+        showLoadingSimple();
         
         // Prepara i dati
         const formData = new FormData();
         formData.append('nome', nome);
         formData.append('email', email);
-        formData.append('ruolo', document.getElementById('contatto-ruolo').value.trim());
-        formData.append('telefono', document.getElementById('contatto-telefono').value.trim());
-        formData.append('priorita', document.getElementById('contatto-priorita').value);
-        formData.append('attivo', document.getElementById('contatto-attivo').value);
-        formData.append('note', document.getElementById('contatto-note').value.trim());
         formData.append('csrfmiddlewaretoken', getCsrfToken());
         
-        // URL e metodo in base se stiamo modificando o creando
+        // Debug dei dati
+        console.log('💾 Dati da inviare:');
+        for (let [key, value] of formData.entries()) {
+            console.log(`  ${key}: ${value}`);
+        }
+        
+        // URL e metodo
         let url, method;
         if (isEditing && currentContattoId) {
             url = `/api/contatti/${currentContattoId}/`;
             method = 'POST';
+            console.log('💾 Modalità MODIFICA per ID:', currentContattoId);
         } else {
             url = `/api/clienti/${currentClienteId}/contatti/add/`;
             method = 'POST';
+            console.log('💾 Modalità CREAZIONE per cliente ID:', currentClienteId);
         }
         
+        console.log('💾 URL:', url);
+        console.log('💾 Method:', method);
+        
+        // Chiamata API
         fetch(url, {
             method: method,
             body: formData,
@@ -737,30 +806,252 @@
             },
             credentials: 'same-origin'
         })
-        .then(response => response.json())
-        .then(data => {
-            hideLoading();
+        .then(response => {
+            console.log('💾 Response status:', response.status);
+            console.log('💾 Response headers:', response.headers);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            return response.text(); // Prima prendi il testo per debug
+        })
+        .then(text => {
+            console.log('💾 Response text:', text);
+            
+            // Prova a parsare come JSON
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch (e) {
+                console.error('💾 Errore parsing JSON:', e);
+                throw new Error('Risposta del server non è JSON valido: ' + text.substring(0, 200));
+            }
+            
+            console.log('💾 Response data:', data);
+            
+            // Nascondi loading
+            hideLoadingSimple();
             
             if (data.success) {
                 const action = isEditing ? 'aggiornato' : 'aggiunto';
-                alert(`Contatto ${action} con successo`);
+                console.log('✅ Contatto', action, 'con successo');
+                
+                // Mostra alert di successo
+                alert(`✅ Contatto ${action} con successo!`);
                 
                 // Chiudi modal
-                bootstrap.Modal.getInstance(document.getElementById('contattoModal')).hide();
+                closeModalSimple();
                 
-                // Ricarica la pagina
-                location.reload();
+                // Reload pagina dopo un breve delay
+                setTimeout(() => {
+                    console.log('🔄 Reload pagina...');
+                    window.location.reload();
+                }, 500);
+                
             } else {
-                alert('Errore nel salvataggio: ' + data.error);
+                console.error('❌ Errore dal server:', data.error);
+                alert('Errore nel salvataggio: ' + (data.error || 'Errore sconosciuto'));
             }
         })
         .catch(error => {
-            hideLoading();
-            console.error('Errore:', error);
-            alert('Errore di connessione');
+            console.error('❌ Errore fetch:', error);
+            
+            // Nascondi loading
+            hideLoadingSimple();
+            
+            // Mostra errore
+            alert('Errore di connessione: ' + error.message);
         });
     }
-    
+
+    function showLoadingSimple() {
+        console.log('🔄 showLoadingSimple');
+        
+        const loadingModal = document.getElementById('loadingModal');
+        if (loadingModal) {
+            // Metodo semplice: mostra direttamente
+            loadingModal.style.display = 'block';
+            loadingModal.classList.add('show');
+            loadingModal.setAttribute('aria-modal', 'true');
+            loadingModal.removeAttribute('aria-hidden');
+            
+            // Aggiungi backdrop
+            if (!document.querySelector('.modal-backdrop')) {
+                const backdrop = document.createElement('div');
+                backdrop.className = 'modal-backdrop fade show';
+                backdrop.id = 'simple-backdrop';
+                document.body.appendChild(backdrop);
+            }
+            
+            document.body.classList.add('modal-open');
+            console.log('✅ Loading mostrato');
+        } else {
+            console.error('❌ Modal loading non trovato');
+        }
+    }
+
+    function hideLoadingSimple() {
+        console.log('🔄 hideLoadingSimple');
+        
+        const loadingModal = document.getElementById('loadingModal');
+        if (loadingModal) {
+            loadingModal.style.display = 'none';
+            loadingModal.classList.remove('show');
+            loadingModal.setAttribute('aria-hidden', 'true');
+            loadingModal.removeAttribute('aria-modal');
+        }
+        
+        // Rimuovi backdrop
+        const backdrop = document.getElementById('simple-backdrop');
+        if (backdrop) {
+            backdrop.remove();
+        }
+        
+        // Rimuovi tutti i backdrop se presenti
+        document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
+        
+        document.body.classList.remove('modal-open');
+        document.body.style.paddingRight = '';
+        
+        console.log('✅ Loading nascosto');
+    }
+
+    function closeModalSimple() {
+        console.log('🚪 closeModalSimple');
+        
+        const contattoModal = document.getElementById('contattoModal');
+        if (contattoModal) {
+            // Metodo semplice: nascondi direttamente
+            contattoModal.style.display = 'none';
+            contattoModal.classList.remove('show');
+            contattoModal.setAttribute('aria-hidden', 'true');
+            contattoModal.removeAttribute('aria-modal');
+            
+            // Reset form
+            const form = document.getElementById('contattoForm');
+            if (form) {
+                form.reset();
+            }
+            
+            // Reset variabili
+            currentClienteId = null;
+            currentContattoId = null;
+            isEditing = false;
+            
+            console.log('✅ Modal chiuso');
+        }
+    }
+
+
+    function closeContattoModalSafely() {
+        return new Promise((resolve) => {
+            console.log('🚪 Chiudendo modal contatto...');
+            
+            try {
+                const contattoModalElement = document.getElementById('contattoModal');
+                
+                if (contattoModalElement) {
+                    const instance = bootstrap.Modal.getInstance(contattoModalElement);
+                    
+                    if (instance) {
+                        // Aggiungi listener per quando il modal è effettivamente chiuso
+                        contattoModalElement.addEventListener('hidden.bs.modal', function onHidden() {
+                            console.log('✅ Modal contatto chiuso');
+                            contattoModalElement.removeEventListener('hidden.bs.modal', onHidden);
+                            resolve();
+                        });
+                        
+                        // Chiudi il modal
+                        instance.hide();
+                        
+                        // Timeout di sicurezza per il resolve
+                        setTimeout(resolve, 1000);
+                    } else {
+                        // Nessuna istanza, forza la chiusura
+                        contattoModalElement.style.display = 'none';
+                        contattoModalElement.classList.remove('show');
+                        resolve();
+                    }
+                } else {
+                    console.log('⚠️ Modal contatto non trovato');
+                    resolve();
+                }
+                
+            } catch (error) {
+                console.error('❌ Errore nella chiusura modal:', error);
+                resolve(); // Resolve comunque per non bloccare
+            }
+        });
+    }
+
+    function safePageReload() {
+        console.log('🔄 Avviando reload sicuro...');
+        
+        try {
+            // Pulisci tutto prima del reload
+            forceHideAllLoadingModals();
+            
+            // Reset variabili globali
+            currentClienteId = null;
+            currentContattoId = null;
+            isEditing = false;
+            
+            // Rimuovi tutti gli event listener temporanei
+            document.querySelectorAll('.modal').forEach(modal => {
+                const instance = bootstrap.Modal.getInstance(modal);
+                if (instance) {
+                    try {
+                        instance.dispose();
+                    } catch (e) {
+                        console.log('Errore nel dispose modal:', e);
+                    }
+                }
+            });
+            
+            // Aspetta un momento e poi ricarica
+            setTimeout(() => {
+                console.log('🔄 Eseguendo location.reload()');
+                window.location.reload();
+            }, 500);
+            
+        } catch (error) {
+            console.error('❌ Errore nel reload sicuro:', error);
+            
+            // Fallback: reload immediato
+            window.location.reload();
+        }
+    }
+
+    function showSuccessMessage(message) {
+        console.log('✅ Mostrando messaggio di successo:', message);
+        
+        // Crea elemento di notifica
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-success alert-dismissible fade show';
+        alertDiv.style.position = 'fixed';
+        alertDiv.style.top = '20px';
+        alertDiv.style.right = '20px';
+        alertDiv.style.zIndex = '9999';
+        alertDiv.style.minWidth = '300px';
+        
+        alertDiv.innerHTML = `
+            <i class="fas fa-check-circle me-2"></i>
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        // Aggiungi al body
+        document.body.appendChild(alertDiv);
+        
+        // Rimuovi automaticamente dopo 3 secondi
+        setTimeout(() => {
+            if (alertDiv && alertDiv.parentNode) {
+                alertDiv.remove();
+            }
+        }, 3000);
+    }
+
     function testEmailConfig() {
         showLoading();
         
@@ -787,18 +1078,285 @@
             alert('❌ Errore di connessione durante il test email');
         });
     }
+
     
-    function showLoading() {
-        new bootstrap.Modal(document.getElementById('loadingModal')).show();
+
+
+    function forceHideAllLoadingModals() {
+        console.log('🔧 Forzando chiusura di tutti i modal di loading...');
+        
+        // Trova tutti i possibili modal di loading
+        const loadingSelectors = [
+            '#loadingModal',
+            '[id*="loading"]',
+            '.modal[aria-modal="true"]'
+        ];
+        
+        loadingSelectors.forEach(selector => {
+            const elements = document.querySelectorAll(selector);
+            elements.forEach(element => {
+                try {
+                    // Prova con Bootstrap Modal
+                    const instance = bootstrap.Modal.getInstance(element);
+                    if (instance) {
+                        instance.hide();
+                        instance.dispose();
+                    }
+                    
+                    // Forza nascondere l'elemento
+                    element.style.display = 'none';
+                    element.classList.remove('show');
+                    element.setAttribute('aria-hidden', 'true');
+                    element.removeAttribute('aria-modal');
+                    
+                } catch (e) {
+                    console.log('Errore nel nascondere elemento:', e);
+                }
+            });
+        });
+        
+        // Rimuovi tutti i backdrop
+        document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
+            backdrop.remove();
+        });
+        
+        // Reset del body
+        document.body.classList.remove('modal-open');
+        document.body.style.paddingRight = '';
+        document.body.style.overflow = '';
+        
+        console.log('✅ Pulizia modal completata');
     }
-    
+
+
+    function showLoading() {
+        showLoadingSimple();
+    }
+
     function hideLoading() {
-        const loadingModal = bootstrap.Modal.getInstance(document.getElementById('loadingModal'));
-        if (loadingModal) {
-            loadingModal.hide();
+        hideLoadingSimple();
+    }
+
+
+    // 4. Funzione editContatto completamente rivista
+    function editContatto(contattoId) {
+        console.log('🔧 editContatto chiamata per ID:', contattoId);
+        
+        currentContattoId = contattoId;
+        isEditing = true;
+        
+        // Pulisci tutto prima di iniziare
+        forceHideAllLoadingModals();
+        
+        // Mostra loading
+        showLoading();
+        
+        // Imposta timeout di sicurezza per nascondere il loading
+        const safetyTimeout = setTimeout(() => {
+            console.log('⚠️ Timeout raggiunto - forzando chiusura loading');
+            forceHideAllLoadingModals();
+        }, 10000); // 10 secondi
+        
+        // Carica i dati del contatto
+        fetch(`/api/contatti/${contattoId}/`)
+            .then(response => {
+                console.log('📡 Response ricevuta, status:', response.status);
+                
+                // Cancella il timeout di sicurezza
+                clearTimeout(safetyTimeout);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                return response.json();
+            })
+            .then(data => {
+                console.log('📊 Dati ricevuti:', data);
+                
+                // NASCONDI IMMEDIATAMENTE il loading
+                forceHideAllLoadingModals();
+                
+                if (data.success && data.contatto) {
+                    const contatto = data.contatto;
+                    
+                    // Aspetta un momento per essere sicuri che il loading sia nascosto
+                    setTimeout(() => {
+                        populateEditForm(contatto);
+                        showEditModal(contatto.nome);
+                    }, 100);
+                    
+                } else {
+                    const errorMsg = data.error || 'Errore sconosciuto nel caricamento del contatto';
+                    console.error('❌ Errore nei dati:', errorMsg);
+                    alert('Errore nel caricamento del contatto: ' + errorMsg);
+                }
+            })
+            .catch(error => {
+                console.error('❌ Errore nella fetch:', error);
+                
+                // Cancella il timeout di sicurezza
+                clearTimeout(safetyTimeout);
+                
+                // NASCONDI IMMEDIATAMENTE il loading
+                forceHideAllLoadingModals();
+                
+                // Mostra errore all'utente
+                alert('Errore di connessione nel caricamento del contatto: ' + error.message);
+            });
+    }
+
+    // 5. Funzione separata per popolare il form
+    function populateEditForm(contatto) {
+        console.log('📝 Popolando form con dati contatto:', contatto.nome);
+        
+        try {
+            // Verifica che gli elementi esistano
+            const fields = {
+                nome: document.getElementById('contatto-nome'),
+                email: document.getElementById('contatto-email')
+            };
+            
+            // Controlla campi obbligatori
+            if (!fields.nome || !fields.email) {
+                throw new Error('Campi obbligatori del form non trovati');
+            }
+            
+            // Popola tutti i campi
+            fields.nome.value = contatto.nome || '';
+            fields.email.value = contatto.email || '';
+            
+            console.log('✅ Form popolato con successo');
+            
+        } catch (error) {
+            console.error('❌ Errore nel popolare il form:', error);
+            alert('Errore nel caricare i dati nel form: ' + error.message);
         }
     }
-    
+
+    // 6. Funzione separata per mostrare il modal di modifica
+    function showEditModal(nomeContatto) {
+        console.log('📱 Mostrando modal di modifica per:', nomeContatto);
+        
+        try {
+            // Update modal title
+            const titleElement = document.getElementById('contattoModalTitle');
+            if (titleElement) {
+                titleElement.innerHTML = `
+                    <i class="fas fa-user-edit me-2"></i>Modifica Contatto - ${nomeContatto}
+                `;
+            }
+            
+            // Assicurati che non ci siano modal aperti
+            forceHideAllLoadingModals();
+            
+            // Chiudi eventuali istanze precedenti del modal contatto
+            const contattoModalElement = document.getElementById('contattoModal');
+            if (contattoModalElement) {
+                const existingInstance = bootstrap.Modal.getInstance(contattoModalElement);
+                if (existingInstance) {
+                    existingInstance.hide();
+                    existingInstance.dispose();
+                }
+            }
+            
+            // Aspetta un momento e poi mostra il modal
+            setTimeout(() => {
+                if (contattoModalElement) {
+                    const modal = new bootstrap.Modal(contattoModalElement);
+                    modal.show();
+                    console.log('✅ Modal di modifica mostrato');
+                } else {
+                    throw new Error('Modal contattoModal non trovato');
+                }
+            }, 200);
+            
+        } catch (error) {
+            console.error('❌ Errore nel mostrare modal:', error);
+            alert('Errore nell\'apertura del modal: ' + error.message);
+        }
+    }
+
+    // 7. Funzione di debug avanzata
+    window.debugModalAdvanced = {
+        // Mostra stato di tutti i modal
+        showAllModalStates: () => {
+            const modals = document.querySelectorAll('.modal');
+            console.log('🔍 Stato di tutti i modal:');
+            
+            modals.forEach((modal, index) => {
+                const instance = bootstrap.Modal.getInstance(modal);
+                console.log(`Modal ${index + 1} (${modal.id}):`, {
+                    element: modal,
+                    isVisible: modal.classList.contains('show'),
+                    display: modal.style.display,
+                    instance: instance,
+                    ariaHidden: modal.getAttribute('aria-hidden')
+                });
+            });
+            
+            // Mostra backdrop
+            const backdrops = document.querySelectorAll('.modal-backdrop');
+            console.log('🎭 Backdrop trovati:', backdrops.length);
+            backdrops.forEach((backdrop, index) => {
+                console.log(`Backdrop ${index + 1}:`, backdrop);
+            });
+        },
+        
+        // Pulisci tutto forzatamente
+        emergencyCleanup: () => {
+            console.log('🚨 PULIZIA DI EMERGENZA');
+            forceHideAllLoadingModals();
+            
+            // Chiudi anche il modal contatto se aperto
+            const contattoModal = document.getElementById('contattoModal');
+            if (contattoModal) {
+                const instance = bootstrap.Modal.getInstance(contattoModal);
+                if (instance) {
+                    instance.hide();
+                    instance.dispose();
+                }
+            }
+        },
+        
+        // Test completo
+        testComplete: () => {
+            console.log('🧪 Test completo del sistema modal');
+            
+            // Step 1: Mostra loading
+            console.log('Step 1: Mostra loading');
+            showLoading();
+            
+            setTimeout(() => {
+                // Step 2: Nascondi loading
+                console.log('Step 2: Nascondi loading');
+                hideLoading();
+                
+                setTimeout(() => {
+                    // Step 3: Mostra modal contatto
+                    console.log('Step 3: Mostra modal contatto');
+                    const modal = new bootstrap.Modal(document.getElementById('contattoModal'));
+                    modal.show();
+                }, 500);
+            }, 2000);
+        }
+    };
+
+    // 8. Event listener per pulizia automatica
+    document.addEventListener('DOMContentLoaded', function() {
+        // Pulisci al caricamento della pagina
+        forceHideAllLoadingModals();
+        
+        // Aggiungi listener per escape key di emergenza
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && e.ctrlKey) {
+                console.log('🚨 ESC+CTRL premuto - pulizia di emergenza');
+                window.debugModalAdvanced.emergencyCleanup();
+            }
+        });
+    });
+
+ 
     function getCsrfToken() {
         return document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
                document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || '';
@@ -830,8 +1388,7 @@
         // Debug info
         console.log('Stats:', {
             clienti: {{ stats.clienti_totali }},
-            contatti: {{ stats.contatti_totali }},
-            attivi: {{ stats.contatti_attivi }}
+            contatti: {{ stats.contatti_totali }}
         });
     });
     
@@ -839,8 +1396,7 @@
     window.debugContatti = {
         stats: {
             clienti: {{ stats.clienti_totali }},
-            contatti: {{ stats.contatti_totali }},
-            attivi: {{ stats.contatti_attivi }}
+            contatti: {{ stats.contatti_totali }}
         },
         testEmail: testEmailConfig,
         currentState: () => ({
@@ -849,6 +1405,325 @@
             isEditing: isEditing
         })
     };
+
+    window.debugModal = {
+        testLoading: () => {
+            console.log('Test loading modal...');
+            showLoading();
+            setTimeout(() => {
+                console.log('Nascondo loading modal...');
+                hideLoading();
+            }, 2000);
+        },
+        
+        checkElements: () => {
+            const elements = {
+                loadingModal: document.getElementById('loadingModal'),
+                contattoModal: document.getElementById('contattoModal'),
+                contattoForm: document.getElementById('contattoForm'),
+                nomeField: document.getElementById('contatto-nome'),
+                emailField: document.getElementById('contatto-email')
+            };
+            
+            console.log('Elementi trovati:', elements);
+            return elements;
+        },
+        
+        getCurrentState: () => {
+            return {
+                currentClienteId,
+                currentContattoId,
+                isEditing,
+                modalInstances: {
+                    loading: bootstrap.Modal.getInstance(document.getElementById('loadingModal')),
+                    contatto: bootstrap.Modal.getInstance(document.getElementById('contattoModal'))
+                }
+            };
+        }
+    };
+
+
+    window.debugSave = {
+        testSave: () => {
+            console.log('🧪 Test salvataggio simulato');
+            showLoading();
+            
+            setTimeout(() => {
+                forceHideAllLoadingModals();
+                showSuccessMessage('Test salvataggio completato!');
+                
+                setTimeout(() => {
+                    closeContattoModalSafely().then(() => {
+                        console.log('✅ Test completato - modal chiuso');
+                    });
+                }, 1000);
+            }, 2000);
+        },
+        
+        testReload: () => {
+            console.log('🧪 Test reload sicuro');
+            safePageReload();
+        },
+        
+        getCurrentFormData: () => {
+            return {
+                nome: document.getElementById('contatto-nome')?.value,
+                email: document.getElementById('contatto-email')?.value,
+                ruolo: document.getElementById('contatto-ruolo')?.value,
+                telefono: document.getElementById('contatto-telefono')?.value,
+                priorita: document.getElementById('contatto-priorita')?.value,
+                attivo: document.getElementById('contatto-attivo')?.value,
+                note: document.getElementById('contatto-note')?.value
+            };
+        }
+    };
+
+
+    // SISTEMA DI RICERCA E FILTRI
+    let allCards = [];
+    let originalCardsHTML = [];
+
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeSearch();
+    });
+
+    function initializeSearch() {
+        // Cattura tutte le cards
+        allCards = Array.from(document.querySelectorAll('.cliente-card'));
+        
+        // Salva HTML originale per reset highlights
+        originalCardsHTML = allCards.map(card => card.innerHTML);
+        
+        console.log(`🔍 Sistema ricerca inizializzato con ${allCards.length} aziende`);
+        
+        // Event listeners
+        const searchInput = document.getElementById('searchInput');
+        const filterSelect = document.getElementById('filterSelect');
+        const clearButton = document.getElementById('clearSearch');
+        
+        if (searchInput) {
+            searchInput.addEventListener('input', performSearch);
+            searchInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    performSearch();
+                }
+            });
+        }
+        
+        if (filterSelect) {
+            filterSelect.addEventListener('change', performSearch);
+        }
+        
+        if (clearButton) {
+            clearButton.addEventListener('click', clearSearch);
+        }
+        
+        // Inizializza contatori
+        updateResultsCounter();
+    }
+
+    function performSearch() {
+        const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+        const filterType = document.getElementById('filterSelect').value;
+        
+        console.log(`🔍 Ricerca: "${searchTerm}", Filtro: "${filterType}"`);
+        
+        let visibleCount = 0;
+        
+        allCards.forEach((card, index) => {
+            // Reset evidenziazioni
+            card.innerHTML = originalCardsHTML[index];
+            
+            // Ottieni dati della card
+            const cardData = extractCardData(card);
+            
+            // Applica filtri
+            let matchesSearch = true;
+            let matchesFilter = true;
+            
+            // Controllo ricerca testuale
+            if (searchTerm) {
+                matchesSearch = (
+                    cardData.nomeAzienda.includes(searchTerm) ||
+                    cardData.contatti.some(contatto => 
+                        contatto.nome.includes(searchTerm) || 
+                        contatto.email.includes(searchTerm) ||
+                        contatto.ruolo.includes(searchTerm)
+                    )
+                );
+            }
+            
+            // Controllo filtro
+            switch (filterType) {
+                case 'active':
+                    matchesFilter = cardData.hasActiveContacts;
+                    break;
+                case 'inactive':
+                    matchesFilter = cardData.hasInactiveContacts;
+                    break;
+                case 'no-contacts':
+                    matchesFilter = cardData.totalContacts === 0;
+                    break;
+                case 'with-contacts':
+                    matchesFilter = cardData.totalContacts > 0;
+                    break;
+                case 'all':
+                default:
+                    matchesFilter = true;
+                    break;
+            }
+            
+            // Mostra/nascondi card
+            if (matchesSearch && matchesFilter) {
+                card.classList.remove('hidden');
+                card.classList.add('highlighted');
+                
+                // Evidenzia testo se c'è ricerca
+                if (searchTerm) {
+                    highlightSearchTerm(card, searchTerm);
+                }
+                
+                visibleCount++;
+            } else {
+                card.classList.add('hidden');
+                card.classList.remove('highlighted');
+            }
+        });
+        
+        // Mostra messaggio se nessun risultato
+        showNoResultsMessage(visibleCount === 0 && (searchTerm || filterType !== 'all'));
+        
+        // Aggiorna contatori
+        updateResultsCounter(visibleCount, allCards.length);
+        
+        console.log(`✅ Mostrate ${visibleCount} di ${allCards.length} aziende`);
+    }
+
+    function extractCardData(card) {
+        const nomeAzienda = (card.querySelector('.cliente-nome')?.textContent || '').toLowerCase();
+        const contattiElements = card.querySelectorAll('.contatto-item');
+        
+        const contatti = Array.from(contattiElements).map(item => ({
+            nome: (item.querySelector('.contatto-nome')?.textContent || '').toLowerCase(),
+            email: (item.querySelector('.contatto-email')?.textContent || '').toLowerCase(),
+            ruolo: (item.querySelector('.contatto-dettagli')?.textContent || '').toLowerCase(),
+            attivo: !item.classList.contains('inattivo')
+        }));
+        
+        return {
+            nomeAzienda,
+            contatti,
+            totalContacts: contatti.length,
+            hasActiveContacts: contatti.some(c => c.attivo),
+            hasInactiveContacts: contatti.some(c => !c.attivo)
+        };
+    }
+
+    function highlightSearchTerm(card, searchTerm) {
+        const elements = card.querySelectorAll('.cliente-nome, .contatto-nome, .contatto-email, .contatto-dettagli');
+        
+        elements.forEach(element => {
+            if (element.textContent.toLowerCase().includes(searchTerm)) {
+                const regex = new RegExp(`(${searchTerm})`, 'gi');
+                element.innerHTML = element.innerHTML.replace(regex, '<span class="search-match">$1</span>');
+            }
+        });
+    }
+
+    function showNoResultsMessage(show) {
+        let noResultsDiv = document.getElementById('noResultsMessage');
+        
+        if (show) {
+            if (!noResultsDiv) {
+                noResultsDiv = document.createElement('div');
+                noResultsDiv.id = 'noResultsMessage';
+                noResultsDiv.className = 'no-results';
+                noResultsDiv.innerHTML = `
+                    <i class="fas fa-search"></i>
+                    <h4>Nessun risultato trovato</h4>
+                    <p>Prova a modificare i criteri di ricerca o i filtri.</p>
+                `;
+                
+                const grid = document.querySelector('.clienti-grid');
+                if (grid) {
+                    grid.parentNode.insertBefore(noResultsDiv, grid.nextSibling);
+                }
+            }
+            noResultsDiv.style.display = 'block';
+        } else {
+            if (noResultsDiv) {
+                noResultsDiv.style.display = 'none';
+            }
+        }
+    }
+
+    function updateResultsCounter(visible = null, total = null) {
+        const resultsInfo = document.getElementById('searchResults');
+        const visibleSpan = document.getElementById('visibleCount');
+        const totalSpan = document.getElementById('totalCount');
+        
+        if (visible === null) {
+            visible = document.querySelectorAll('.cliente-card:not(.hidden)').length;
+        }
+        if (total === null) {
+            total = allCards.length;
+        }
+        
+        if (visibleSpan) visibleSpan.textContent = visible;
+        if (totalSpan) totalSpan.textContent = total;
+        
+        // Mostra/nascondi info risultati
+        if (resultsInfo) {
+            const searchInput = document.getElementById('searchInput');
+            const filterSelect = document.getElementById('filterSelect');
+            const hasActiveSearch = (searchInput && searchInput.value.trim()) || 
+                                (filterSelect && filterSelect.value !== 'all');
+            
+            resultsInfo.style.display = hasActiveSearch ? 'block' : 'none';
+        }
+    }
+
+    function clearSearch() {
+        const searchInput = document.getElementById('searchInput');
+        const filterSelect = document.getElementById('filterSelect');
+        
+        if (searchInput) searchInput.value = '';
+        if (filterSelect) filterSelect.value = 'all';
+        
+        // Reset tutte le cards
+        allCards.forEach((card, index) => {
+            card.innerHTML = originalCardsHTML[index];
+            card.classList.remove('hidden', 'highlighted');
+        });
+        
+        // Nascondi messaggio no-results
+        showNoResultsMessage(false);
+        
+        // Aggiorna contatori
+        updateResultsCounter();
+        
+        console.log('🔍 Ricerca pulita');
+    }
+
+    // Funzioni di debug
+    window.debugSearch = {
+        showAllData: () => {
+            allCards.forEach((card, i) => {
+                console.log(`Card ${i + 1}:`, extractCardData(card));
+            });
+        },
+        
+        testSearch: (term) => {
+            document.getElementById('searchInput').value = term;
+            performSearch();
+        },
+        
+        resetAll: () => {
+            clearSearch();
+        }
+    };
+
 </script>
 
 <!-- CSRF Token -->

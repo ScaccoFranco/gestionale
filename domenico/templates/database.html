@@ -1,4 +1,5 @@
-{% extends 'base.html' %}
+            // Reset form quando si apre il modal
+            if (modalType === '{% extends 'base.html' %}
 
 {% block page_title %}Gestione Database{% endblock %}
 {% block page_icon %}<i class="fas fa-database"></i>{% endblock %}
@@ -537,6 +538,42 @@
     </div>
 </div>
 
+<!-- Modal Contoterzista Semplificato -->
+<div class="modal fade" id="contoterzastaModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-user-tie me-2"></i>Nuovo Contoterzista
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="contoterzastaForm">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label class="form-label">Nome Contoterzista *</label>
+                        <input type="text" class="form-control" id="contoterzista-nome" required
+                               placeholder="es. Mario Rossi">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Email *</label>
+                        <input type="email" class="form-control" id="contoterzista-email" required
+                               placeholder="mario.rossi@esempio.it">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-success" onclick="saveContoterzista()" id="saveContoterzastaBtn">
+                    <i class="fas fa-save me-2"></i>Salva Contoterzista
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Modal Cliente Semplificato -->
 <div class="modal fade" id="clienteModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
@@ -681,6 +718,8 @@
             // Reset form quando si apre il modal
             if (modalType === 'clienteModal') {
                 resetClienteForm();
+            } else if (modalType === 'contoterzastaModal') {
+                resetContoterzastaForm();
             }
             
             // Gestione chiusura con ESC
@@ -733,7 +772,7 @@
         }
     }
     
-    // Gestione contatti dinamici per il cliente
+    // Gestione contatti dinamici semplificati per il cliente (solo email)
     function aggiungiContatto() {
         contattiCounter++;
         const contattiList = document.getElementById('contattiList');
@@ -746,37 +785,11 @@
             <button type="button" class="btn-remove" onclick="rimuoviContatto(${contattiCounter})">
                 <i class="fas fa-times"></i>
             </button>
-            <div class="form-row-inline mb-2">
-                <div class="form-group">
-                    <label class="form-label">Nome</label>
-                    <input type="text" class="form-control" id="contatto-nome-${contattiCounter}" 
-                           placeholder="es. Mario Rossi" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Email</label>
-                    <input type="email" class="form-control" id="contatto-email-${contattiCounter}" 
-                           placeholder="mario.rossi@esempio.it" required>
-                </div>
-            </div>
-            <div class="form-row-inline">
-                <div class="form-group">
-                    <label class="form-label">Ruolo</label>
-                    <input type="text" class="form-control" id="contatto-ruolo-${contattiCounter}" 
-                           placeholder="es. Responsabile, Agronomo">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Telefono</label>
-                    <input type="tel" class="form-control" id="contatto-telefono-${contattiCounter}" 
-                           placeholder="+39 123 456 7890">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Priorità</label>
-                    <select class="form-select" id="contatto-priorita-${contattiCounter}">
-                        <option value="1">Alta</option>
-                        <option value="2" selected>Media</option>
-                        <option value="3">Bassa</option>
-                    </select>
-                </div>
+            <div class="form-group">
+                <label class="form-label">Email Contatto</label>
+                <input type="email" class="form-control" id="contatto-email-${contattiCounter}" 
+                       placeholder="contatto@esempio.it" required>
+                <small class="text-muted">Inserisci l'email del referente per questo cliente</small>
             </div>
         `;
         
@@ -787,6 +800,14 @@
         const elemento = document.getElementById(`contatto-${id}`);
         if (elemento) {
             elemento.remove();
+        }
+    }
+    
+    function resetContoterzastaForm() {
+        // Reset form contoterzista
+        const form = document.getElementById('contoterzastaForm');
+        if (form) {
+            form.reset();
         }
     }
     
@@ -826,22 +847,17 @@
             note: document.getElementById('cliente-note')?.value?.trim() || ''
         };
         
-        // Raccogli i contatti
+        // Raccogli i contatti (solo email)
         const contatti = [];
         const contattiItems = document.querySelectorAll('.contatto-item');
         
         contattiItems.forEach(item => {
             const id = item.id.split('-')[1];
-            const nome = document.getElementById(`contatto-nome-${id}`)?.value?.trim();
             const email = document.getElementById(`contatto-email-${id}`)?.value?.trim();
             
-            if (nome && email) {
+            if (email) {
                 contatti.push({
-                    nome: nome,
-                    email: email,
-                    ruolo: document.getElementById(`contatto-ruolo-${id}`)?.value?.trim() || '',
-                    telefono: document.getElementById(`contatto-telefono-${id}`)?.value?.trim() || '',
-                    priorita: parseInt(document.getElementById(`contatto-priorita-${id}`)?.value) || 2
+                    email: email
                 });
             }
         });
@@ -1131,10 +1147,7 @@
             if (nome && email) {
                 contatti.push({
                     nome: nome,
-                    email: email,
-                    ruolo: document.getElementById(`contatto-ruolo-${id}`)?.value?.trim() || '',
-                    telefono: document.getElementById(`contatto-telefono-${id}`)?.value?.trim() || '',
-                    priorita: parseInt(document.getElementById(`contatto-priorita-${id}`)?.value) || 2
+                    email: email
                 });
             }
         });
@@ -1232,6 +1245,67 @@
             saveBtn.innerHTML = originalText;
         }
     }
+
+        
+     // Funzione per salvare contoterzista nel database
+    async function saveContoterzista() {
+        const nome = document.getElementById('contoterzista-nome')?.value?.trim();
+        const email = document.getElementById('contoterzista-email')?.value?.trim();
+        
+        if (!nome) {
+            showToast('Il nome del contoterzista è obbligatorio', 'error');
+            return;
+        }
+        
+        if (!email) {
+            showToast('L\'email è obbligatoria', 'error');
+            return;
+        }
+        
+        // Disabilita il bottone durante il salvataggio
+        const saveBtn = document.getElementById('saveContoterzastaBtn');
+        const originalText = saveBtn.innerHTML;
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Salvataggio...';
+        
+        const contoterzastaData = {
+            nome: nome,
+            email: email
+        };
+        
+        try {
+            const response = await fetch('/api/contoterzisti/create/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCsrfToken(),
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(contoterzastaData)
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok && result.success) {
+                showToast(result.message, 'success');
+                closeModal('contoterzastaModal');
+                
+                // Ricarica i contoterzisti e le statistiche
+                await loadContoterzisti();
+                setTimeout(() => window.location.reload(), 1500);
+                
+            } else {
+                showToast(result.error || 'Errore nel salvataggio del contoterzista', 'error');
+            }
+            
+        } catch (error) {
+            console.error('Errore nel salvataggio contoterzista:', error);
+            showToast('Errore di connessione durante il salvataggio', 'error');
+        } finally {
+            // Riabilita il bottone
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = originalText;
+        }
+    }
     
     // Funzione per ottenere CSRF token
     function getCsrfToken() {
@@ -1279,6 +1353,6 @@
     
     // Esegui test dopo 1 secondo per essere sicuri che tutto sia caricato
     setTimeout(testFunctions, 1000);
-    
+
 </script>
 {% endblock %}

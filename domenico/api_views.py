@@ -373,7 +373,6 @@ def api_contoterzisti_list(request):
             contoterzisti_data.append({
                 'id': contoterzista.id,
                 'nome': contoterzista.nome,
-                'telefono': contoterzista.telefono,
                 'email': contoterzista.email,
                 'cascine_count': contoterzista.cascine.count()
             })
@@ -403,7 +402,6 @@ def api_contoterzisti_create(request):
             data = request.POST
             
         nome = data.get('nome', '').strip()
-        telefono = data.get('telefono', '').strip()
         email = data.get('email', '').strip()
         
         # Validazione
@@ -412,13 +410,7 @@ def api_contoterzisti_create(request):
                 'success': False,
                 'error': 'Il nome è obbligatorio'
             }, status=400)
-            
-        if not telefono:
-            return JsonResponse({
-                'success': False,
-                'error': 'Il telefono è obbligatorio'
-            }, status=400)
-            
+        
         if not email:
             return JsonResponse({
                 'success': False,
@@ -444,7 +436,6 @@ def api_contoterzisti_create(request):
         with transaction.atomic():
             contoterzista = Contoterzista.objects.create(
                 nome=nome,
-                telefono=telefono,
                 email=email
             )
             
@@ -456,7 +447,6 @@ def api_contoterzisti_create(request):
                 'contoterzista': {
                     'id': contoterzista.id,
                     'nome': contoterzista.nome,
-                    'telefono': contoterzista.telefono,
                     'email': contoterzista.email
                 }
             })
@@ -597,11 +587,6 @@ def api_contatti_email_create(request, cliente_id):
             
         nome = data.get('nome', '').strip()
         email = data.get('email', '').strip()
-        ruolo = data.get('ruolo', '').strip()
-        telefono = data.get('telefono', '').strip()
-        priorita = data.get('priorita', 2)
-        attivo = data.get('attivo', True)
-        note = data.get('note', '').strip()
         
         # Validazione
         if not nome:
@@ -641,24 +626,11 @@ def api_contatti_email_create(request, cliente_id):
                 'error': f'Esiste già un contatto con l\'email "{email}" per questo cliente'
             }, status=400)
         
-        try:
-            priorita = int(priorita)
-        except (ValueError, TypeError):
-            priorita = 2
-            
-        if isinstance(attivo, str):
-            attivo = attivo.lower() == 'true'
-        
         with transaction.atomic():
             contatto = ContattoEmail.objects.create(
                 cliente=cliente,
                 nome=nome,
                 email=email,
-                ruolo=ruolo,
-                telefono=telefono,
-                priorita=priorita,
-                attivo=attivo,
-                note=note
             )
             
             logger.info(f"Contatto email creato: {contatto.nome} ({contatto.email}) per cliente {cliente.nome}")
@@ -670,11 +642,6 @@ def api_contatti_email_create(request, cliente_id):
                     'id': contatto.id,
                     'nome': contatto.nome,
                     'email': contatto.email,
-                    'ruolo': contatto.ruolo,
-                    'telefono': contatto.telefono,
-                    'priorita': contatto.priorita,
-                    'attivo': contatto.attivo,
-                    'note': contatto.note,
                     'cliente': contatto.cliente.nome
                 }
             })

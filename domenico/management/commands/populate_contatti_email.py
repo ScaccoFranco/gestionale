@@ -60,13 +60,11 @@ class Command(BaseCommand):
         # Statistiche finali
         stats_finali = {
             'contatti_dopo': ContattoEmail.objects.count(),
-            'clienti_con_contatti_dopo': Cliente.objects.filter(contatti_email__isnull=False).distinct().count(),
-            'contatti_attivi': ContattoEmail.objects.filter(attivo=True).count()
+            'clienti_con_contatti_dopo': Cliente.objects.filter(contatti_email__isnull=False).distinct().count()
         }
         
         self.stdout.write('\n📈 STATISTICHE FINALI:')
         self.stdout.write(f"  • Contatti totali: {stats_finali['contatti_dopo']}")
-        self.stdout.write(f"  • Contatti attivi: {stats_finali['contatti_attivi']}")
         self.stdout.write(f"  • Clienti con contatti: {stats_finali['clienti_con_contatti_dopo']}")
         self.stdout.write(f"  • Contatti aggiunti: {stats_finali['contatti_dopo'] - stats_iniziali['contatti_prima']}")
         
@@ -86,26 +84,17 @@ class Command(BaseCommand):
             "Prunotto / Alba": [
                 {
                     "nome": "Marco Bianchi",
-                    "email": "marco.bianchi@prunotto.it",
-                    "ruolo": "Responsabile Vigneti",
-                    "telefono": "0173-280017",
-                    "priorita": 1
+                    "email": "marco.bianchi@prunotto.it"
                 },
                 {
                     "nome": "Elena Rossi",
-                    "email": "elena.rossi@prunotto.it", 
-                    "ruolo": "Agronomo",
-                    "telefono": "0173-280018",
-                    "priorita": 2
+                    "email": "elena.rossi@prunotto.it"
                 }
             ],
             "Prunotto / Asti": [
                 {
                     "nome": "Giuseppe Verdi",
-                    "email": "giuseppe.verdi@prunotto.it",
-                    "ruolo": "Responsabile Barbera",
-                    "telefono": "0141-592017",
-                    "priorita": 1
+                    "email": "giuseppe.verdi@prunotto.it"
                 }
             ],
             
@@ -113,17 +102,11 @@ class Command(BaseCommand):
             "Michele Chiarlo SRL": [
                 {
                     "nome": "Alberto Chiarlo",
-                    "email": "alberto@chiarlo.it",
-                    "ruolo": "Direttore Tecnico",
-                    "telefono": "0141-847485",
-                    "priorita": 1
+                    "email": "alberto@chiarlo.it"
                 },
                 {
                     "nome": "Stefano Costa",
-                    "email": "stefano.costa@chiarlo.it",
-                    "ruolo": "Responsabile Vigneti",
-                    "telefono": "0141-847486",
-                    "priorita": 1
+                    "email": "stefano.costa@chiarlo.it"
                 }
             ],
             
@@ -131,10 +114,7 @@ class Command(BaseCommand):
             "Azienda Agricola Chiarlo S.S / Alba": [
                 {
                     "nome": "Claudio Fenocchio",
-                    "email": "claudio@chiarloalba.it",
-                    "ruolo": "Contoterzista",
-                    "telefono": "0173-56789",
-                    "priorita": 1
+                    "email": "claudio@chiarloalba.it"
                 }
             ],
             
@@ -142,17 +122,11 @@ class Command(BaseCommand):
             "Antinori Soc. Agricola ARL": [
                 {
                     "nome": "Francesco Marengo",
-                    "email": "f.marengo@antinori.it",
-                    "ruolo": "Responsabile Piemonte",
-                    "telefono": "0173-613111",
-                    "priorita": 1
+                    "email": "f.marengo@antinori.it"
                 },
                 {
                     "nome": "Anna Ferrero",
-                    "email": "a.ferrero@antinori.it",
-                    "ruolo": "Agronomo Senior",
-                    "telefono": "0173-613112",
-                    "priorita": 2
+                    "email": "a.ferrero@antinori.it"
                 }
             ],
             
@@ -160,10 +134,7 @@ class Command(BaseCommand):
             "Paolo Scavino di Enrico Scavino": [
                 {
                     "nome": "Enrico Scavino",
-                    "email": "enrico@scavino.com",
-                    "ruolo": "Titolare",
-                    "telefono": "0173-56321",
-                    "priorita": 1
+                    "email": "enrico@scavino.com"
                 }
             ],
             
@@ -171,17 +142,11 @@ class Command(BaseCommand):
             "Mauro Sebaste": [
                 {
                     "nome": "Mauro Sebaste",
-                    "email": "mauro@sebaste.it",
-                    "ruolo": "Titolare",
-                    "telefono": "0173-56432",
-                    "priorita": 1
+                    "email": "mauro@sebaste.it"
                 },
                 {
                     "nome": "Tiziana Sebaste",
-                    "email": "tiziana@sebaste.it",
-                    "ruolo": "Amministrazione",
-                    "telefono": "0173-56433",
-                    "priorita": 2
+                    "email": "tiziana@sebaste.it"
                 }
             ]
         }
@@ -197,11 +162,7 @@ class Command(BaseCommand):
                         cliente=cliente,
                         email=contatto_data['email'],
                         defaults={
-                            'nome': contatto_data['nome'],
-                            'ruolo': contatto_data['ruolo'],
-                            'telefono': contatto_data.get('telefono', ''),
-                            'priorita': contatto_data.get('priorita', 2),
-                            'attivo': True
+                            'nome': contatto_data['nome']
                         }
                     )
                     
@@ -247,12 +208,7 @@ class Command(BaseCommand):
                 contatto = ContattoEmail.objects.create(
                     cliente=cliente,
                     nome=f"{nome_base} {cliente.nome}",
-                    email=email_base,
-                    ruolo=ruoli_test[j % len(ruoli_test)],
-                    telefono=f"333-{1000 + contatti_test_creati:04d}",
-                    priorita=(j % 3) + 1,
-                    attivo=True,
-                    note=f"Contatto di test per {cliente.nome}"
+                    email=email_base
                 )
                 
                 contatti_test_creati += 1
@@ -265,11 +221,6 @@ class Command(BaseCommand):
         """Mostra statistiche dettagliate"""
         self.stdout.write('\n📋 STATISTICHE DETTAGLIATE:')
         
-        # Contatti per priorità
-        for priorita in [1, 2, 3]:
-            count = ContattoEmail.objects.filter(priorita=priorita).count()
-            nome_priorita = ['Alta', 'Media', 'Bassa'][priorita-1]
-            self.stdout.write(f"  • Priorità {nome_priorita}: {count}")
         
         # Clienti con più contatti
         from django.db.models import Count
@@ -281,13 +232,4 @@ class Command(BaseCommand):
         for cliente in clienti_top:
             self.stdout.write(f"  • {cliente.nome}: {cliente.num_contatti} contatti")
         
-        # Ruoli più comuni
-        ruoli = ContattoEmail.objects.values_list('ruolo', flat=True).exclude(ruolo='')
-        ruoli_count = {}
-        for ruolo in ruoli:
-            ruoli_count[ruolo] = ruoli_count.get(ruolo, 0) + 1
-        
-        if ruoli_count:
-            self.stdout.write('\n👔 RUOLI PIÙ COMUNI:')
-            for ruolo, count in sorted(ruoli_count.items(), key=lambda x: x[1], reverse=True)[:5]:
-                self.stdout.write(f"  • {ruolo}: {count}")
+

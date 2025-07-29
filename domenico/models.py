@@ -24,18 +24,6 @@ class ContattoEmail(models.Model):
     cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE, related_name='contatti_email')
     nome = models.CharField(max_length=200, help_text="Nome del contatto")
     email = models.EmailField(help_text="Indirizzo email del contatto")
-    ruolo = models.CharField(
-        max_length=100, 
-        blank=True, 
-        help_text="Es: Contoterzista, Agronomo, Responsabile"
-    )
-    telefono = models.CharField(max_length=20, blank=True)
-    attivo = models.BooleanField(default=True, help_text="Se deselezionato, non riceverà le comunicazioni")
-    priorita = models.IntegerField(
-        default=1,
-        help_text="1=Alta priorità, 2=Media, 3=Bassa (per ordinare i contatti)"
-    )
-    note = models.TextField(blank=True)
     
     def __str__(self):
         return f"{self.nome} ({self.email}) - {self.cliente.nome}"
@@ -43,11 +31,9 @@ class ContattoEmail(models.Model):
     class Meta:
         verbose_name = "Contatto Email"
         verbose_name_plural = "Contatti Email"
-        ordering = ['priorita', 'nome']
 
 class Contoterzista(models.Model):
     nome = models.CharField(max_length=200)
-    telefono = models.CharField(max_length=20, blank=True)
     email = models.EmailField(blank=True)
     
     def __str__(self):
@@ -135,7 +121,7 @@ class Prodotto(models.Model):
         verbose_name_plural = "Prodotti"
 
 class Trattamento(models.Model):
-    # Stati del trattamento (AGGIORNATI - rimosso in_esecuzione)
+
     STATI_CHOICES = [
         ('programmato', 'Programmato'),
         ('comunicato', 'Comunicato'), 
@@ -143,7 +129,7 @@ class Trattamento(models.Model):
         ('annullato', 'Annullato'),
     ]
     
-    # Resto dei campi rimane uguale...
+    
     cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE, related_name='trattamenti')
     cascina = models.ForeignKey(Cascina, on_delete=models.CASCADE, null=True, blank=True, related_name='trattamenti')
     terreni = models.ManyToManyField(Terreno, blank=True, related_name='trattamenti')

@@ -676,14 +676,11 @@
                     </td>
                     <td>
                         <div class="destinatari-list">
-                            {% for destinatario in comunicazione.destinatari|split:", " %}
-                            <div class="destinatario-item">
-                                <i class="fas fa-envelope"></i>
-                                <span>{{ destinatario }}</span>
-                            </div>
-                            {% empty %}
-                            <div class="text-muted">Nessun destinatario</div>
-                            {% endfor %}
+                            {% if comunicazione.destinatari %}
+                                {{ comunicazione.destinatari|truncatechars:50 }}
+                            {% else %}
+                                <span class="text-muted">Nessun destinatario</span>
+                            {% endif %}
                         </div>
                     </td>
                     <td>

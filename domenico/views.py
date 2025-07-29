@@ -7,6 +7,8 @@ from django.db.models import Sum, Count, Q
 from django.utils import timezone
 from django.conf import settings 
 from django.core.paginator import Paginator
+from django.core.validators import validate_email
+from django.core.exceptions import ValidationError
 import json
 from .models import *
 
@@ -301,7 +303,6 @@ def gestione_contatti_email(request):
     # Ottieni tutti i clienti con il numero di contatti
     clienti = Cliente.objects.annotate(
         contatti_count=Count('contatti_email'),
-        contatti_attivi_count=Count('contatti_email', filter=Q(contatti_email__attivo=True))
     ).order_by('nome')
     
     # Statistiche generali
@@ -309,7 +310,6 @@ def gestione_contatti_email(request):
         'clienti_totali': clienti.count(),
         'clienti_con_contatti': clienti.filter(contatti_count__gt=0).count(),
         'contatti_totali': ContattoEmail.objects.count(),
-        'contatti_attivi': ContattoEmail.objects.filter(attivo=True).count(),
     }
     
     context = {
@@ -421,73 +421,102 @@ def api_send_comunicazione(request, trattamento_id):
             'success': False,
             'error': f'Errore nell\'aggiunta del contatto: {str(e)}'
         }, status=500)
-
-@csrf_exempt
-@require_http_methods(["POST", "DELETE"])
+@require_http_methods(["GET", "POST", "DELETE"])
 def api_manage_contatto(request, contatto_id):
-    """API per modificare o eliminare un contatto email"""
+    """API per gestire un contatto email (GET, POST per modifica, DELETE)"""
     try:
-        if request.method == 'POST':
-            # Modifica contatto
-            contatto = get_object_or_404(ContattoEmail, id=contatto_id)
+        contatto = get_object_or_404(ContattoEmail, id=contatto_id)
+        
+        if request.method == 'GET':
+            # Restituisce i dati del contatto per la modifica
+            return JsonResponse({
+                'success': True,
+                'contatto': {
+                    'id': contatto.id,
+                    'nome': contatto.nome,
+                    'email': contatto.email,
+                    'cliente_id': contatto.cliente.id,
+                    'cliente_nome': contatto.cliente.nome
+                }
+            })
             
-            kwargs = {}
-            if 'nome' in request.POST:
-                kwargs['nome'] = request.POST.get('nome').strip()
-            if 'email' in request.POST:
-                kwargs['email'] = request.POST.get('email').strip()
-            if 'ruolo' in request.POST:
-                kwargs['ruolo'] = request.POST.get('ruolo').strip()
-            if 'telefono' in request.POST:
-                kwargs['telefono'] = request.POST.get('telefono').strip()
-            if 'priorita' in request.POST:
-                kwargs['priorita'] = int(request.POST.get('priorita'))
-            if 'attivo' in request.POST:
-                kwargs['attivo'] = request.POST.get('attivo', 'false').lower() == 'true'
-            if 'note' in request.POST:
-                kwargs['note'] = request.POST.get('note').strip()
+        elif request.method == 'POST':
+            # Modifica il contatto esistente
+            nome = request.POST.get('nome', '').strip()
+            email = request.POST.get('email', '').strip()
             
-            risultato = update_contatto_email(contatto_id, **kwargs)
-            
-            if risultato['success']:
-                # Ricarica il contatto aggiornato
-                contatto.refresh_from_db()
+            if not nome:
                 return JsonResponse({
-                    'success': True,
-                    'message': risultato['message'],
-                    'contatto': {
-                        'id': contatto.id,
-                        'nome': contatto.nome,
-                        'email': contatto.email,
-                        'ruolo': contatto.ruolo,
-                        'telefono': contatto.telefono,
-                        'priorita': contatto.priorita,
-                        'attivo': contatto.attivo,
-                        'note': contatto.note
-                    }
-                })
-            else:
-                return JsonResponse(risultato, status=400)
+                    'success': False,
+                    'error': 'Il nome è obbligatorio'
+                }, status=400)
+                
+            if not email:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'L\'email è obbligatoria'
+                }, status=400)
+            
+            # Validazione email
+            import re
+            email_regex = r'^[^\s@]+@[^\s@]+\.[^\s@]+$'
+            if not re.match(email_regex, email):
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Indirizzo email non valido'
+                }, status=400)
+            
+            # Verifica che non esista già un altro contatto con la stessa email per lo stesso cliente
+            conflitto = ContattoEmail.objects.filter(
+                cliente=contatto.cliente, 
+                email__iexact=email
+            ).exclude(id=contatto.id).first()
+            
+            if conflitto:
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Esiste già un contatto con l\'email "{email}" per questo cliente'
+                }, status=400)
+            
+            # Aggiorna i campi
+            contatto.nome = nome
+            contatto.email = email
+            
+            contatto.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Contatto {contatto.nome} aggiornato con successo',
+                'contatto': {
+                    'id': contatto.id,
+                    'nome': contatto.nome,
+                    'email': contatto.email,
+                }
+            })
             
         elif request.method == 'DELETE':
-            # Elimina contatto
-            risultato = delete_contatto_email(contatto_id)
+            # Elimina il contatto
+            nome_contatto = contatto.nome
+            cliente_nome = contatto.cliente.nome
+            contatto.delete()
             
-            if risultato['success']:
-                return JsonResponse(risultato)
-            else:
-                return JsonResponse(risultato, status=400)
+            return JsonResponse({
+                'success': True,
+                'message': f'Contatto {nome_contatto} eliminato con successo da {cliente_nome}'
+            })
             
-    except ValueError:
+    except ContattoEmail.DoesNotExist:
         return JsonResponse({
             'success': False,
-            'error': 'Priorità deve essere un numero'
-        }, status=400)
+            'error': 'Contatto non trovato'
+        }, status=404)
     except Exception as e:
+        print(f"Errore in api_manage_contatto: {str(e)}")
         return JsonResponse({
             'success': False,
-            'error': str(e)
+            'error': f'Errore nell\'operazione: {str(e)}'
         }, status=500)
+
 
 def api_comunicazioni_trattamento(request, trattamento_id):
     """API per ottenere lo storico delle comunicazioni di un trattamento"""
@@ -848,11 +877,6 @@ def api_contatti_cliente(request, cliente_id):
                 'id': contatto.id,
                 'nome': contatto.nome,
                 'email': contatto.email,
-                'ruolo': contatto.ruolo,
-                'telefono': contatto.telefono,
-                'priorita': contatto.priorita,
-                'attivo': contatto.attivo,
-                'note': contatto.note
             })
         
         return JsonResponse({
@@ -872,14 +896,13 @@ def api_contatti_cliente(request, cliente_id):
 def api_add_contatto_cliente(request, cliente_id):
     """API per aggiungere un contatto email a un cliente"""
     try:
+        # Verifica che il cliente esista
+        cliente = get_object_or_404(Cliente, id=cliente_id)
+        
+        # Ottieni i dati dal form
         nome = request.POST.get('nome', '').strip()
         email = request.POST.get('email', '').strip()
-        ruolo = request.POST.get('ruolo', '').strip()
-        telefono = request.POST.get('telefono', '').strip()
-        priorita = int(request.POST.get('priorita', 1))
-        note = request.POST.get('note', '').strip()
         
-        # Validazione
         if not nome:
             return JsonResponse({
                 'success': False,
@@ -892,31 +915,51 @@ def api_add_contatto_cliente(request, cliente_id):
                 'error': 'L\'email è obbligatoria'
             }, status=400)
         
-        # Aggiungi il contatto
-        risultato = add_contatto_email(
-            cliente_id=cliente_id,
+        # Validazione email
+        import re
+        email_regex = r'^[^\s@]+@[^\s@]+\.[^\s@]+$'
+        if not re.match(email_regex, email):
+            return JsonResponse({
+                'success': False,
+                'error': 'Indirizzo email non valido'
+            }, status=400)
+        
+        # Verifica che non esista già un contatto con la stessa email per questo cliente
+        if ContattoEmail.objects.filter(cliente=cliente, email__iexact=email).exists():
+            return JsonResponse({
+                'success': False,
+                'error': f'Esiste già un contatto con l\'email "{email}" per questo cliente'
+            }, status=400)
+
+        # Crea il contatto
+        contatto = ContattoEmail.objects.create(
+            cliente=cliente,
             nome=nome,
-            email=email,
-            ruolo=ruolo,
-            telefono=telefono,
-            priorita=priorita,
-            note=note
+            email=email
         )
         
-        if risultato['success']:
-            return JsonResponse(risultato)
-        else:
-            return JsonResponse(risultato, status=400)
-            
-    except ValueError:
+        return JsonResponse({
+            'success': True,
+            'message': f'Contatto {nome} aggiunto con successo',
+            'contatto': {
+                'id': contatto.id,
+                'nome': contatto.nome,
+                'email': contatto.email,
+                'cliente_nome': cliente.nome
+            }
+        })
+        
+    except Cliente.DoesNotExist:
         return JsonResponse({
             'success': False,
-            'error': 'Priorità deve essere un numero'
-        }, status=400)
+            'error': 'Cliente non trovato'
+        }, status=404)
     except Exception as e:
+        print(f"Errore in api_add_contatto_cliente: {str(e)}")
+        print(f"POST data: {dict(request.POST)}")
         return JsonResponse({
             'success': False,
-            'error': f'Errore nell\'invio della comunicazione: {str(e)}'
+            'error': f'Errore nell\'aggiunta del contatto: {str(e)}'
         }, status=500)
     
 def api_cascine_by_cliente(request, cliente_id):
@@ -973,7 +1016,6 @@ def api_cascina_contoterzista(request, cascina_id):
                 'contoterzista': {
                     'id': cascina.contoterzista.id,
                     'nome': cascina.contoterzista.nome,
-                    'telefono': cascina.contoterzista.telefono,
                     'email': cascina.contoterzista.email,
                 }
             })
@@ -1056,20 +1098,14 @@ def api_communication_preview(request):
         all_recipients = []
         
         for trattamento in trattamenti:
-            # Ottieni contatti attivi per questo cliente
-            contatti_attivi = trattamento.cliente.contatti_email.filter(attivo=True)
-            
-            if not contatti_attivi.exists():
-                continue
-            
+
             # Prepara dati email per questo trattamento
             recipients = []
-            for contatto in contatti_attivi:
+            for contatto in trattamento.cliente.contatti_email:
                 recipients.append(contatto.email)
                 all_recipients.append({
                     'nome': contatto.nome,
                     'email': contatto.email,
-                    'ruolo': contatto.ruolo,
                     'trattamento_id': trattamento.id,
                     'cliente_nome': trattamento.cliente.nome
                 })
@@ -1406,10 +1442,6 @@ def api_cliente_create(request):
                         cliente=cliente,
                         nome=contatto_data['nome'],
                         email=contatto_data['email'],
-                        ruolo=contatto_data.get('ruolo', ''),
-                        telefono=contatto_data.get('telefono', ''),
-                        priorita=contatto_data.get('priorita', 2),
-                        attivo=True
                     )
                     contatti_creati.append(contatto.nome)
             
@@ -1444,7 +1476,6 @@ def api_contoterzisti_list(request):
             contoterzisti_data.append({
                 'id': contoterzista.id,
                 'nome': contoterzista.nome,
-                'telefono': contoterzista.telefono,
                 'email': contoterzista.email
             })
         
@@ -1529,6 +1560,76 @@ def api_cascina_create(request):
                     'nome': cascina.nome,
                     'cliente': cascina.cliente.nome,
                     'contoterzista': cascina.contoterzista.nome if cascina.contoterzista else None
+                }
+            })
+            
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': 'Dati JSON non validi'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'Errore nella creazione: {str(e)}'
+        }, status=500)
+    
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_contoterzista_create(request):
+    """API per creare nuovo contoterzista (semplificata)"""
+    try:
+        # Parse JSON data
+        if request.content_type == 'application/json':
+            data = json.loads(request.body)
+        else:
+            data = request.POST
+            
+        nome = data.get('nome', '').strip()
+        email = data.get('email', '').strip()
+        
+        # Validazione
+        if not nome:
+            return JsonResponse({
+                'success': False,
+                'error': 'Il nome è obbligatorio'
+            }, status=400)
+            
+        if not email:
+            return JsonResponse({
+                'success': False,
+                'error': 'L\'email è obbligatoria'
+            }, status=400)
+        
+        # Validazione email
+        try:
+            validate_email(email)
+        except ValidationError:
+            return JsonResponse({
+                'success': False,
+                'error': 'Indirizzo email non valido'
+            }, status=400)
+        
+        # Verifica se esiste già un contoterzista con la stessa email
+        if Contoterzista.objects.filter(email__iexact=email).exists():
+            return JsonResponse({
+                'success': False,
+                'error': f'Esiste già un contoterzista con l\'email "{email}"'
+            }, status=400)
+        
+        with transaction.atomic():
+            contoterzista = Contoterzista.objects.create(
+                nome=nome,
+                email=email
+            )
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Contoterzista "{nome}" creato con successo',
+                'contoterzista': {
+                    'id': contoterzista.id,
+                    'nome': contoterzista.nome,
+                    'email': contoterzista.email
                 }
             })
             

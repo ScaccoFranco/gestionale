@@ -22,3 +22,41 @@ INFO 2025-07-28 14:56:27,887 email_utils Generazione PDF con WeasyPrint per trat
 INFO 2025-07-28 14:56:28,385 email_utils PDF generato con successo con WeasyPrint per trattamento 18
 INFO 2025-07-28 14:56:28,420 email_utils Generazione PDF con WeasyPrint per trattamento 18
 INFO 2025-07-28 14:56:28,795 email_utils PDF generato con successo con WeasyPrint per trattamento 18
+WARNING 2025-07-29 10:55:17,846 email_utils Né WeasyPrint né xhtml2pdf sono installati. Le funzioni PDF non saranno disponibili.
+WARNING 2025-07-29 11:11:00,052 email_utils Né WeasyPrint né xhtml2pdf sono installati. Le funzioni PDF non saranno disponibili.
+WARNING 2025-07-29 11:11:06,448 email_utils Né WeasyPrint né xhtml2pdf sono installati. Le funzioni PDF non saranno disponibili.
+WARNING 2025-07-29 11:11:16,021 email_utils Né WeasyPrint né xhtml2pdf sono installati. Le funzioni PDF non saranno disponibili.
+WARNING 2025-07-29 11:13:33,715 email_utils Né WeasyPrint né xhtml2pdf sono installati. Le funzioni PDF non saranno disponibili.
+WARNING 2025-07-29 11:14:42,597 email_utils Né WeasyPrint né xhtml2pdf sono installati. Le funzioni PDF non saranno disponibili.
+ERROR 2025-07-29 11:15:21,912 email_utils Errore aggiunta contatto per cliente 228: Cannot resolve keyword 'email' into field. Choices are: cliente, cliente_id, id, nome
+WARNING 2025-07-29 11:19:26,118 email_utils Né WeasyPrint né xhtml2pdf sono installati. Le funzioni PDF non saranno disponibili.
+ERROR 2025-07-29 11:19:58,258 email_utils Errore aggiunta contatto per cliente 228: Cannot resolve keyword 'email' into field. Choices are: cliente, cliente_id, id, nome
+WARNING 2025-07-29 11:27:25,138 email_utils Né WeasyPrint né xhtml2pdf sono installati. Le funzioni PDF non saranno disponibili.
+ERROR 2025-07-29 11:29:07,463 email_utils Errore aggiunta contatto per cliente 228: Cannot resolve keyword 'email' into field. Choices are: cliente, cliente_id, id, nome
+WARNING 2025-07-29 11:35:22,580 email_utils Né WeasyPrint né xhtml2pdf sono installati. Le funzioni PDF non saranno disponibili.
+WARNING 2025-07-29 11:35:31,164 email_utils Né WeasyPrint né xhtml2pdf sono installati. Le funzioni PDF non saranno disponibili.
+WARNING 2025-07-29 11:41:19,757 email_utils Né WeasyPrint né xhtml2pdf sono installati. Le funzioni PDF non saranno disponibili.
+WARNING 2025-07-29 11:41:23,592 email_utils Né WeasyPrint né xhtml2pdf sono installati. Le funzioni PDF non saranno disponibili.
+WARNING 2025-07-29 11:44:08,241 email_utils Né WeasyPrint né xhtml2pdf sono installati. Le funzioni PDF non saranno disponibili.
+WARNING 2025-07-29 11:45:50,200 email_utils Né WeasyPrint né xhtml2pdf sono installati. Le funzioni PDF non saranno disponibili.
+WARNING 2025-07-29 11:46:36,018 email_utils Né WeasyPrint né xhtml2pdf sono installati. Le funzioni PDF non saranno disponibili.
+WARNING 2025-07-29 11:46:40,543 email_utils Né WeasyPrint né xhtml2pdf sono installati. Le funzioni PDF non saranno disponibili.
+INFO 2025-07-29 11:47:18,874 email_utils Email di test inviata con successo
+WARNING 2025-07-29 11:49:52,534 email_utils Né WeasyPrint né xhtml2pdf sono installati. Le funzioni PDF non saranno disponibili.
+WARNING 2025-07-29 11:50:11,157 email_utils Né WeasyPrint né xhtml2pdf sono installati. Le funzioni PDF non saranno disponibili.
+WARNING 2025-07-29 11:53:50,063 email_utils Né WeasyPrint né xhtml2pdf sono installati. Le funzioni PDF non saranno disponibili.
+WARNING 2025-07-29 12:03:44,573 email_utils Né WeasyPrint né xhtml2pdf sono installati. Le funzioni PDF non saranno disponibili.
+WARNING 2025-07-29 12:05:05,202 email_utils Né WeasyPrint né xhtml2pdf sono installati. Le funzioni PDF non saranno disponibili.
+WARNING 2025-07-29 12:06:22,840 email_utils Né WeasyPrint né xhtml2pdf sono installati. Le funzioni PDF non saranno disponibili.
+WARNING 2025-07-29 12:07:21,775 email_utils Né WeasyPrint né xhtml2pdf sono installati. Le funzioni PDF non saranno disponibili.
+WARNING 2025-07-29 12:07:38,486 email_utils Né WeasyPrint né xhtml2pdf sono installati. Le funzioni PDF non saranno disponibili.
+WARNING 2025-07-29 12:07:53,700 email_utils Né WeasyPrint né xhtml2pdf sono installati. Le funzioni PDF non saranno disponibili.
+WARNING 2025-07-29 12:08:04,201 email_utils Né WeasyPrint né xhtml2pdf sono installati. Le funzioni PDF non saranno disponibili.
+WARNING 2025-07-29 12:15:37,956 email_utils Né WeasyPrint né xhtml2pdf sono installati. Le funzioni PDF non saranno disponibili.
+WARNING 2025-07-29 12:31:11,847 email_utils Né WeasyPrint né xhtml2pdf sono installati. Le funzioni PDF non saranno disponibili.
+WARNING 2025-07-29 12:38:11,560 email_utils Né WeasyPrint né xhtml2pdf sono installati. Le funzioni PDF non saranno disponibili.
+INFO 2025-07-29 12:39:02,342 email_utils Email di test inviata con successo
+INFO 2025-07-29 14:31:00,539 email_utils Email di test inviata con successo
+WARNING 2025-07-29 14:44:28,837 email_utils Né WeasyPrint né xhtml2pdf sono installati. Le funzioni PDF non saranno disponibili.
+WARNING 2025-07-29 14:47:13,503 email_utils Né WeasyPrint né xhtml2pdf sono installati. Le funzioni PDF non saranno disponibili.
+WARNING 2025-07-29 14:50:10,539 email_utils Né WeasyPrint né xhtml2pdf sono installati. Le funzioni PDF non saranno disponibili.
