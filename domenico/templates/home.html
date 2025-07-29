@@ -361,6 +361,183 @@
             transform: translateY(0);
         }
     }
+
+    /* Activity Header */
+.activity-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.activity-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* Activity Items */
+.activity-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    margin-bottom: 0.75rem;
+    background: white;
+    transition: all 0.2s ease;
+}
+
+.activity-item:hover {
+    background: #f8f9fa;
+    border-color: #dee2e6;
+    transform: translateX(2px);
+}
+
+.activity-icon {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #f8f9fa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+}
+
+.activity-content-text {
+    flex: 1;
+    min-width: 0;
+}
+
+.activity-main {
+    font-size: 0.95rem;
+    margin-bottom: 0.25rem;
+    line-height: 1.3;
+}
+
+.activity-description {
+    font-size: 0.85rem;
+    color: #6c757d;
+    margin-bottom: 0.5rem;
+    line-height: 1.3;
+}
+
+.activity-meta {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.75rem;
+    color: #8c8c8c;
+}
+
+.activity-badge {
+    flex-shrink: 0;
+    align-self: flex-start;
+}
+
+.activity-badge .badge {
+    font-size: 0.7rem;
+    padding: 0.25em 0.5em;
+}
+
+/* Activity Footer */
+.activity-footer {
+    padding-top: 1rem;
+    border-top: 1px solid #f0f0f0;
+    margin-top: 1rem;
+}
+
+/* Empty State */
+.empty-activity {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: #6c757d;
+}
+
+/* Loading State */
+.activity-loading {
+    background: rgba(255, 255, 255, 0.9);
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .activity-header {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: stretch;
+    }
+    
+    .activity-actions {
+        justify-content: center;
+    }
+    
+    .activity-item {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .activity-meta {
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+}
+
+/* Animazioni */
+.activity-item.new {
+    animation: slideInRight 0.5s ease-out;
+    background: #e3f2fd;
+    border-color: #2196f3;
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.activity-item.removing {
+    animation: slideOutLeft 0.3s ease-in forwards;
+}
+
+@keyframes slideOutLeft {
+    to {
+        opacity: 0;
+        transform: translateX(-30px);
+        height: 0;
+        padding: 0;
+        margin: 0;
+    }
+}
+
+/* Filtri attivi */
+.activity-item.filtered {
+    display: none;
+}
+
+/* Button hover effects */
+.btn-outline-primary:hover,
+.btn-outline-secondary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+
 </style>
 {% endblock %}
 
@@ -484,41 +661,98 @@
         </div>
     </div>
 
-    <!-- Recent Activity -->
     <div class="col-md-8">
-        <div class="recent-activity">
+    <div class="recent-activity">
+        <div class="activity-header">
             <h3 class="activity-title">
                 <i class="fas fa-clock"></i>
                 Attività Recenti
             </h3>
-            
-            {% if trattamenti_recenti %}
-            <ul class="activity-list">
-                {% for trattamento in trattamenti_recenti %}
-                <li class="activity-item">
-                    <div class="activity-content">
-                        <div class="activity-text">
-                            <strong>{{ trattamento.get_stato_display }}</strong> - 
-                            {{ trattamento.cliente.nome }}
-                            {% if trattamento.cascina %}
-                                ({{ trattamento.cascina.nome }})
+            <div class="activity-actions">
+                <button class="btn btn-sm btn-outline-primary" onclick="refreshActivities()" id="refreshBtn">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-filter"></i>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" onclick="filterActivities('all')">Tutte le attività</a></li>
+                        <li><a class="dropdown-item" onclick="filterActivities('cliente_created')">Nuovi clienti</a></li>
+                        <li><a class="dropdown-item" onclick="filterActivities('terreno_created')">Nuovi terreni</a></li>
+                        <li><a class="dropdown-item" onclick="filterActivities('prodotto_created')">Nuovi prodotti</a></li>
+                        <li><a class="dropdown-item" onclick="filterActivities('trattamento_created')">Nuovi trattamenti</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div class="activity-content" id="activityContent">
+            {% if attivita_recenti %}
+            <ul class="activity-list" id="activityList">
+                {% for attivita in attivita_recenti %}
+                <li class="activity-item" data-type="{{ attivita.activity_type }}">
+                    <div class="activity-icon">
+                        <i class="{{ attivita.get_icon }} {{ attivita.get_color_class }}"></i>
+                    </div>
+                    <div class="activity-content-text">
+                        <div class="activity-main">
+                            <strong>{{ attivita.title }}</strong>
+                        </div>
+                        <div class="activity-description">
+                            {{ attivita.description|truncatechars:80 }}
+                        </div>
+                        <div class="activity-meta">
+                            <span class="activity-time">
+                                <i class="fas fa-clock me-1"></i>
+                                {{ attivita.time_since }} fa
+                            </span>
+                            {% if attivita.related_object_name %}
+                            <span class="activity-object">
+                                <i class="fas fa-link me-1"></i>
+                                {{ attivita.related_object_name }}
+                            </span>
                             {% endif %}
                         </div>
-                        <div class="activity-time">
-                            {{ trattamento.data_inserimento|timesince }} fa
-                        </div>
+                    </div>
+                    <div class="activity-badge">
+                        <span class="badge bg-secondary">{{ attivita.get_activity_type_display }}</span>
                     </div>
                 </li>
                 {% endfor %}
             </ul>
+            
+            <!-- Pulsante per vedere tutte le attività -->
+            <div class="activity-footer">
+                <button class="btn btn-sm btn-outline-primary w-100" onclick="loadMoreActivities()">
+                    <i class="fas fa-plus me-2"></i>Carica altre attività
+                </button>
+            </div>
+            
             {% else %}
-            <div class="empty-activity">
+            <div class="empty-activity" id="emptyActivity">
                 <i class="fas fa-leaf text-muted mb-3" style="font-size: 3rem;"></i>
-                <p>Nessuna attività recente. Inizia creando il tuo primo trattamento!</p>
+                <h5>Nessuna attività recente</h5>
+                <p class="text-muted">Le tue azioni nella gestione database appariranno qui.</p>
+                <a href="{% url 'database' %}" class="btn btn-primary btn-sm">
+                    <i class="fas fa-plus me-2"></i>Inizia subito
+                </a>
             </div>
             {% endif %}
         </div>
+        
+        <!-- Loading state -->
+        <div class="activity-loading" id="activityLoading" style="display: none;">
+            <div class="text-center py-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Caricamento...</span>
+                </div>
+                <p class="mt-2 text-muted">Caricamento attività...</p>
+            </div>
+        </div>
     </div>
+</div>
+
 </div>
 
 {% endblock %}
@@ -560,5 +794,185 @@
             this.style.transform = 'translateY(0) scale(1)';
         });
     });
+
+
+let currentFilter = 'all';
+let activityOffset = 0;
+let isLoading = false;
+
+// Refresh attività
+function refreshActivities() {
+    const refreshBtn = document.getElementById('refreshBtn');
+    const originalIcon = refreshBtn.innerHTML;
+    
+    refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    refreshBtn.disabled = true;
+    
+    fetch('/api/recent-activities/?limit=15')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateActivityList(data.activities, true);
+                console.log('✅ Attività aggiornate:', data.activities.length);
+            }
+        })
+        .catch(error => {
+            console.error('❌ Errore refresh attività:', error);
+        })
+        .finally(() => {
+            refreshBtn.innerHTML = originalIcon;
+            refreshBtn.disabled = false;
+        });
+}
+
+// Filtra attività per tipo
+function filterActivities(type) {
+    currentFilter = type;
+    const items = document.querySelectorAll('.activity-item');
+    
+    items.forEach(item => {
+        const itemType = item.dataset.type;
+        
+        if (type === 'all' || itemType === type) {
+            item.classList.remove('filtered');
+            item.style.display = 'flex';
+        } else {
+            item.classList.add('filtered');
+            item.style.display = 'none';
+        }
+    });
+    
+    // Aggiorna UI filtro
+    updateFilterUI(type);
+}
+
+// Carica più attività
+function loadMoreActivities() {
+    if (isLoading) return;
+    
+    isLoading = true;
+    activityOffset += 15;
+    
+    const btn = event.target;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Caricamento...';
+    btn.disabled = true;
+    
+    const url = `/api/recent-activities/?limit=15&offset=${activityOffset}`;
+    
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.activities.length > 0) {
+                updateActivityList(data.activities, false);
+                
+                // Nascondi bottone se non ci sono più attività
+                if (data.activities.length < 15) {
+                    btn.style.display = 'none';
+                }
+            } else {
+                btn.style.display = 'none';
+            }
+        })
+        .catch(error => {
+            console.error('❌ Errore caricamento attività:', error);
+        })
+        .finally(() => {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+            isLoading = false;
+        });
+}
+
+// Aggiorna lista attività
+function updateActivityList(activities, replace = false) {
+    const activityList = document.getElementById('activityList');
+    const emptyActivity = document.getElementById('emptyActivity');
+    
+    if (replace) {
+        activityList.innerHTML = '';
+    }
+    
+    if (activities.length > 0) {
+        // Nascondi empty state
+        if (emptyActivity) {
+            emptyActivity.style.display = 'none';
+        }
+        
+        // Aggiungi attività
+        activities.forEach(activity => {
+            const activityItem = createActivityItem(activity);
+            activityList.appendChild(activityItem);
+        });
+        
+        // Applica filtro corrente
+        if (currentFilter !== 'all') {
+            filterActivities(currentFilter);
+        }
+    } else if (replace && emptyActivity) {
+        emptyActivity.style.display = 'block';
+    }
+}
+
+// Crea elemento attività
+function createActivityItem(activity) {
+    const li = document.createElement('li');
+    li.className = 'activity-item new';
+    li.dataset.type = activity.type;
+    
+    li.innerHTML = `
+        <div class="activity-icon">
+            <i class="${activity.icon} ${activity.color_class}"></i>
+        </div>
+        <div class="activity-content-text">
+            <div class="activity-main">
+                <strong>${activity.title}</strong>
+            </div>
+            <div class="activity-description">
+                ${activity.description.substring(0, 80)}${activity.description.length > 80 ? '...' : ''}
+            </div>
+            <div class="activity-meta">
+                <span class="activity-time">
+                    <i class="fas fa-clock me-1"></i>
+                    ${activity.time_since} fa
+                </span>
+                ${activity.related_object ? `
+                <span class="activity-object">
+                    <i class="fas fa-link me-1"></i>
+                    ${activity.related_object.name}
+                </span>
+                ` : ''}
+            </div>
+        </div>
+        <div class="activity-badge">
+            <span class="badge bg-secondary">${activity.type_display}</span>
+        </div>
+    `;
+    
+    // Rimuovi classe 'new' dopo animazione
+    setTimeout(() => {
+        li.classList.remove('new');
+    }, 500);
+    
+    return li;
+}
+
+// Aggiorna UI filtro
+function updateFilterUI(activeFilter) {
+    const filterItems = document.querySelectorAll('.dropdown-menu .dropdown-item');
+    filterItems.forEach(item => {
+        item.classList.remove('active');
+    });
+    
+    // Non c'è un modo diretto per trovare l'elemento del filtro specifico
+    // quindi aggiorna tutti basandosi sul contenuto
+    console.log(`Filtro attivo: ${activeFilter}`);
+}
+
+// Auto-refresh ogni 2 minuti
+setInterval(() => {
+    refreshActivities();
+}, 120000);
+
 </script>
 {% endblock %}

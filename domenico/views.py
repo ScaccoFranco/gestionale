@@ -26,10 +26,10 @@ from .email_utils import (
 )
 
 
-
 def home(request):
-    """Vista home con statistiche"""
+    """Vista home con statistiche e attività recenti dal database management"""
     from django.db.models import Sum, Count, Q
+    from datetime import datetime, timedelta
     
     # Calcola statistiche
     stats = {
@@ -41,16 +41,44 @@ def home(request):
         )['totale'] or 0,
         'trattamenti_programmati': Trattamento.objects.filter(stato='programmato').count(),
         'trattamenti_comunicati': Trattamento.objects.filter(stato='comunicato').count(),
+        'prodotti_totali': Prodotto.objects.count(),
+        'contoterzisti_totali': Contoterzista.objects.count(),
     }
     
-    # Trattamenti recenti per l'attività
+    # Attività recenti (ultimi 10 giorni, massimo 15 attività)
+    dieci_giorni_fa = timezone.now() - timedelta(days=10)
+    
+    attivita_recenti = ActivityLog.objects.filter(
+        timestamp__gte=dieci_giorni_fa
+    ).select_related().order_by('-timestamp')[:15]
+    
+    # Trattamenti recenti (per compatibilità con template esistente)
     trattamenti_recenti = Trattamento.objects.select_related(
         'cliente', 'cascina'
     ).prefetch_related('terreni')[:5]
     
+    # Statistiche attività per tipo (per dashboard)
+    activity_stats = {}
+    if attivita_recenti.exists():
+        from django.db.models import Count
+        activity_stats = ActivityLog.objects.filter(
+            timestamp__gte=dieci_giorni_fa
+        ).values('activity_type').annotate(
+            count=Count('id')
+        ).order_by('-count')[:5]
+    
+    # Attività di oggi
+    oggi_inizio = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    attivita_oggi = ActivityLog.objects.filter(
+        timestamp__gte=oggi_inizio
+    ).count()
+    
     context = {
         'stats': stats,
-        'trattamenti_recenti': trattamenti_recenti,
+        'trattamenti_recenti': trattamenti_recenti,  # Per compatibilità
+        'attivita_recenti': attivita_recenti,  # 🔥 NUOVO
+        'activity_stats': activity_stats,  # 🔥 NUOVO
+        'attivita_oggi': attivita_oggi,  # 🔥 NUOVO
     }
     
     return render(request, 'home.html', context)
@@ -393,34 +421,6 @@ def comunicazioni_dashboard(request):
 
 # ============ API ENDPOINTS per COMUNICAZIONI EMAIL ============
 
-@csrf_exempt
-@require_http_methods(["POST"])
-def api_send_comunicazione(request, trattamento_id):
-    """API per inviare la comunicazione email di un trattamento"""
-    try:
-        force_send = request.POST.get('force_send', 'false').lower() == 'true'
-        
-        # Invia la comunicazione
-        risultato = send_trattamento_communication(trattamento_id, force_send=force_send)
-        
-        if risultato['success']:
-            return JsonResponse({
-                'success': True,
-                'message': f'Comunicazione inviata con successo a {risultato["destinatari_count"]} destinatari',
-                'destinatari': risultato['destinatari'],
-                'comunicazione_id': risultato['comunicazione_id']
-            })
-        else:
-            return JsonResponse({
-                'success': False,
-                'error': risultato['error']
-            }, status=400)
-            
-    except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'error': f'Errore nell\'aggiunta del contatto: {str(e)}'
-        }, status=500)
 @require_http_methods(["GET", "POST", "DELETE"])
 def api_manage_contatto(request, contatto_id):
     """API per gestire un contatto email (GET, POST per modifica, DELETE)"""
@@ -574,221 +574,6 @@ def api_test_email_config(request):
 
 # ============ AGGIORNAMENTO API TRATTAMENTI ============
 
-@csrf_exempt
-@require_http_methods(["POST"])
-def api_create_trattamento(request):
-    """API per creare un nuovo trattamento con quantità per ettaro - versione debug"""
-    try:
-        # DEBUG: Log di tutti i dati ricevuti
-        print("=== DEBUG API CREATE TRATTAMENTO ===")
-        print("POST data:", dict(request.POST))
-        print("FILES:", dict(request.FILES))
-        print("Content-Type:", request.content_type)
-        
-        with transaction.atomic():
-            # Parsing dei dati
-            cliente_id = request.POST.get('cliente')
-            cascina_id = request.POST.get('cascina') or None
-            livello_applicazione = request.POST.get('livello_applicazione', 'cliente')
-            data_esecuzione_prevista = request.POST.get('data_esecuzione_prevista') or None
-            note = request.POST.get('note', '')
-            
-            print(f"Dati parsati:")
-            print(f"  - cliente_id: {cliente_id}")
-            print(f"  - cascina_id: {cascina_id}")
-            print(f"  - livello_applicazione: {livello_applicazione}")
-            print(f"  - data_esecuzione_prevista: {data_esecuzione_prevista}")
-            print(f"  - note: {note}")
-            
-            # Validazione cliente
-            if not cliente_id:
-                print("ERRORE: Cliente mancante")
-                return JsonResponse({
-                    'success': False, 
-                    'error': 'Cliente è obbligatorio'
-                }, status=400)
-            
-            # Parsing dei prodotti con quantità per ettaro
-            prodotti_data_raw = request.POST.get('prodotti_data', '[]')
-            print(f"Prodotti data raw: {prodotti_data_raw}")
-            
-            try:
-                prodotti_data = json.loads(prodotti_data_raw)
-                print(f"Prodotti data parsed: {prodotti_data}")
-            except json.JSONDecodeError as e:
-                print(f"ERRORE JSON: {e}")
-                return JsonResponse({
-                    'success': False, 
-                    'error': f'Dati prodotti non validi: {str(e)}'
-                }, status=400)
-            
-            if not prodotti_data:
-                print("ERRORE: Nessun prodotto")
-                return JsonResponse({
-                    'success': False, 
-                    'error': 'È necessario specificare almeno un prodotto'
-                }, status=400)
-            
-            # Validazione dei prodotti
-            for i, prodotto_data in enumerate(prodotti_data):
-                print(f"Validazione prodotto {i+1}: {prodotto_data}")
-                
-                if 'quantita_per_ettaro' not in prodotto_data:
-                    print(f"ERRORE: quantita_per_ettaro mancante in prodotto {i+1}")
-                    return JsonResponse({
-                        'success': False, 
-                        'error': f'Prodotto {i+1}: quantita_per_ettaro mancante'
-                    }, status=400)
-                
-                if 'prodotto_id' not in prodotto_data:
-                    print(f"ERRORE: prodotto_id mancante in prodotto {i+1}")
-                    return JsonResponse({
-                        'success': False, 
-                        'error': f'Prodotto {i+1}: prodotto_id mancante'
-                    }, status=400)
-                
-                try:
-                    float(prodotto_data['quantita_per_ettaro'])
-                    print(f"  ✓ Quantità valida: {prodotto_data['quantita_per_ettaro']}")
-                except ValueError:
-                    print(f"ERRORE: quantità non numerica in prodotto {i+1}")
-                    return JsonResponse({
-                        'success': False, 
-                        'error': f'Prodotto {i+1}: quantità per ettaro deve essere un numero'
-                    }, status=400)
-            
-            # Verifica che il cliente esista
-            try:
-                cliente = Cliente.objects.get(id=cliente_id)
-                print(f"Cliente trovato: {cliente.nome}")
-            except Cliente.DoesNotExist:
-                print(f"ERRORE: Cliente {cliente_id} non trovato")
-                return JsonResponse({
-                    'success': False, 
-                    'error': 'Cliente non trovato'
-                }, status=404)
-            
-            # Verifica cascina se specificata
-            if cascina_id:
-                try:
-                    cascina = Cascina.objects.get(id=cascina_id, cliente=cliente)
-                    print(f"Cascina trovata: {cascina.nome}")
-                except Cascina.DoesNotExist:
-                    print(f"ERRORE: Cascina {cascina_id} non trovata per cliente {cliente_id}")
-                    return JsonResponse({
-                        'success': False, 
-                        'error': 'Cascina non trovata per questo cliente'
-                    }, status=404)
-            
-            # Creazione del trattamento
-            print("Creazione trattamento...")
-            trattamento = Trattamento.objects.create(
-                cliente_id=cliente_id,
-                cascina_id=cascina_id,
-                livello_applicazione=livello_applicazione,
-                data_esecuzione_prevista=data_esecuzione_prevista,
-                note=note,
-                stato='programmato'
-            )
-            print(f"Trattamento creato con ID: {trattamento.id}")
-            
-            # Aggiungi terreni se specificati
-            terreni_selezionati = request.POST.getlist('terreni_selezionati')
-            print(f"Terreni selezionati: {terreni_selezionati}")
-            
-            if terreni_selezionati:
-                terreni_validi = Terreno.objects.filter(id__in=terreni_selezionati)
-                
-                if cascina_id:
-                    terreni_validi = terreni_validi.filter(cascina_id=cascina_id)
-                
-                if terreni_validi.count() != len(terreni_selezionati):
-                    print(f"ERRORE: Terreni non validi. Richiesti: {len(terreni_selezionati)}, Trovati: {terreni_validi.count()}")
-                    return JsonResponse({
-                        'success': False, 
-                        'error': 'Alcuni terreni selezionati non sono validi'
-                    }, status=400)
-                
-                trattamento.terreni.set(terreni_validi)
-                print(f"Terreni assegnati: {[t.nome for t in terreni_validi]}")
-            
-            # Aggiungi prodotti
-            prodotti_creati = []
-            for i, prodotto_data in enumerate(prodotti_data):
-                try:
-                    print(f"Creazione prodotto {i+1}: {prodotto_data}")
-                    
-                    # Verifica che il prodotto esista
-                    prodotto = Prodotto.objects.get(id=prodotto_data['prodotto_id'])
-                    print(f"  ✓ Prodotto trovato: {prodotto.nome}")
-                    
-                    trattamento_prodotto = TrattamentoProdotto.objects.create(
-                        trattamento=trattamento,
-                        prodotto=prodotto,
-                        quantita_per_ettaro=prodotto_data['quantita_per_ettaro']
-                    )
-                    print(f"  ✓ TrattamentoProdotto creato: {trattamento_prodotto}")
-                    
-                    prodotti_creati.append({
-                        'prodotto_nome': prodotto.nome,
-                        'quantita_per_ettaro': float(trattamento_prodotto.quantita_per_ettaro),
-                        'quantita_totale': float(trattamento_prodotto.quantita_totale),
-                        'unita_misura': prodotto.unita_misura
-                    })
-                    
-                except Prodotto.DoesNotExist:
-                    print(f"ERRORE: Prodotto {prodotto_data['prodotto_id']} non trovato")
-                    return JsonResponse({
-                        'success': False, 
-                        'error': f'Prodotto con ID {prodotto_data["prodotto_id"]} non trovato'
-                    }, status=404)
-                except KeyError as e:
-                    print(f"ERRORE: Campo mancante in prodotto {i+1}: {e}")
-                    return JsonResponse({
-                        'success': False, 
-                        'error': f'Prodotto {i+1}: campo mancante {str(e)}'
-                    }, status=400)
-                except Exception as e:
-                    print(f"ERRORE: Errore generico prodotto {i+1}: {e}")
-                    return JsonResponse({
-                        'success': False, 
-                        'error': f'Errore nell\'aggiunta del prodotto {i+1}: {str(e)}'
-                    }, status=400)
-            
-            # Calcola informazioni aggiuntive
-            superficie_interessata = trattamento.get_superficie_interessata()
-            contoterzista = trattamento.get_contoterzista()
-            
-            print(f"✅ Trattamento creato con successo!")
-            print(f"  - ID: {trattamento.id}")
-            print(f"  - Superficie: {superficie_interessata} ha")
-            print(f"  - Prodotti: {len(prodotti_creati)}")
-            print(f"  - Contoterzista: {contoterzista.nome if contoterzista else 'Nessuno'}")
-            
-            return JsonResponse({
-                'success': True, 
-                'trattamento_id': trattamento.id,
-                'message': 'Trattamento creato con successo',
-                'dettagli': {
-                    'livello_applicazione': trattamento.livello_applicazione,
-                    'superficie_interessata': float(superficie_interessata),
-                    'contoterzista': contoterzista.nome if contoterzista else None,
-                    'prodotti_count': len(prodotti_creati),
-                    'terreni_count': trattamento.terreni.count() if livello_applicazione == 'terreno' else 0,
-                    'prodotti_dettagli': prodotti_creati
-                }
-            })
-            
-    except Exception as e:
-        print(f"💥 ERRORE GENERALE: {e}")
-        import traceback
-        traceback.print_exc()
-        return JsonResponse({
-            'success': False, 
-            'error': f'Errore durante la creazione: {str(e)}'
-        }, status=500)
-    
-    
 def api_trattamento_detail(request, trattamento_id):
     """API per ottenere i dettagli di un trattamento con quantità per ettaro"""
     try:
@@ -889,77 +674,6 @@ def api_contatti_cliente(request, cliente_id):
         return JsonResponse({
             'success': False,
             'error': str(e)
-        }, status=500)
-
-@csrf_exempt
-@require_http_methods(["POST"])
-def api_add_contatto_cliente(request, cliente_id):
-    """API per aggiungere un contatto email a un cliente"""
-    try:
-        # Verifica che il cliente esista
-        cliente = get_object_or_404(Cliente, id=cliente_id)
-        
-        # Ottieni i dati dal form
-        nome = request.POST.get('nome', '').strip()
-        email = request.POST.get('email', '').strip()
-        
-        if not nome:
-            return JsonResponse({
-                'success': False,
-                'error': 'Il nome è obbligatorio'
-            }, status=400)
-            
-        if not email:
-            return JsonResponse({
-                'success': False,
-                'error': 'L\'email è obbligatoria'
-            }, status=400)
-        
-        # Validazione email
-        import re
-        email_regex = r'^[^\s@]+@[^\s@]+\.[^\s@]+$'
-        if not re.match(email_regex, email):
-            return JsonResponse({
-                'success': False,
-                'error': 'Indirizzo email non valido'
-            }, status=400)
-        
-        # Verifica che non esista già un contatto con la stessa email per questo cliente
-        if ContattoEmail.objects.filter(cliente=cliente, email__iexact=email).exists():
-            return JsonResponse({
-                'success': False,
-                'error': f'Esiste già un contatto con l\'email "{email}" per questo cliente'
-            }, status=400)
-
-        # Crea il contatto
-        contatto = ContattoEmail.objects.create(
-            cliente=cliente,
-            nome=nome,
-            email=email
-        )
-        
-        return JsonResponse({
-            'success': True,
-            'message': f'Contatto {nome} aggiunto con successo',
-            'contatto': {
-                'id': contatto.id,
-                'nome': contatto.nome,
-                'email': contatto.email,
-                'cliente_nome': cliente.nome
-            }
-        })
-        
-    except Cliente.DoesNotExist:
-        return JsonResponse({
-            'success': False,
-            'error': 'Cliente non trovato'
-        }, status=404)
-    except Exception as e:
-        print(f"Errore in api_add_contatto_cliente: {str(e)}")
-        print(f"POST data: {dict(request.POST)}")
-        return JsonResponse({
-            'success': False,
-            'error': f'Errore nell\'aggiunta del contatto: {str(e)}'
         }, status=500)
     
 def api_cascine_by_cliente(request, cliente_id):
@@ -1401,71 +1115,6 @@ def api_clienti_list(request):
             'error': str(e)
         }, status=500)
 
-@csrf_exempt
-@require_http_methods(["POST"])
-def api_cliente_create(request):
-    """API per creare nuovo cliente (semplificata)"""
-    try:
-        # Parse JSON data
-        if request.content_type == 'application/json':
-            data = json.loads(request.body)
-        else:
-            data = request.POST
-            
-        nome = data.get('nome', '').strip()
-        
-        # Validazione
-        if not nome:
-            return JsonResponse({
-                'success': False,
-                'error': 'Il nome del cliente è obbligatorio'
-            }, status=400)
-            
-        # Verifica se esiste già
-        if Cliente.objects.filter(nome__iexact=nome).exists():
-            return JsonResponse({
-                'success': False,
-                'error': f'Esiste già un cliente con il nome "{nome}"'
-            }, status=400)
-        
-        with transaction.atomic():
-            # Crea cliente
-            cliente = Cliente.objects.create(nome=nome)
-            
-            # Gestisci contatti se presenti
-            contatti = data.get('contatti', [])
-            contatti_creati = []
-            
-            for contatto_data in contatti:
-                if contatto_data.get('nome') and contatto_data.get('email'):
-                    contatto = ContattoEmail.objects.create(
-                        cliente=cliente,
-                        nome=contatto_data['nome'],
-                        email=contatto_data['email'],
-                    )
-                    contatti_creati.append(contatto.nome)
-            
-            return JsonResponse({
-                'success': True,
-                'message': f'Cliente "{nome}" creato con successo',
-                'cliente': {
-                    'id': cliente.id,
-                    'nome': cliente.nome
-                },
-                'contatti_creati': len(contatti_creati)
-            })
-            
-    except json.JSONDecodeError:
-        return JsonResponse({
-            'success': False,
-            'error': 'Dati JSON non validi'
-        }, status=400)
-    except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'error': f'Errore nella creazione: {str(e)}'
-        }, status=500)
-
 @require_http_methods(["GET"])
 def api_contoterzisti_list(request):
     """API per ottenere lista contoterzisti per i select"""
@@ -1490,90 +1139,6 @@ def api_contoterzisti_list(request):
             'error': str(e)
         }, status=500)
 
-@csrf_exempt
-@require_http_methods(["POST"])
-def api_cascina_create(request):
-    """API per creare nuova cascina (semplificata)"""
-    try:
-        # Parse JSON data
-        if request.content_type == 'application/json':
-            data = json.loads(request.body)
-        else:
-            data = request.POST
-            
-        cliente_id = data.get('cliente_id')
-        nome = data.get('nome', '').strip()
-        contoterzista_id = data.get('contoterzista_id') or None
-        
-        # Validazione
-        if not cliente_id:
-            return JsonResponse({
-                'success': False,
-                'error': 'Il cliente è obbligatorio'
-            }, status=400)
-            
-        if not nome:
-            return JsonResponse({
-                'success': False,
-                'error': 'Il nome della cascina è obbligatorio'
-            }, status=400)
-        
-        # Verifica che il cliente esista
-        try:
-            cliente = Cliente.objects.get(id=cliente_id)
-        except Cliente.DoesNotExist:
-            return JsonResponse({
-                'success': False,
-                'error': 'Cliente non trovato'
-            }, status=404)
-        
-        # Verifica che il contoterzista esista (se specificato)
-        contoterzista = None
-        if contoterzista_id:
-            try:
-                contoterzista = Contoterzista.objects.get(id=contoterzista_id)
-            except Contoterzista.DoesNotExist:
-                return JsonResponse({
-                    'success': False,
-                    'error': 'Contoterzista non trovato'
-                }, status=404)
-        
-        # Verifica unicità nome per cliente
-        if Cascina.objects.filter(cliente=cliente, nome__iexact=nome).exists():
-            return JsonResponse({
-                'success': False,
-                'error': f'Il cliente "{cliente.nome}" ha già una cascina chiamata "{nome}"'
-            }, status=400)
-        
-        with transaction.atomic():
-            cascina = Cascina.objects.create(
-                cliente=cliente,
-                nome=nome,
-                contoterzista=contoterzista
-            )
-            
-            return JsonResponse({
-                'success': True,
-                'message': f'Cascina "{nome}" creata con successo',
-                'cascina': {
-                    'id': cascina.id,
-                    'nome': cascina.nome,
-                    'cliente': cascina.cliente.nome,
-                    'contoterzista': cascina.contoterzista.nome if cascina.contoterzista else None
-                }
-            })
-            
-    except json.JSONDecodeError:
-        return JsonResponse({
-            'success': False,
-            'error': 'Dati JSON non validi'
-        }, status=400)
-    except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'error': f'Errore nella creazione: {str(e)}'
-        }, status=500)
-    
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_contoterzista_create(request):

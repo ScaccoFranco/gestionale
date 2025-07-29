@@ -10,8 +10,20 @@ from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 import json
 import logging
+from django.core.paginator import Paginator
+from datetime import timedelta
 
-from .models import Cliente, Cascina, Terreno, Contoterzista, Prodotto, PrincipioAttivo, ContattoEmail
+from .activity_logging import (
+    log_cliente_created, log_terreno_created, log_prodotto_created,
+    log_contoterzista_created, log_contatto_created, log_trattamento_created,
+    log_comunicazione_sent, log_cascina_created
+)
+# Import delle funzioni email
+from .email_utils import (
+    send_trattamento_communication
+)
+
+from .models import *
 
 logger = logging.getLogger(__name__)
 
@@ -50,13 +62,20 @@ def api_clienti_list(request):
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_clienti_create(request):
-    """API per creare un nuovo cliente"""
+    """API per creare nuovo cliente con contatti e logging"""
     try:
-        # Parse JSON data
+        print("🔍 DEBUG: api_clienti_create chiamata")
+        print(f"Content-Type: {request.content_type}")
+        print(f"POST data: {dict(request.POST)}")
+        
+        # Gestisci sia JSON che FormData
         if request.content_type == 'application/json':
+            import json
             data = json.loads(request.body)
+            print(f"JSON data: {data}")
         else:
             data = request.POST
+            print(f"Form data: {dict(data)}")
             
         nome = data.get('nome', '').strip()
         
@@ -67,7 +86,7 @@ def api_clienti_create(request):
                 'error': 'Il nome del cliente è obbligatorio'
             }, status=400)
             
-        # Verifica se esiste già un cliente con lo stesso nome
+        # Verifica se esiste già
         if Cliente.objects.filter(nome__iexact=nome).exists():
             return JsonResponse({
                 'success': False,
@@ -75,20 +94,53 @@ def api_clienti_create(request):
             }, status=400)
         
         with transaction.atomic():
-            cliente = Cliente.objects.create(
-                nome=nome
-            )
+            # Crea cliente
+            cliente = Cliente.objects.create(nome=nome)
+            print(f"✅ Cliente creato: {cliente.nome} (ID: {cliente.id})")
             
-            logger.info(f"Cliente creato: {cliente.nome} (ID: {cliente.id})")
+            # 🔥 NUOVO: Log dell'attività
+            log_cliente_created(cliente, request)
+            print(f"✅ Log cliente creato")
+            
+            # Gestisci contatti se presenti
+            contatti = data.get('contatti', [])
+            contatti_creati = 0
+            
+            print(f"📧 Contatti da creare: {len(contatti)}")
+            
+            for contatto_data in contatti:
+                print(f"Processando contatto: {contatto_data}")
+                if contatto_data.get('nome') and contatto_data.get('email'):
+                    try:
+                        contatto = ContattoEmail.objects.create(
+                            cliente=cliente,
+                            nome=contatto_data['nome'],
+                            email=contatto_data['email'],
+                            ruolo=contatto_data.get('ruolo', ''),
+                            telefono=contatto_data.get('telefono', ''),
+                            priorita=contatto_data.get('priorita', 2),
+                            attivo=True
+                        )
+                        contatti_creati += 1
+                        
+                        # Log anche per ogni contatto
+                        log_contatto_created(contatto, request)
+                        print(f"✅ Contatto creato e loggato: {contatto.nome}")
+                        
+                    except Exception as e:
+                        print(f"❌ Errore creazione contatto: {e}")
+            
+            print(f"✅ Totale contatti creati: {contatti_creati}")
             
             return JsonResponse({
                 'success': True,
-                'message': 'Cliente creato con successo',
+                'message': f'Cliente "{nome}" creato con successo',
                 'cliente': {
                     'id': cliente.id,
                     'nome': cliente.nome,
-                    'creato_il': cliente.creato_il.isoformat()
-                }
+                    'contatti_count': contatti_creati
+                },
+                'contatti_creati': contatti_creati
             })
             
     except json.JSONDecodeError:
@@ -97,10 +149,12 @@ def api_clienti_create(request):
             'error': 'Dati JSON non validi'
         }, status=400)
     except Exception as e:
-        logger.error(f"Errore nella creazione cliente: {str(e)}")
+        print(f"❌ Errore generale nella creazione cliente: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return JsonResponse({
             'success': False,
-            'error': 'Errore nella creazione del cliente'
+            'error': f'Errore nella creazione del cliente: {str(e)}'
         }, status=500)
 
 # ============ API CASCINE ============
@@ -899,3 +953,1019 @@ def api_database_stats(request):
     except Exception as e:
         logger.error(f"Errore nel caricamento statistiche: {str(e)}")
         return JsonResponse({'error': 'Errore nel caricamento statistiche'}, status=500)
+    
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_terreni_create(request):
+    """API per creare un nuovo terreno con logging"""
+    try:
+        # ... codice di validazione esistente ...
+        cascina_id = request.POST.get('cascina_id')
+        nome = request.POST.get('nome', '').strip()
+        superficie = request.POST.get('superficie')
+        
+        # Validazione (mantieni quella esistente)
+        if not all([cascina_id, nome, superficie]):
+            return JsonResponse({
+                'success': False,
+                'error': 'Tutti i campi sono obbligatori'
+            }, status=400)
+        
+        try:
+            superficie_decimal = float(superficie)
+            if superficie_decimal <= 0:
+                raise ValueError("Superficie deve essere positiva")
+        except (ValueError, TypeError):
+            return JsonResponse({
+                'success': False,
+                'error': 'Superficie deve essere un numero positivo'
+            }, status=400)
+        
+        cascina = get_object_or_404(Cascina, id=cascina_id)
+        
+        if Terreno.objects.filter(cascina=cascina, nome__iexact=nome).exists():
+            return JsonResponse({
+                'success': False,
+                'error': f'Esiste già un terreno chiamato "{nome}" in questa cascina'
+            }, status=400)
+        
+        # Crea il terreno
+        with transaction.atomic():
+            terreno = Terreno.objects.create(
+                nome=nome,
+                cascina=cascina,
+                superficie=superficie_decimal
+            )
+            
+            # 🔥 NUOVO: Log dell'attività
+            log_terreno_created(terreno, request)
+            
+            logger.info(f"Terreno creato con logging: {terreno.nome}")
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Terreno creato con successo',
+                'terreno': {
+                    'id': terreno.id,
+                    'nome': terreno.nome,
+                    'superficie': float(terreno.superficie),
+                    'cascina_id': cascina.id,
+                    'cascina_nome': cascina.nome,
+                    'cliente_nome': cascina.cliente.nome
+                }
+            })
+            
+    except Exception as e:
+        logger.error(f"Errore nella creazione terreno: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': 'Errore nella creazione del terreno'
+        }, status=500)
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_prodotti_create(request):
+    """API per creare un nuovo prodotto con logging"""
+    try:
+        # ... codice di validazione esistente ...
+        nome = request.POST.get('nome', '').strip()
+        unita_misura = request.POST.get('unita_misura', '').strip()
+        descrizione = request.POST.get('descrizione', '').strip()
+        principi_attivi_json = request.POST.get('principi_attivi', '[]')
+        
+        # Validazione (mantieni quella esistente)
+        if not all([nome, unita_misura]):
+            return JsonResponse({
+                'success': False,
+                'error': 'Nome prodotto e unità di misura sono obbligatori'
+            }, status=400)
+        
+        try:
+            principi_attivi_nomi = json.loads(principi_attivi_json)
+            if not isinstance(principi_attivi_nomi, list) or len(principi_attivi_nomi) == 0:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Almeno un principio attivo è obbligatorio'
+                }, status=400)
+        except json.JSONDecodeError:
+            return JsonResponse({
+                'success': False,
+                'error': 'Formato principi attivi non valido'
+            }, status=400)
+        
+        if Prodotto.objects.filter(nome__iexact=nome).exists():
+            return JsonResponse({
+                'success': False,
+                'error': f'Esiste già un prodotto chiamato "{nome}"'
+            }, status=400)
+        
+        # Crea prodotto e principi attivi
+        with transaction.atomic():
+            prodotto = Prodotto.objects.create(
+                nome=nome,
+                unita_misura=unita_misura,
+                descrizione=descrizione
+            )
+            
+            principi_attivi_creati = []
+            for principio_nome in principi_attivi_nomi:
+                principio_nome = principio_nome.strip()
+                if principio_nome:
+                    principio, created = PrincipioAttivo.objects.get_or_create(
+                        nome__iexact=principio_nome,
+                        defaults={'nome': principio_nome}
+                    )
+                    prodotto.principi_attivi.add(principio)
+                    principi_attivi_creati.append(principio)
+            
+            # 🔥 NUOVO: Log dell'attività
+            log_prodotto_created(prodotto, principi_attivi_creati, request)
+            
+            logger.info(f"Prodotto creato con logging: {prodotto.nome}")
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Prodotto creato con successo',
+                'prodotto': {
+                    'id': prodotto.id,
+                    'nome': prodotto.nome,
+                    'unita_misura': prodotto.unita_misura,
+                    'descrizione': prodotto.descrizione,
+                    'principi_attivi': [pa.nome for pa in principi_attivi_creati]
+                }
+            })
+            
+    except Exception as e:
+        logger.error(f"Errore nella creazione prodotto: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': 'Errore nella creazione del prodotto'
+        }, status=500)
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_contoterzisti_create(request):
+    """API per creare un nuovo contoterzista con logging"""
+    try:
+        # ... codice di validazione esistente ...
+        nome = request.POST.get('nome', '').strip()
+        telefono = request.POST.get('telefono', '').strip()
+        email = request.POST.get('email', '').strip()
+        
+        # Validazione (mantieni quella esistente)
+        if not nome:
+            return JsonResponse({
+                'success': False,
+                'error': 'Nome contoterzista è obbligatorio'
+            }, status=400)
+        
+        if email:
+            import re
+            email_regex = r'^[^\s@]+@[^\s@]+\.[^\s@]+$'
+            if not re.match(email_regex, email):
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Indirizzo email non valido'
+                }, status=400)
+            
+            if Contoterzista.objects.filter(email__iexact=email).exists():
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Esiste già un contoterzista con email "{email}"'
+                }, status=400)
+        
+        if Contoterzista.objects.filter(nome__iexact=nome).exists():
+            return JsonResponse({
+                'success': False,
+                'error': f'Esiste già un contoterzista chiamato "{nome}"'
+            }, status=400)
+        
+        # Crea il contoterzista
+        with transaction.atomic():
+            contoterzista = Contoterzista.objects.create(
+                nome=nome,
+                telefono=telefono,
+                email=email
+            )
+            
+            # 🔥 NUOVO: Log dell'attività
+            log_contoterzista_created(contoterzista, request)
+            
+            logger.info(f"Contoterzista creato con logging: {contoterzista.nome}")
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Contoterzista creato con successo',
+                'contoterzista': {
+                    'id': contoterzista.id,
+                    'nome': contoterzista.nome,
+                    'telefono': contoterzista.telefono,
+                    'email': contoterzista.email
+                }
+            })
+            
+    except Exception as e:
+        logger.error(f"Errore nella creazione contoterzista: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': 'Errore nella creazione del contoterzista'
+        }, status=500)
+
+# ============ AGGIORNA ANCHE API CONTATTI ESISTENTI ============
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_add_contatto_cliente(request, cliente_id):
+    """API per aggiungere un contatto email con logging"""
+    try:
+        # Verifica che il cliente esista
+        cliente = get_object_or_404(Cliente, id=cliente_id)
+        
+        # Ottieni i dati dal form
+        nome = request.POST.get('nome', '').strip()
+        email = request.POST.get('email', '').strip()
+        
+        if not nome:
+            return JsonResponse({
+                'success': False,
+                'error': 'Il nome è obbligatorio'
+            }, status=400)
+            
+        if not email:
+            return JsonResponse({
+                'success': False,
+                'error': 'L\'email è obbligatoria'
+            }, status=400)
+        
+        # Validazione email
+        import re
+        email_regex = r'^[^\s@]+@[^\s@]+\.[^\s@]+$'
+        if not re.match(email_regex, email):
+            return JsonResponse({
+                'success': False,
+                'error': 'Indirizzo email non valido'
+            }, status=400)
+        
+        # Verifica che non esista già un contatto con la stessa email per questo cliente
+        if ContattoEmail.objects.filter(cliente=cliente, email__iexact=email).exists():
+            return JsonResponse({
+                'success': False,
+                'error': f'Esiste già un contatto con l\'email "{email}" per questo cliente'
+            }, status=400)
+
+        # Crea il contatto
+        contatto = ContattoEmail.objects.create(
+            cliente=cliente,
+            nome=nome,
+            email=email
+        )
+        
+        # Dopo la creazione del contatto, aggiungi:
+        with transaction.atomic():
+            contatto = ContattoEmail.objects.create(
+                cliente=cliente,
+                nome=nome,
+                email=email,
+            )
+            
+            # 🔥 NUOVO: Log dell'attività
+            log_contatto_created(contatto, request)
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Contatto {nome} aggiunto con successo',
+                'contatto': {
+                    'id': contatto.id,
+                    'nome': contatto.nome,
+                    'email': contatto.email,
+                    'cliente_nome': cliente.nome
+                }
+            })
+            
+    except Exception as e:
+        logger.error(f"Errore nella creazione contatto: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': f'Errore nell\'aggiunta del contatto: {str(e)}'
+        }, status=500)
+    
+
+
+# ============ API PER ATTIVITÀ RECENTI ============
+
+@require_http_methods(["GET"])
+def api_recent_activities(request):
+    """API per ottenere le attività recenti"""
+    try:
+        # Parametri di filtro
+        days = int(request.GET.get('days', 7))
+        limit = int(request.GET.get('limit', 10))
+        activity_type = request.GET.get('type', '')
+        
+        # Calcola data limite
+        data_limite = timezone.now() - timedelta(days=days)
+        
+        # Query base
+        activities = ActivityLog.objects.filter(timestamp__gte=data_limite)
+        
+        # Filtro per tipo se specificato
+        if activity_type:
+            activities = activities.filter(activity_type=activity_type)
+        
+        # Limita risultati
+        activities = activities.order_by('-timestamp')[:limit]
+        
+        # Serializza i dati
+        activities_data = []
+        for activity in activities:
+            activities_data.append({
+                'id': activity.id,
+                'type': activity.activity_type,
+                'type_display': activity.get_activity_type_display(),
+                'title': activity.title,
+                'description': activity.description,
+                'timestamp': activity.timestamp.isoformat(),
+                'time_since': activity.time_since(),
+                'icon': activity.get_icon(),
+                'color_class': activity.get_color_class(),
+                'related_object': {
+                    'type': activity.related_object_type,
+                    'id': activity.related_object_id,
+                    'name': activity.related_object_name
+                } if activity.related_object_type else None,
+                'extra_data': activity.extra_data
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'activities': activities_data,
+            'count': len(activities_data)
+        })
+        
+    except Exception as e:
+        logger.error(f"Errore nel caricamento attività recenti: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': 'Errore nel caricamento delle attività'
+        }, status=500)
+
+# ============ API PER STATISTICHE DASHBOARD ============
+
+@require_http_methods(["GET"])
+def api_dashboard_summary(request):
+    """API per ottenere riepilogo completo della dashboard"""
+    try:
+        from datetime import datetime, timedelta
+        from django.db.models import Count, Sum
+        
+        # Statistiche base
+        stats = {
+            'clienti_totali': Cliente.objects.count(),
+            'cascine_totali': Cascina.objects.count(),
+            'terreni_totali': Terreno.objects.count(),
+            'superficie_totale': float(Terreno.objects.aggregate(
+                totale=Sum('superficie')
+            )['totale'] or 0),
+            'trattamenti_programmati': Trattamento.objects.filter(stato='programmato').count(),
+            'trattamenti_comunicati': Trattamento.objects.filter(stato='comunicati').count(),
+            'prodotti_totali': Prodotto.objects.count(),
+            'contoterzisti_totali': Contoterzista.objects.count(),
+            'contatti_email_totali': ContattoEmail.objects.count(),
+            'principi_attivi_totali': PrincipioAttivo.objects.count(),
+        }
+        
+        # Attività recenti
+        settimana_fa = timezone.now() - timedelta(days=7)
+        attivita_settimana = ActivityLog.objects.filter(
+            timestamp__gte=settimana_fa
+        ).count()
+        
+        # Crescita rispetto alla settimana precedente
+        due_settimane_fa = timezone.now() - timedelta(days=14)
+        attivita_settimana_precedente = ActivityLog.objects.filter(
+            timestamp__gte=due_settimane_fa,
+            timestamp__lt=settimana_fa
+        ).count()
+        
+        crescita_attivita = attivita_settimana - attivita_settimana_precedente
+        
+        # Top attività per tipo
+        top_activities = list(ActivityLog.objects.filter(
+            timestamp__gte=settimana_fa
+        ).values('activity_type').annotate(
+            count=Count('id')
+        ).order_by('-count')[:5])
+        
+        return JsonResponse({
+            'success': True,
+            'stats': stats,
+            'activity_summary': {
+                'attivita_settimana': attivita_settimana,
+                'crescita': crescita_attivita,
+                'top_activities': top_activities
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Errore nel caricamento riepilogo dashboard: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': 'Errore nel caricamento del riepilogo'
+        }, status=500)
+                
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_create_trattamento(request):
+    """API per creare un nuovo trattamento con logging"""
+    try:
+        print("=== DEBUG API CREATE TRATTAMENTO con LOGGING ===")
+        print("POST data:", dict(request.POST))
+        
+        with transaction.atomic():
+            # Parsing dei dati (mantieni la logica esistente)
+            cliente_id = request.POST.get('cliente')
+            cascina_id = request.POST.get('cascina') or None
+            livello_applicazione = request.POST.get('livello_applicazione', 'cliente')
+            data_esecuzione_prevista = request.POST.get('data_esecuzione_prevista') or None
+            note = request.POST.get('note', '')
+            
+            # Validazione
+            if not cliente_id:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Cliente è obbligatorio'
+                }, status=400)
+            
+            cliente = get_object_or_404(Cliente, id=cliente_id)
+            cascina = None
+            
+            if cascina_id:
+                cascina = get_object_or_404(Cascina, id=cascina_id)
+            
+            # Crea il trattamento
+            trattamento = Trattamento.objects.create(
+                cliente=cliente,
+                cascina=cascina,
+                livello_applicazione=livello_applicazione,
+                data_esecuzione_prevista=data_esecuzione_prevista if data_esecuzione_prevista else None,
+                note=note,
+                stato='programmato'
+            )
+            
+            # Gestisci terreni se livello è 'terreno'
+            if livello_applicazione == 'terreno':
+                terreni_ids = request.POST.getlist('terreni[]')
+                if terreni_ids:
+                    terreni = Terreno.objects.filter(id__in=terreni_ids)
+                    trattamento.terreni.set(terreni)
+            
+            # Gestisci prodotti
+            prodotti_data = request.POST.get('prodotti_data')
+            if prodotti_data:
+                try:
+                    prodotti_list = json.loads(prodotti_data)
+                    for prodotto_data in prodotti_list:
+                        prodotto_id = prodotto_data.get('prodotto_id')
+                        quantita = prodotto_data.get('quantita')
+                        
+                        if prodotto_id and quantita:
+                            prodotto = Prodotto.objects.get(id=prodotto_id)
+                            TrattamentoProdotto.objects.create(
+                                trattamento=trattamento,
+                                prodotto=prodotto,
+                                quantita=float(quantita)
+                            )
+                except (json.JSONDecodeError, KeyError, ValueError) as e:
+                    print(f"Errore nel parsing prodotti: {e}")
+            
+            # 🔥 NUOVO: Log dell'attività
+            log_trattamento_created(trattamento, request)
+            
+            print(f"✅ Trattamento creato con logging: {trattamento.id}")
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Trattamento creato con successo',
+                'trattamento_id': trattamento.id,
+                'redirect_url': f'/trattamenti/?highlight={trattamento.id}'
+            })
+            
+    except Exception as e:
+        print(f"❌ Errore nella creazione trattamento: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': f'Errore nella creazione del trattamento: {str(e)}'
+        }, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_add_contatto_cliente(request, cliente_id):
+    """API per aggiungere un contatto email con logging"""
+    try:
+        # Verifica che il cliente esista
+        cliente = get_object_or_404(Cliente, id=cliente_id)
+        
+        # Ottieni dati dal form
+        nome = request.POST.get('nome', '').strip()
+        email = request.POST.get('email', '').strip()
+        ruolo = request.POST.get('ruolo', '').strip()
+        telefono = request.POST.get('telefono', '').strip()
+        note = request.POST.get('note', '').strip()
+        
+        # Gestione priorità
+        try:
+            priorita = int(request.POST.get('priorita', 2))
+        except (ValueError, TypeError):
+            priorita = 2
+        
+        # Gestione attivo
+        attivo_value = request.POST.get('attivo', 'true').lower()
+        attivo = attivo_value == 'true'
+        
+        # Validazione
+        if not nome:
+            return JsonResponse({
+                'success': False,
+                'error': 'Il nome è obbligatorio'
+            }, status=400)
+            
+        if not email:
+            return JsonResponse({
+                'success': False,
+                'error': 'L\'email è obbligatoria'
+            }, status=400)
+        
+        # Validazione email
+        import re
+        email_regex = r'^[^\s@]+@[^\s@]+\.[^\s@]+$'
+        if not re.match(email_regex, email):
+            return JsonResponse({
+                'success': False,
+                'error': 'Indirizzo email non valido'
+            }, status=400)
+        
+        # Verifica che non esista già un contatto con la stessa email per questo cliente
+        if ContattoEmail.objects.filter(cliente=cliente, email__iexact=email).exists():
+            return JsonResponse({
+                'success': False,
+                'error': f'Esiste già un contatto con l\'email "{email}" per questo cliente'
+            }, status=400)
+        
+        # Crea il contatto
+        with transaction.atomic():
+            contatto = ContattoEmail.objects.create(
+                cliente=cliente,
+                nome=nome,
+                email=email,
+                ruolo=ruolo,
+                telefono=telefono,
+                priorita=priorita,
+                attivo=attivo,
+                note=note
+            )
+            
+            # 🔥 NUOVO: Log dell'attività
+            log_contatto_created(contatto, request)
+            
+            print(f"✅ Contatto creato con logging: {contatto.nome}")
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Contatto {nome} aggiunto con successo',
+                'contatto': {
+                    'id': contatto.id,
+                    'nome': contatto.nome,
+                    'email': contatto.email,
+                    'ruolo': contatto.ruolo,
+                    'telefono': contatto.telefono,
+                    'priorita': contatto.priorita,
+                    'attivo': contatto.attivo,
+                    'note': contatto.note,
+                    'cliente_nome': cliente.nome
+                }
+            })
+        
+    except Cliente.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': 'Cliente non trovato'
+        }, status=404)
+    except Exception as e:
+        print(f"❌ Errore nella creazione contatto: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': f'Errore nell\'aggiunta del contatto: {str(e)}'
+        }, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_cliente_create(request):
+    """API per creare nuovo cliente con logging"""
+    try:
+        # Parse data
+        if request.content_type == 'application/json':
+            data = json.loads(request.body)
+        else:
+            data = request.POST
+            
+        nome = data.get('nome', '').strip()
+        
+        # Validazione
+        if not nome:
+            return JsonResponse({
+                'success': False,
+                'error': 'Il nome del cliente è obbligatorio'
+            }, status=400)
+            
+        # Verifica se esiste già
+        if Cliente.objects.filter(nome__iexact=nome).exists():
+            return JsonResponse({
+                'success': False,
+                'error': f'Esiste già un cliente con il nome "{nome}"'
+            }, status=400)
+        
+        with transaction.atomic():
+            # Crea cliente
+            cliente = Cliente.objects.create(nome=nome)
+            
+            # 🔥 NUOVO: Log dell'attività
+            log_cliente_created(cliente, request)
+            
+            # Gestisci contatti se presenti
+            contatti = data.get('contatti', [])
+            contatti_creati = []
+            
+            for contatto_data in contatti:
+                if contatto_data.get('nome') and contatto_data.get('email'):
+                    contatto = ContattoEmail.objects.create(
+                        cliente=cliente,
+                        nome=contatto_data['nome'],
+                        email=contatto_data['email'],
+                        ruolo=contatto_data.get('ruolo', ''),
+                        telefono=contatto_data.get('telefono', ''),
+                        priorita=contatto_data.get('priorita', 2),
+                        attivo=True
+                    )
+                    contatti_creati.append(contatto.nome)
+                    
+                    # Log anche per ogni contatto
+                    log_contatto_created(contatto, request)
+            
+            print(f"✅ Cliente creato con logging: {cliente.nome} + {len(contatti_creati)} contatti")
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Cliente creato con successo',
+                'cliente': {
+                    'id': cliente.id,
+                    'nome': cliente.nome,
+                    'contatti_count': len(contatti_creati)
+                }
+            })
+            
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': 'Dati JSON non validi'
+        }, status=400)
+    except Exception as e:
+        print(f"❌ Errore nella creazione cliente: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': 'Errore nella creazione del cliente'
+        }, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_cascina_create(request):
+    """API per creare nuova cascina con logging"""
+    try:
+        cliente_id = request.POST.get('cliente_id')
+        nome = request.POST.get('nome', '').strip()
+        contoterzista_id = request.POST.get('contoterzista_id') or None
+        
+        # Validazione
+        if not cliente_id:
+            return JsonResponse({
+                'success': False,
+                'error': 'Cliente è obbligatorio'
+            }, status=400)
+            
+        if not nome:
+            return JsonResponse({
+                'success': False,
+                'error': 'Nome cascina è obbligatorio'
+            }, status=400)
+        
+        cliente = get_object_or_404(Cliente, id=cliente_id)
+        contoterzista = None
+        
+        if contoterzista_id:
+            contoterzista = get_object_or_404(Contoterzista, id=contoterzista_id)
+        
+        # Verifica che non esista già una cascina con lo stesso nome per questo cliente
+        if Cascina.objects.filter(cliente=cliente, nome__iexact=nome).exists():
+            return JsonResponse({
+                'success': False,
+                'error': f'Esiste già una cascina chiamata "{nome}" per questo cliente'
+            }, status=400)
+        
+        with transaction.atomic():
+            cascina = Cascina.objects.create(
+                nome=nome,
+                cliente=cliente,
+                contoterzista=contoterzista
+            )
+            
+            # 🔥 NUOVO: Log dell'attività
+            log_cascina_created(cascina, request)
+            
+            print(f"✅ Cascina creata con logging: {cascina.nome}")
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Cascina creata con successo',
+                'cascina': {
+                    'id': cascina.id,
+                    'nome': cascina.nome,
+                    'cliente_id': cliente.id,
+                    'cliente_nome': cliente.nome,
+                    'contoterzista_nome': contoterzista.nome if contoterzista else None
+                }
+            })
+            
+    except (Cliente.DoesNotExist, Contoterzista.DoesNotExist) as e:
+        return JsonResponse({
+            'success': False,
+            'error': 'Oggetto non trovato'
+        }, status=404)
+    except Exception as e:
+        print(f"❌ Errore nella creazione cascina: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': 'Errore nella creazione della cascina'
+        }, status=500)
+    
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_send_comunicazione(request, trattamento_id):
+    """API per inviare la comunicazione email con logging"""
+    try:
+        force_send = request.POST.get('force_send', 'false').lower() == 'true'
+        
+        # Ottieni il trattamento
+        trattamento = get_object_or_404(Trattamento, id=trattamento_id)
+        
+        # Invia la comunicazione
+        risultato = send_trattamento_communication(trattamento_id, force_send=force_send)
+        
+        if risultato['success']:
+            # 🔥 NUOVO: Log dell'attività
+            log_comunicazione_sent(
+                trattamento, 
+                risultato.get('destinatari_count', 0), 
+                request
+            )
+            
+            print(f"✅ Comunicazione inviata con logging per trattamento {trattamento_id}")
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Comunicazione inviata con successo a {risultato["destinatari_count"]} destinatari',
+                'destinatari': risultato['destinatari'],
+                'comunicazione_id': risultato['comunicazione_id']
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'error': risultato['error']
+            }, status=400)
+            
+    except Trattamento.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': 'Trattamento non trovato'
+        }, status=404)
+    except Exception as e:
+        print(f"❌ Errore nell'invio comunicazione: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': f'Errore nell\'invio della comunicazione: {str(e)}'
+        }, status=500)
+    
+
+@require_http_methods(["GET"])
+def api_recent_activities(request):
+    """API per ottenere le attività recenti"""
+    try:
+        # Parametri di filtro
+        days = int(request.GET.get('days', 7))
+        limit = int(request.GET.get('limit', 10))
+        offset = int(request.GET.get('offset', 0))
+        activity_type = request.GET.get('type', '')
+        
+        # Calcola data limite
+        data_limite = timezone.now() - timedelta(days=days)
+        
+        # Query base
+        activities = ActivityLog.objects.filter(timestamp__gte=data_limite)
+        
+        # Filtro per tipo se specificato
+        if activity_type and activity_type != 'all':
+            activities = activities.filter(activity_type=activity_type)
+        
+        # Applica offset e limit
+        activities = activities.order_by('-timestamp')[offset:offset+limit]
+        
+        # Serializza i dati
+        activities_data = []
+        for activity in activities:
+            activities_data.append({
+                'id': activity.id,
+                'type': activity.activity_type,
+                'type_display': activity.get_activity_type_display(),
+                'title': activity.title,
+                'description': activity.description,
+                'timestamp': activity.timestamp.isoformat(),
+                'time_since': activity.time_since(),
+                'icon': activity.get_icon(),
+                'color_class': activity.get_color_class(),
+                'related_object': {
+                    'type': activity.related_object_type,
+                    'id': activity.related_object_id,
+                    'name': activity.related_object_name
+                } if activity.related_object_type else None,
+                'extra_data': activity.extra_data
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'activities': activities_data,
+            'count': len(activities_data),
+            'has_more': len(activities_data) == limit  # Indica se ci sono più attività
+        })
+        
+    except Exception as e:
+        logger.error(f"Errore nel caricamento attività recenti: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': 'Errore nel caricamento delle attività'
+        }, status=500)
+
+@require_http_methods(["GET"])
+def api_dashboard_summary(request):
+    """API per ottenere riepilogo completo della dashboard"""
+    try:
+        from datetime import datetime, timedelta
+        from django.db.models import Count, Sum
+        
+        # Statistiche base
+        stats = {
+            'clienti_totali': Cliente.objects.count(),
+            'cascine_totali': Cascina.objects.count(),
+            'terreni_totali': Terreno.objects.count(),
+            'superficie_totale': float(Terreno.objects.aggregate(
+                totale=Sum('superficie')
+            )['totale'] or 0),
+            'trattamenti_programmati': Trattamento.objects.filter(stato='programmato').count(),
+            'trattamenti_comunicati': Trattamento.objects.filter(stato='comunicato').count(),
+            'prodotti_totali': Prodotto.objects.count(),
+            'contoterzisti_totali': Contoterzista.objects.count(),
+            'contatti_email_totali': ContattoEmail.objects.count(),
+            'principi_attivi_totali': PrincipioAttivo.objects.count(),
+        }
+        
+        # Attività recenti
+        settimana_fa = timezone.now() - timedelta(days=7)
+        attivita_settimana = ActivityLog.objects.filter(
+            timestamp__gte=settimana_fa
+        ).count()
+        
+        # Crescita rispetto alla settimana precedente
+        due_settimane_fa = timezone.now() - timedelta(days=14)
+        attivita_settimana_precedente = ActivityLog.objects.filter(
+            timestamp__gte=due_settimane_fa,
+            timestamp__lt=settimana_fa
+        ).count()
+        
+        crescita_attivita = attivita_settimana - attivita_settimana_precedente
+        
+        # Top attività per tipo
+        top_activities = list(ActivityLog.objects.filter(
+            timestamp__gte=settimana_fa
+        ).values('activity_type').annotate(
+            count=Count('id')
+        ).order_by('-count')[:5])
+        
+        return JsonResponse({
+            'success': True,
+            'stats': stats,
+            'activity_summary': {
+                'attivita_settimana': attivita_settimana,
+                'crescita': crescita_attivita,
+                'top_activities': top_activities
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Errore nel caricamento riepilogo dashboard: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': 'Errore nel caricamento del riepilogo'
+        }, status=500)
+
+@require_http_methods(["GET"])
+def api_database_stats(request):
+    
+    """API per ottenere statistiche aggiornate del database"""
+
+    from django.db.models import Count, Sum
+    try:
+        stats = {
+            'clienti': Cliente.objects.count(),
+            'cascine': Cascina.objects.count(),
+            'terreni': Terreno.objects.count(),
+            'contoterzisti': Contoterzista.objects.count(),
+            'prodotti': Prodotto.objects.count(),
+            'principi_attivi': PrincipioAttivo.objects.count(),
+            'contatti_email': ContattoEmail.objects.count(),
+            'trattamenti': Trattamento.objects.count(),
+        }
+        
+        # Calcola superficie totale
+        superficie_totale = Terreno.objects.aggregate(
+            totale=Sum('superficie')
+        )['totale'] or 0
+        
+        stats['superficie_totale'] = float(superficie_totale)
+        
+        # Statistiche attività
+        oggi_inizio = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        stats['attivita_oggi'] = ActivityLog.objects.filter(
+            timestamp__gte=oggi_inizio
+        ).count()
+        
+        settimana_fa = timezone.now() - timedelta(days=7)
+        stats['attivita_settimana'] = ActivityLog.objects.filter(
+            timestamp__gte=settimana_fa
+        ).count()
+        
+        return JsonResponse({
+            'success': True,
+            'stats': stats
+        })
+    except Exception as e:
+        logger.error(f"Errore nel caricamento statistiche: {str(e)}")
+        return JsonResponse({'error': 'Errore nel caricamento statistiche'}, status=500)
+
+# ============ API MANAGEMENT ATTIVITÀ (OPZIONALI) ============
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_cleanup_activities(request):
+    """API per pulire le attività vecchie (solo per admin)"""
+    try:
+        days_to_keep = int(request.POST.get('days', 90))
+        
+        from .activity_logging import cleanup_old_logs
+        deleted_count = cleanup_old_logs(days_to_keep)
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Eliminati {deleted_count} log di attività',
+            'deleted_count': deleted_count
+        })
+        
+    except Exception as e:
+        logger.error(f"Errore nella pulizia attività: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': 'Errore nella pulizia delle attività'
+        }, status=500)
+
+@require_http_methods(["GET"])
+def api_activity_stats(request):
+    """API per ottenere statistiche delle attività"""
+    try:
+        days = int(request.GET.get('days', 7))
+        
+        from .activity_logging import get_activity_stats
+        stats = get_activity_stats(days)
+        
+        return JsonResponse({
+            'success': True,
+            'stats': stats
+        })
+        
+    except Exception as e:
+        logger.error(f"Errore nel caricamento statistiche attività: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': 'Errore nel caricamento delle statistiche'
+        }, status=500)
