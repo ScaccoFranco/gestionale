@@ -1,5 +1,4 @@
-            // Reset form quando si apre il modal
-            if (modalType === '{% extends 'base.html' %}
+{% extends 'base.html' %}
 
 {% block page_title %}Gestione Database{% endblock %}
 {% block page_icon %}<i class="fas fa-database"></i>{% endblock %}
@@ -331,6 +330,102 @@
             max-width: 95%;
         }
     }
+
+    .principio-attivo-item {
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        padding: 1rem;
+        margin-bottom: 0.5rem;
+        position: relative;
+    }
+
+    .principio-attivo-item .btn-remove {
+        position: absolute;
+        top: 0.5rem;
+        right: 0.5rem;
+        background: none;
+        border: none;
+        color: #dc3545;
+        font-size: 1rem;
+        cursor: pointer;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+    }
+
+    .principio-attivo-item .btn-remove:hover {
+        background-color: #dc3545;
+        color: white;
+    }
+
+    /* Input group per unità di misura */
+    .input-group-text {
+        background-color: #e9ecef;
+        border-color: #ced4da;
+        font-weight: 500;
+    }
+
+    /* Preview boxes */
+    .alert-info {
+        background-color: #d1ecf1;
+        border-color: #bee5eb;
+        color: #0c5460;
+    }
+
+    .preview-item {
+        margin-bottom: 0.5rem;
+    }
+
+    .preview-item strong {
+        color: #0c5460;
+    }
+
+    /* Form enhancements */
+    .form-text {
+        font-size: 0.875rem;
+        color: #6c757d;
+    }
+
+    /* Modal size adjustments */
+    .modal-lg {
+        max-width: 800px;
+    }
+
+    /* Button enhancements */
+    .btn-success {
+        background-color: #28a745;
+        border-color: #28a745;
+    }
+
+    .btn-success:hover {
+        background-color: #218838;
+        border-color: #1e7e34;
+    }
+
+    /* Loading state for buttons */
+    .saving {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    .saving .spinner {
+        display: inline-block;
+        width: 1rem;
+        height: 1rem;
+        border: 2px solid #ffffff;
+        border-radius: 50%;
+        border-top-color: transparent;
+        animation: spin 1s linear infinite;
+        margin-right: 0.5rem;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
 </style>
 {% endblock %}
 
@@ -400,11 +495,6 @@
         <button class="quick-add-btn" onclick="openModal('prodottoModal')">
             <i class="fas fa-flask"></i>
             <strong>Nuovo Prodotto</strong>
-        </button>
-        
-        <button class="quick-add-btn" onclick="openModal('contattoModal')">
-            <i class="fas fa-address-book"></i>
-            <strong>Nuovo Contatto</strong>
         </button>
     </div>
 </div>
@@ -510,27 +600,6 @@
                     <i class="fas fa-eye me-1"></i> Visualizza
                 </button>
                 <button class="btn-action btn-secondary-action" onclick="openModal('prodottoModal')">
-                    <i class="fas fa-plus me-1"></i> Aggiungi
-                </button>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Gestione Contatti -->
-    <div class="section-card">
-        <div class="section-header">
-            <i class="fas fa-address-book"></i>
-            <h3>Gestione Contatti</h3>
-        </div>
-        <div class="section-content">
-            <p class="section-description">
-                Gestisci i contatti email per le comunicazioni, configura priorità e ruoli.
-            </p>
-            <div class="action-buttons">
-                <button class="btn-action btn-primary-action" onclick="viewContatti()">
-                    <i class="fas fa-eye me-1"></i> Visualizza
-                </button>
-                <button class="btn-action btn-secondary-action" onclick="openModal('contattoModal')">
                     <i class="fas fa-plus me-1"></i> Aggiungi
                 </button>
             </div>
@@ -660,6 +729,143 @@
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
                 <button type="button" class="btn btn-success" onclick="saveCascina()" id="saveCascinaBtn">
                     <i class="fas fa-save me-2"></i>Salva Cascina
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- MODAL TERRENO -->
+<div class="modal fade" id="terrenoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-seedling me-2"></i>Nuovo Terreno
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="terrenoForm">
+                    {% csrf_token %}
+                    
+                    <div class="form-group">
+                        <label class="form-label">Cliente *</label>
+                        <select class="form-select" id="terreno-cliente" required onchange="loadCascineForTerreno()">
+                            <option value="">Seleziona cliente...</option>
+                            <!-- Popolato dinamicamente da JavaScript -->
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Cascina *</label>
+                        <select class="form-select" id="terreno-cascina" required>
+                            <option value="">Seleziona prima un cliente...</option>
+                        </select>
+                        <small class="form-text text-muted">Il terreno sarà associato alla cascina selezionata</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Nome Terreno *</label>
+                        <input type="text" class="form-control" id="terreno-nome" required
+                               placeholder="es. Campo Sud, Vigna delle Rose, Terreno 1">
+                        <small class="form-text text-muted">Inserisci un nome identificativo per il terreno</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Superficie (ettari) *</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" id="terreno-superficie" 
+                                   required min="0.01" max="1000" step="0.01"
+                                   placeholder="es. 2.50">
+                            <span class="input-group-text">ha</span>
+                        </div>
+                        <small class="form-text text-muted">Superficie in ettari (min. 0.01 ha)</small>
+                    </div>
+                    
+                    <!-- Anteprima riepilogo -->
+                    <div class="alert alert-info mt-3" id="terrenoPreview" style="display: none;">
+                        <h6><i class="fas fa-info-circle me-2"></i>Riepilogo</h6>
+                        <div id="terrenoPreviewContent"></div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-success" onclick="saveTerreno()" id="saveTerrenoBtn">
+                    <i class="fas fa-save me-2"></i>Salva Terreno
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL PRODOTTO -->
+<div class="modal fade" id="prodottoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-flask me-2"></i>Nuovo Prodotto Fitosanitario
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="prodottoForm">
+                    {% csrf_token %}
+                    
+                    <div class="form-group">
+                        <label class="form-label">Nome Prodotto *</label>
+                        <input type="text" class="form-control" id="prodotto-nome" required
+                               placeholder="es. Roundup, Copper, Zolfo Bagnabile">
+                        <small class="form-text text-muted">Nome commerciale del prodotto fitosanitario</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Unità di Misura *</label>
+                        <select class="form-select" id="prodotto-unita" required>
+                            <option value="">Seleziona unità...</option>
+                            <option value="L">Litri (L)</option>
+                            <option value="Kg">Chilogrammi (Kg)</option>
+                            <option value="g">Grammi (g)</option>
+                            <option value="ml">Millilitri (ml)</option>
+                            <option value="mg">Milligrammi (mg)</option>
+                        </select>
+                        <small class="form-text text-muted">Unità di misura per la quantità del prodotto</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Descrizione</label>
+                        <textarea class="form-control" id="prodotto-descrizione" rows="3"
+                                  placeholder="Descrizione del prodotto, modalità d'uso, caratteristiche..."></textarea>
+                    </div>
+                    
+                    <!-- Principi Attivi -->
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="text-muted mb-0">PRINCIPI ATTIVI</h6>
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="aggiungiPrincipioAttivo()">
+                                <i class="fas fa-plus me-1"></i> Aggiungi Principio Attivo
+                            </button>
+                        </div>
+                        <div id="principiAttiviList">
+                            <!-- I principi attivi verranno aggiunti dinamicamente qui -->
+                        </div>
+                        <small class="text-muted">I principi attivi definiscono la composizione chimica del prodotto</small>
+                    </div>
+                    
+                    <!-- Anteprima riepilogo -->
+                    <div class="alert alert-info mt-3" id="prodottoPreview" style="display: none;">
+                        <h6><i class="fas fa-info-circle me-2"></i>Riepilogo Prodotto</h6>
+                        <div id="prodottoPreviewContent"></div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-success" onclick="saveProdotto()" id="saveProdottoBtn">
+                    <i class="fas fa-save me-2"></i>Salva Prodotto
                 </button>
             </div>
         </div>
@@ -1353,6 +1559,604 @@
     
     // Esegui test dopo 1 secondo per essere sicuri che tutto sia caricato
     setTimeout(testFunctions, 1000);
+
+    // FUNZIONI PER GESTIONE MODAL TERRENI E PRODOTTI
+
+    // Variabili globali
+    let principiAttiviCounter = 0;
+    let clientiData = [];
+    let cascineData = [];
+
+    // Inizializza i dati quando la pagina è caricata
+    document.addEventListener('DOMContentLoaded', function() {
+        loadClientiData();
+    });
+
+    // ============ FUNZIONI TERRENI ============
+
+    function loadClientiData() {
+        console.log('🔄 Caricamento dati clienti...');
+        
+        // Simula caricamento clienti (sostituisci con API reale se disponibile)
+        fetch('/api/clienti/')
+            .then(response => response.json())
+            .then(data => {
+                clientiData = data;
+                populateClienteSelects();
+                console.log('✅ Clienti caricati:', data.length);
+            })
+            .catch(error => {
+                console.error('❌ Errore caricamento clienti:', error);
+                // Fallback: usa dati del template se disponibili
+                clientiData = {{ clienti|default:"[]"|safe }};
+                populateClienteSelects();
+            });
+    }
+
+    function populateClienteSelects() {
+        const selects = ['terreno-cliente', 'cascina-cliente'];
+        
+        selects.forEach(selectId => {
+            const select = document.getElementById(selectId);
+            if (select && clientiData.length > 0) {
+                select.innerHTML = '<option value="">Seleziona cliente...</option>';
+                clientiData.forEach(cliente => {
+                    const option = document.createElement('option');
+                    option.value = cliente.id;
+                    option.textContent = cliente.nome;
+                    select.appendChild(option);
+                });
+            }
+        });
+    }
+
+    function loadCascineForTerreno() {
+        const clienteId = document.getElementById('terreno-cliente').value;
+        const cascinaSelect = document.getElementById('terreno-cascina');
+        
+        console.log('🔄 Caricamento cascine per cliente:', clienteId);
+        
+        cascinaSelect.innerHTML = '<option value="">Caricamento...</option>';
+        
+        if (clienteId) {
+            fetch(`/api/cascine/${clienteId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    cascinaSelect.innerHTML = '<option value="">Seleziona cascina...</option>';
+                    
+                    data.forEach(cascina => {
+                        const option = document.createElement('option');
+                        option.value = cascina.id;
+                        option.textContent = `${cascina.nome} (${cascina.superficie_totale || 0} ha totali)`;
+                        cascinaSelect.appendChild(option);
+                    });
+                    
+                    console.log('✅ Cascine caricate:', data.length);
+                    updateTerrenoPreview();
+                })
+                .catch(error => {
+                    console.error('❌ Errore caricamento cascine:', error);
+                    cascinaSelect.innerHTML = '<option value="">Errore nel caricamento</option>';
+                });
+        } else {
+            cascinaSelect.innerHTML = '<option value="">Seleziona prima un cliente...</option>';
+        }
+        
+        updateTerrenoPreview();
+    }
+
+    function updateTerrenoPreview() {
+        const clienteSelect = document.getElementById('terreno-cliente');
+        const cascinaSelect = document.getElementById('terreno-cascina');
+        const nomeInput = document.getElementById('terreno-nome');
+        const superficieInput = document.getElementById('terreno-superficie');
+        const preview = document.getElementById('terrenoPreview');
+        const previewContent = document.getElementById('terrenoPreviewContent');
+        
+        const clienteNome = clienteSelect.options[clienteSelect.selectedIndex]?.textContent || '';
+        const cascinaText = cascinaSelect.options[cascinaSelect.selectedIndex]?.textContent || '';
+        const nome = nomeInput.value.trim();
+        const superficie = superficieInput.value;
+        
+        if (clienteNome && cascinaText && nome && superficie) {
+            previewContent.innerHTML = `
+                <div class="preview-item"><strong>Cliente:</strong> ${clienteNome}</div>
+                <div class="preview-item"><strong>Cascina:</strong> ${cascinaText}</div>
+                <div class="preview-item"><strong>Nome Terreno:</strong> ${nome}</div>
+                <div class="preview-item"><strong>Superficie:</strong> ${superficie} ettari</div>
+            `;
+            preview.style.display = 'block';
+        } else {
+            preview.style.display = 'none';
+        }
+    }
+
+    // Event listeners per anteprima terreno
+    document.addEventListener('DOMContentLoaded', function() {
+        const terrenoInputs = ['terreno-cliente', 'terreno-cascina', 'terreno-nome', 'terreno-superficie'];
+        terrenoInputs.forEach(inputId => {
+            const element = document.getElementById(inputId);
+            if (element) {
+                element.addEventListener('change', updateTerrenoPreview);
+                element.addEventListener('input', updateTerrenoPreview);
+            }
+        });
+    });
+
+    function saveTerreno() {
+        console.log('💾 Salvataggio terreno...');
+        
+        // Validazione
+        const clienteId = document.getElementById('terreno-cliente').value;
+        const cascinaId = document.getElementById('terreno-cascina').value;
+        const nome = document.getElementById('terreno-nome').value.trim();
+        const superficie = document.getElementById('terreno-superficie').value;
+        
+        if (!clienteId) {
+            alert('Seleziona un cliente');
+            return;
+        }
+        
+        if (!cascinaId) {
+            alert('Seleziona una cascina');
+            return;
+        }
+        
+        if (!nome) {
+            alert('Inserisci il nome del terreno');
+            return;
+        }
+        
+        if (!superficie || parseFloat(superficie) <= 0) {
+            alert('Inserisci una superficie valida');
+            return;
+        }
+        
+        // Mostra loading
+        const saveBtn = document.getElementById('saveTerrenoBtn');
+        saveBtn.innerHTML = '<span class="spinner"></span>Salvando...';
+        saveBtn.classList.add('saving');
+        
+        // Prepara dati
+        const formData = new FormData();
+        formData.append('cascina_id', cascinaId);
+        formData.append('nome', nome);
+        formData.append('superficie', superficie);
+        formData.append('csrfmiddlewaretoken', getCsrfToken());
+        
+        // Debug
+        console.log('📤 Dati terreno:', {
+            cascina_id: cascinaId,
+            nome: nome,
+            superficie: superficie
+        });
+        
+        // Chiamata API (da implementare)
+        fetch('/api/terreni/create/', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': getCsrfToken()
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                console.log('✅ Terreno salvato:', data);
+                alert('✅ Terreno creato con successo!');
+                
+                // Reset form
+                document.getElementById('terrenoForm').reset();
+                document.getElementById('terrenoPreview').style.display = 'none';
+                
+                // Chiudi modal
+                closeModal('terrenoModal');
+                
+                // Opzionale: ricarica pagina o aggiorna stats
+                setTimeout(() => location.reload(), 1000);
+                
+            } else {
+                console.error('❌ Errore dal server:', data.error);
+                alert('Errore nel salvataggio: ' + (data.error || 'Errore sconosciuto'));
+            }
+        })
+        .catch(error => {
+            console.error('❌ Errore di connessione:', error);
+            alert('Errore di connessione: ' + error.message);
+        })
+        .finally(() => {
+            // Reset pulsante
+            saveBtn.innerHTML = '<i class="fas fa-save me-2"></i>Salva Terreno';
+            saveBtn.classList.remove('saving');
+        });
+    }
+
+    // ============ FUNZIONI PRODOTTI ============
+
+    function aggiungiPrincipioAttivo() {
+        principiAttiviCounter++;
+        const principiList = document.getElementById('principiAttiviList');
+        
+        const principioDiv = document.createElement('div');
+        principioDiv.className = 'principio-attivo-item';
+        principioDiv.id = `principio-${principiAttiviCounter}`;
+        
+        principioDiv.innerHTML = `
+            <button type="button" class="btn-remove" onclick="rimuoviPrincipioAttivo(${principiAttiviCounter})">
+                <i class="fas fa-times"></i>
+            </button>
+            <div class="form-group mb-0">
+                <label class="form-label">Nome Principio Attivo *</label>
+                <input type="text" class="form-control" id="principio-nome-${principiAttiviCounter}" 
+                    placeholder="es. Glifosate, Rame, Zolfo" required
+                    onchange="updateProdottoPreview()">
+                <small class="form-text text-muted">Nome del principio attivo contenuto nel prodotto</small>
+            </div>
+        `;
+        
+        principiList.appendChild(principioDiv);
+        
+        console.log('➕ Principio attivo aggiunto:', principiAttiviCounter);
+        updateProdottoPreview();
+    }
+
+    function rimuoviPrincipioAttivo(id) {
+        const principioDiv = document.getElementById(`principio-${id}`);
+        if (principioDiv) {
+            principioDiv.remove();
+            console.log('➖ Principio attivo rimosso:', id);
+            updateProdottoPreview();
+        }
+    }
+
+    function updateProdottoPreview() {
+        const nome = document.getElementById('prodotto-nome').value.trim();
+        const unita = document.getElementById('prodotto-unita').value;
+        const descrizione = document.getElementById('prodotto-descrizione').value.trim();
+        const preview = document.getElementById('prodottoPreview');
+        const previewContent = document.getElementById('prodottoPreviewContent');
+        
+        // Raccogli principi attivi
+        const principiAttivi = [];
+        const principiInputs = document.querySelectorAll('[id^="principio-nome-"]');
+        principiInputs.forEach(input => {
+            if (input.value.trim()) {
+                principiAttivi.push(input.value.trim());
+            }
+        });
+        
+        if (nome && unita) {
+            let previewHTML = `
+                <div class="preview-item"><strong>Nome:</strong> ${nome}</div>
+                <div class="preview-item"><strong>Unità di Misura:</strong> ${unita}</div>
+            `;
+            
+            if (descrizione) {
+                previewHTML += `<div class="preview-item"><strong>Descrizione:</strong> ${descrizione.substring(0, 100)}${descrizione.length > 100 ? '...' : ''}</div>`;
+            }
+            
+            if (principiAttivi.length > 0) {
+                previewHTML += `<div class="preview-item"><strong>Principi Attivi:</strong> ${principiAttivi.join(', ')}</div>`;
+            }
+            
+            previewContent.innerHTML = previewHTML;
+            preview.style.display = 'block';
+        } else {
+            preview.style.display = 'none';
+        }
+    }
+
+    // Event listeners per anteprima prodotto
+    document.addEventListener('DOMContentLoaded', function() {
+        const prodottoInputs = ['prodotto-nome', 'prodotto-unita', 'prodotto-descrizione'];
+        prodottoInputs.forEach(inputId => {
+            const element = document.getElementById(inputId);
+            if (element) {
+                element.addEventListener('change', updateProdottoPreview);
+                element.addEventListener('input', updateProdottoPreview);
+            }
+        });
+    });
+
+    function saveProdotto() {
+        console.log('💾 Salvataggio prodotto...');
+        
+        // Validazione
+        const nome = document.getElementById('prodotto-nome').value.trim();
+        const unita = document.getElementById('prodotto-unita').value;
+        const descrizione = document.getElementById('prodotto-descrizione').value.trim();
+        
+        if (!nome) {
+            alert('Inserisci il nome del prodotto');
+            return;
+        }
+        
+        if (!unita) {
+            alert('Seleziona l\'unità di misura');
+            return;
+        }
+        
+        // Raccogli principi attivi
+        const principiAttivi = [];
+        const principiInputs = document.querySelectorAll('[id^="principio-nome-"]');
+        principiInputs.forEach(input => {
+            const value = input.value.trim();
+            if (value) {
+                principiAttivi.push(value);
+            }
+        });
+        
+        if (principiAttivi.length === 0) {
+            alert('Aggiungi almeno un principio attivo');
+            return;
+        }
+        
+        // Mostra loading
+        const saveBtn = document.getElementById('saveProdottoBtn');
+        saveBtn.innerHTML = '<span class="spinner"></span>Salvando...';
+        saveBtn.classList.add('saving');
+        
+        // Prepara dati
+        const formData = new FormData();
+        formData.append('nome', nome);
+        formData.append('unita_misura', unita);
+        formData.append('descrizione', descrizione);
+        formData.append('principi_attivi', JSON.stringify(principiAttivi));
+        formData.append('csrfmiddlewaretoken', getCsrfToken());
+        
+        // Debug
+        console.log('📤 Dati prodotto:', {
+            nome: nome,
+            unita_misura: unita,
+            descrizione: descrizione,
+            principi_attivi: principiAttivi
+        });
+        
+        // Chiamata API (da implementare)
+        fetch('/api/prodotti/create/', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': getCsrfToken()
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                console.log('✅ Prodotto salvato:', data);
+                alert('✅ Prodotto creato con successo!');
+                
+                // Reset form
+                document.getElementById('prodottoForm').reset();
+                document.getElementById('principiAttiviList').innerHTML = '';
+                document.getElementById('prodottoPreview').style.display = 'none';
+                principiAttiviCounter = 0;
+                
+                // Chiudi modal
+                closeModal('prodottoModal');
+                
+                // Opzionale: ricarica pagina o aggiorna stats
+                setTimeout(() => location.reload(), 1000);
+                
+            } else {
+                console.error('❌ Errore dal server:', data.error);
+                alert('Errore nel salvataggio: ' + (data.error || 'Errore sconosciuto'));
+            }
+        })
+        .catch(error => {
+            console.error('❌ Errore di connessione:', error);
+            alert('Errore di connessione: ' + error.message);
+        })
+        .finally(() => {
+            // Reset pulsante
+            saveBtn.innerHTML = '<i class="fas fa-save me-2"></i>Salva Prodotto';
+            saveBtn.classList.remove('saving');
+        });
+    }
+
+    // ============ FUNZIONI DI UTILITÀ ============
+
+    function isValidEmail(email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+    }
+
+    function resetAllForms() {
+        // Reset form terreno
+        const terrenoForm = document.getElementById('terrenoForm');
+        if (terrenoForm) {
+            terrenoForm.reset();
+            document.getElementById('terrenoPreview').style.display = 'none';
+        }
+        
+        // Reset form prodotto
+        const prodottoForm = document.getElementById('prodottoForm');
+        if (prodottoForm) {
+            prodottoForm.reset();
+            document.getElementById('principiAttiviList').innerHTML = '';
+            document.getElementById('prodottoPreview').style.display = 'none';
+            principiAttiviCounter = 0;
+        }
+        
+        // Reset form contoterzista
+        const contoterzastaForm = document.getElementById('contoterzastaForm');
+        if (contoterzastaForm) {
+            contoterzastaForm.reset();
+        }
+    }
+
+    // Event listeners per reset automatico quando si chiudono i modal
+    document.addEventListener('DOMContentLoaded', function() {
+        const modals = ['terrenoModal', 'prodottoModal', 'contoterzastaModal'];
+        
+        modals.forEach(modalId => {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.addEventListener('hidden.bs.modal', function() {
+                    console.log(`🔄 Reset form per modal: ${modalId}`);
+                    resetAllForms();
+                });
+            }
+        });
+    });
+
+    // ============ INIZIALIZZAZIONE MODAL ============
+
+    // Aggiungi principio attivo di default quando si apre il modal prodotto
+    document.addEventListener('DOMContentLoaded', function() {
+        const prodottoModal = document.getElementById('prodottoModal');
+        if (prodottoModal) {
+            prodottoModal.addEventListener('shown.bs.modal', function() {
+                console.log('📱 Modal prodotto aperto');
+                
+                // Aggiungi un principio attivo di default se la lista è vuota
+                if (document.getElementById('principiAttiviList').children.length === 0) {
+                    setTimeout(() => aggiungiPrincipioAttivo(), 200);
+                }
+            });
+        }
+    });
+
+    function updateStats() {
+    console.log('📊 Aggiornamento statistiche...');
+    
+    fetch('/api/database/stats/')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const stats = data.stats;
+                
+                // Aggiorna i numeri nelle card statistiche
+                updateStatCard('clienti', stats.clienti);
+                updateStatCard('cascine', stats.cascine);
+                updateStatCard('terreni', stats.terreni);
+                updateStatCard('contoterzisti', stats.contoterzisti);
+                updateStatCard('prodotti', stats.prodotti);
+                updateStatCard('principi_attivi', stats.principi_attivi);
+                
+                // Aggiorna superficie totale se presente
+                if (stats.superficie_totale !== undefined) {
+                    updateSuperficieTotale(stats.superficie_totale);
+                }
+                
+                console.log('✅ Statistiche aggiornate:', stats);
+            }
+        })
+        .catch(error => {
+            console.error('❌ Errore aggiornamento statistiche:', error);
+        });
+}
+
+function updateStatCard(type, value) {
+    // Cerca la card delle statistiche per tipo
+    const possibleSelectors = [
+        `.stat-card:has(.icon.fa-${getIconClass(type)}) .number`,
+        `[data-stat="${type}"] .number`,
+        `.${type}-stat .number`
+    ];
+    
+    for (const selector of possibleSelectors) {
+        try {
+            const element = document.querySelector(selector);
+            if (element) {
+                // Animazione del cambio numero
+                animateNumberChange(element, value);
+                return;
+            }
+        } catch (e) {
+            // Ignora errori di selezione CSS
+        }
+    }
+    
+    console.log(`⚠️ Card statistica non trovata per: ${type}`);
+}
+
+function getIconClass(type) {
+    const iconMap = {
+        'clienti': 'building',
+        'cascine': 'home',
+        'terreni': 'seedling',
+        'contoterzisti': 'user-tie',
+        'prodotti': 'flask',
+        'principi_attivi': 'atom'
+    };
+    return iconMap[type] || 'circle';
+}
+
+function animateNumberChange(element, newValue) {
+    const currentValue = parseInt(element.textContent) || 0;
+    
+    if (currentValue === newValue) return;
+    
+    // Aggiungi classe di animazione
+    element.classList.add('updating');
+    
+    // Animazione conteggio
+    const duration = 800;
+    const steps = 20;
+    const increment = (newValue - currentValue) / steps;
+    let current = currentValue;
+    let step = 0;
+    
+    const timer = setInterval(() => {
+        step++;
+        current += increment;
+        
+        if (step >= steps) {
+            element.textContent = newValue;
+            clearInterval(timer);
+            element.classList.remove('updating');
+        } else {
+            element.textContent = Math.round(current);
+        }
+    }, duration / steps);
+}
+
+function updateSuperficieTotale(superficie) {
+    // Cerca elemento superficie totale
+    const superficieElement = document.querySelector('.superficie-totale, [data-superficie-totale]');
+    if (superficieElement) {
+        superficieElement.textContent = `${superficie.toFixed(2)} ha`;
+    }
+}
+
+// ============ AUTO-REFRESH STATISTICHE ============
+
+// Aggiorna statistiche dopo ogni operazione di salvataggio
+function scheduleStatsUpdate() {
+    // Ritarda l'aggiornamento per dare tempo al server di processare
+    setTimeout(updateStats, 1500);
+}
+
+// Override delle funzioni di salvataggio per includere aggiornamento stats
+const originalSaveTerreno = window.saveTerreno;
+if (originalSaveTerreno) {
+    window.saveTerreno = function() {
+        const result = originalSaveTerreno.apply(this, arguments);
+        scheduleStatsUpdate();
+        return result;
+    };
+}
+
+const originalSaveProdotto = window.saveProdotto;
+if (originalSaveProdotto) {
+    window.saveProdotto = function() {
+        const result = originalSaveProdotto.apply(this, arguments);
+        scheduleStatsUpdate();
+        return result;
+    };
+}
+
+const originalSaveContoterzasta = window.saveContoterzasta;
+if (originalSaveContoterzasta) {
+    window.saveContoterzasta = function() {
+        const result = originalSaveContoterzasta.apply(this, arguments);
+        scheduleStatsUpdate();
+        return result;
+    };
+}
 
 </script>
 {% endblock %}

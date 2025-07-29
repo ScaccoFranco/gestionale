@@ -657,3 +657,245 @@ def api_contatti_email_create(request, cliente_id):
             'success': False,
             'error': 'Errore nella creazione del contatto'
         }, status=500)
+    
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_terreni_create(request):
+    """API per creare un nuovo terreno"""
+    try:
+        # Ottieni dati dal form
+        cascina_id = request.POST.get('cascina_id')
+        nome = request.POST.get('nome', '').strip()
+        superficie = request.POST.get('superficie')
+        
+        # Validazione
+        if not cascina_id:
+            return JsonResponse({
+                'success': False,
+                'error': 'ID cascina è obbligatorio'
+            }, status=400)
+            
+        if not nome:
+            return JsonResponse({
+                'success': False,
+                'error': 'Nome terreno è obbligatorio'
+            }, status=400)
+            
+        if not superficie:
+            return JsonResponse({
+                'success': False,
+                'error': 'Superficie è obbligatoria'
+            }, status=400)
+        
+        # Converti superficie a decimale
+        try:
+            superficie_decimal = float(superficie)
+            if superficie_decimal <= 0:
+                raise ValueError("Superficie deve essere positiva")
+        except (ValueError, TypeError):
+            return JsonResponse({
+                'success': False,
+                'error': 'Superficie deve essere un numero positivo'
+            }, status=400)
+        
+        # Verifica che la cascina esista
+        cascina = get_object_or_404(Cascina, id=cascina_id)
+        
+        # Verifica che non esista già un terreno con lo stesso nome nella cascina
+        if Terreno.objects.filter(cascina=cascina, nome__iexact=nome).exists():
+            return JsonResponse({
+                'success': False,
+                'error': f'Esiste già un terreno chiamato "{nome}" in questa cascina'
+            }, status=400)
+        
+        # Crea il terreno
+        with transaction.atomic():
+            terreno = Terreno.objects.create(
+                nome=nome,
+                cascina=cascina,
+                superficie=superficie_decimal
+            )
+            
+            logger.info(f"Terreno creato: {terreno.nome} ({terreno.superficie} ha) - {cascina.nome}")
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Terreno creato con successo',
+                'terreno': {
+                    'id': terreno.id,
+                    'nome': terreno.nome,
+                    'superficie': float(terreno.superficie),
+                    'cascina_id': cascina.id,
+                    'cascina_nome': cascina.nome,
+                    'cliente_nome': cascina.cliente.nome
+                }
+            })
+            
+    except Cascina.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': 'Cascina non trovata'
+        }, status=404)
+    except Exception as e:
+        logger.error(f"Errore nella creazione terreno: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': 'Errore nella creazione del terreno'
+        }, status=500)
+
+# ============ API PRODOTTI ============
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_prodotti_create(request):
+    """API per creare un nuovo prodotto con principi attivi"""
+    try:
+        # Ottieni dati dal form
+        nome = request.POST.get('nome', '').strip()
+        unita_misura = request.POST.get('unita_misura', '').strip()
+        descrizione = request.POST.get('descrizione', '').strip()
+        principi_attivi_json = request.POST.get('principi_attivi', '[]')
+        
+        # Validazione base
+        if not nome:
+            return JsonResponse({
+                'success': False,
+                'error': 'Nome prodotto è obbligatorio'
+            }, status=400)
+            
+        if not unita_misura:
+            return JsonResponse({
+                'success': False,
+                'error': 'Unità di misura è obbligatoria'
+            }, status=400)
+        
+        # Parse principi attivi
+        try:
+            principi_attivi_nomi = json.loads(principi_attivi_json)
+            if not isinstance(principi_attivi_nomi, list) or len(principi_attivi_nomi) == 0:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Almeno un principio attivo è obbligatorio'
+                }, status=400)
+        except json.JSONDecodeError:
+            return JsonResponse({
+                'success': False,
+                'error': 'Formato principi attivi non valido'
+            }, status=400)
+        
+        # Verifica che non esista già un prodotto con lo stesso nome
+        if Prodotto.objects.filter(nome__iexact=nome).exists():
+            return JsonResponse({
+                'success': False,
+                'error': f'Esiste già un prodotto chiamato "{nome}"'
+            }, status=400)
+        
+        # Crea prodotto e principi attivi
+        with transaction.atomic():
+            # Crea il prodotto
+            prodotto = Prodotto.objects.create(
+                nome=nome,
+                unita_misura=unita_misura,
+                descrizione=descrizione
+            )
+            
+            # Crea o ottieni principi attivi e associali al prodotto
+            principi_attivi_creati = []
+            for principio_nome in principi_attivi_nomi:
+                principio_nome = principio_nome.strip()
+                if principio_nome:
+                    principio, created = PrincipioAttivo.objects.get_or_create(
+                        nome__iexact=principio_nome,
+                        defaults={'nome': principio_nome}
+                    )
+                    prodotto.principi_attivi.add(principio)
+                    principi_attivi_creati.append({
+                        'id': principio.id,
+                        'nome': principio.nome,
+                        'created': created
+                    })
+            
+            logger.info(f"Prodotto creato: {prodotto.nome} con {len(principi_attivi_creati)} principi attivi")
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Prodotto creato con successo',
+                'prodotto': {
+                    'id': prodotto.id,
+                    'nome': prodotto.nome,
+                    'unita_misura': prodotto.unita_misura,
+                    'descrizione': prodotto.descrizione,
+                    'principi_attivi': principi_attivi_creati
+                }
+            })
+            
+    except Exception as e:
+        logger.error(f"Errore nella creazione prodotto: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': 'Errore nella creazione del prodotto'
+        }, status=500)
+
+
+@require_http_methods(["GET"])
+def api_clienti_list(request):
+    """API per ottenere la lista dei clienti"""
+    try:
+        clienti = Cliente.objects.all().order_by('nome').values('id', 'nome')
+        return JsonResponse(list(clienti), safe=False)
+    except Exception as e:
+        logger.error(f"Errore nel caricamento clienti: {str(e)}")
+        return JsonResponse({'error': 'Errore nel caricamento clienti'}, status=500)
+
+@require_http_methods(["GET"])
+def api_principi_attivi_list(request):
+    """API per ottenere la lista dei principi attivi (per autocomplete)"""
+    try:
+        query = request.GET.get('q', '').strip()
+        
+        principi = PrincipioAttivo.objects.all()
+        
+        if query:
+            principi = principi.filter(nome__icontains=query)
+        
+        principi_data = list(principi.order_by('nome').values('id', 'nome')[:20])
+        
+        return JsonResponse({
+            'success': True,
+            'principi_attivi': principi_data
+        })
+    except Exception as e:
+        logger.error(f"Errore nel caricamento principi attivi: {str(e)}")
+        return JsonResponse({'error': 'Errore nel caricamento principi attivi'}, status=500)
+
+# ============ API STATS AGGIORNATE ============
+
+@require_http_methods(["GET"])
+def api_database_stats(request):
+    """API per ottenere statistiche aggiornate del database"""
+    try:
+        stats = {
+            'clienti': Cliente.objects.count(),
+            'cascine': Cascina.objects.count(),
+            'terreni': Terreno.objects.count(),
+            'contoterzisti': Contoterzista.objects.count(),
+            'prodotti': Prodotto.objects.count(),
+            'principi_attivi': PrincipioAttivo.objects.count(),
+        }
+        
+        # Calcola superficie totale
+        from django.db.models import Sum
+        superficie_totale = Terreno.objects.aggregate(
+            totale=Sum('superficie')
+        )['totale'] or 0
+        
+        stats['superficie_totale'] = float(superficie_totale)
+        
+        return JsonResponse({
+            'success': True,
+            'stats': stats
+        })
+    except Exception as e:
+        logger.error(f"Errore nel caricamento statistiche: {str(e)}")
+        return JsonResponse({'error': 'Errore nel caricamento statistiche'}, status=500)
