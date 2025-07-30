@@ -42,10 +42,6 @@ urlpatterns = [
 
     # ============ NUOVE API PER DATABASE MANAGEMENT ============
     
-    # API Clienti
-    path('api/clienti/', api_views.api_clienti_list, name='api_clienti_list'),
-    path('api/clienti/create/', api_views.api_clienti_create, name='api_clienti_create'),
-    
     # API Cascine  
     path('api/cascine/', api_views.api_cascine_list, name='api_cascine_list'),
     path('api/cascine/create/', api_views.api_cascine_create, name='api_cascine_create'),
@@ -75,6 +71,11 @@ urlpatterns = [
     path('api/contoterzisti/create/', views.api_contoterzista_create, name='api_contoterzista_create'),
     path('api/contoterzisti/list/', views.api_contoterzisti_list, name='api_contoterzisti_list'),
 
+    # API per selezione dinamica trattamenti
+    path('api/clienti/', api_views.api_clienti, name='api_clienti'),
+    path('api/clienti/<int:cliente_id>/cascine/', api_views.api_cliente_cascine, name='api_cliente_cascine'),
+    path('api/cascine/<int:cascina_id>/terreni/', api_views.api_cascina_terreni, name='api_cascina_terreni'),
+    path('api/search/clienti/', api_views.api_search_clienti, name='api_search_clienti'),
 
     
     # ============ NUOVE API PER ATTIVITÀ E DASHBOARD ============

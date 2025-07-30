@@ -1815,3 +1815,129 @@ def api_activity_stats(request):
             'success': False,
             'error': 'Errore nel caricamento delle statistiche'
         }, status=500)
+
+
+
+@require_http_methods(["GET"])
+def api_clienti(request):
+    """API per ottenere lista clienti con informazioni sulle cascine"""
+    try:
+        clienti = Cliente.objects.prefetch_related('cascine').all().order_by('nome')
+        
+        clienti_data = []
+        for cliente in clienti:
+            cascine_count = cliente.cascine.count()
+            superficie_totale = sum(
+                sum(terreno.superficie for terreno in cascina.terreni.all()) 
+                for cascina in cliente.cascine.all()
+            )
+            
+            clienti_data.append({
+                'id': cliente.id,
+                'nome': cliente.nome,
+                'cascine_count': cascine_count,
+                'superficie_totale': float(superficie_totale),
+                'cascine': [
+                    {
+                        'id': cascina.id,
+                        'nome': cascina.nome,
+                        'superficie_totale': float(sum(t.superficie for t in cascina.terreni.all()))
+                    } for cascina in cliente.cascine.all()
+                ]
+            })
+        
+        return JsonResponse(clienti_data, safe=False)
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+    
+
+@require_http_methods(["GET"])
+def api_cliente_cascine(request, cliente_id):
+    """API per ottenere cascine di un cliente specifico"""
+    try:
+        cliente = get_object_or_404(Cliente, id=cliente_id)
+        cascine = cliente.cascine.prefetch_related('terreni', 'contoterzista').all()
+        
+        cascine_data = []
+        for cascina in cascine:
+            superficie_totale = sum(terreno.superficie for terreno in cascina.terreni.all())
+            terreni_count = cascina.terreni.count()
+            
+            cascine_data.append({
+                'id': cascina.id,
+                'nome': cascina.nome,
+                'cliente_id': cliente.id,
+                'cliente_nome': cliente.nome,
+                'superficie_totale': float(superficie_totale),
+                'terreni_count': terreni_count,
+                'contoterzista': cascina.contoterzista.nome if cascina.contoterzista else None,
+                'contoterzista_id': cascina.contoterzista.id if cascina.contoterzista else None,
+                'terreni': [
+                    {
+                        'id': terreno.id,
+                        'nome': terreno.nome,
+                        'superficie': float(terreno.superficie)
+                    } for terreno in cascina.terreni.all()
+                ]
+            })
+        
+        return JsonResponse(cascine_data, safe=False)
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@require_http_methods(["GET"])
+def api_cascina_terreni(request, cascina_id):
+    """API per ottenere terreni di una cascina specifica"""
+    try:
+        cascina = get_object_or_404(Cascina, id=cascina_id)
+        terreni = cascina.terreni.all().order_by('nome')
+        
+        terreni_data = [{
+            'id': terreno.id,
+            'nome': terreno.nome,
+            'superficie': float(terreno.superficie),
+            'cascina_id': cascina.id,
+            'cascina_nome': cascina.nome,
+            'cliente_id': cascina.cliente.id,
+            'cliente_nome': cascina.cliente.nome
+        } for terreno in terreni]
+        
+        return JsonResponse(terreni_data, safe=False)
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@require_http_methods(["GET"])
+def api_search_clienti(request):
+    """API per ricerca clienti con autocompletamento"""
+    try:
+        query = request.GET.get('q', '').strip()
+        
+        if len(query) < 2:
+            return JsonResponse([], safe=False)
+        
+        clienti = Cliente.objects.filter(
+            nome__icontains=query
+        ).prefetch_related('cascine').order_by('nome')[:10]
+        
+        results = []
+        for cliente in clienti:
+            cascine_count = cliente.cascine.count()
+            superficie_totale = sum(
+                sum(terreno.superficie for terreno in cascina.terreni.all()) 
+                for cascina in cliente.cascine.all()
+            )
+            
+            results.append({
+                'id': cliente.id,
+                'nome': cliente.nome,
+                'cascine_count': cascine_count,
+                'superficie_totale': float(superficie_totale)
+            })
+        
+        return JsonResponse(results, safe=False)
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
