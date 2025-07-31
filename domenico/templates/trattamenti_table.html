@@ -150,6 +150,55 @@
         transform: scale(1.1);
         color: #28a745;
     }
+
+     .prodotti-cell {
+        max-width: 300px;
+        padding: 0.5rem !important;
+    }
+    
+    .prodotti-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+    
+    .prodotto-item {
+        background: #f8f9fa;
+        border-radius: 4px;
+        padding: 0.25rem 0.5rem;
+        border-left: 3px solid #007bff;
+        font-size: 0.85rem;
+    }
+    
+    .prodotto-nome {
+        font-weight: 600;
+        color: #495057;
+        display: block;
+    }
+    
+    .prodotto-quantita {
+        color: #007bff;
+        font-weight: 500;
+        font-size: 0.8rem;
+    }
+    
+    .prodotto-totale {
+        display: block;
+        font-size: 0.75rem;
+        margin-top: 0.125rem;
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+        .prodotti-cell {
+            max-width: 200px;
+        }
+        
+        .prodotto-item {
+            padding: 0.2rem 0.4rem;
+        }
+    }
+
 </style>
 {% endblock %}
 
@@ -392,17 +441,27 @@
                         <br><small class="text-muted">{{ trattamento.data_inserimento|date:"H:i" }}</small>
                     </td>
                     
-                    <td>
-                        {% for tp in trattamento.trattamentoprodotto_set.all %}
-                            <div class="mb-1">
-                                <strong>{{ tp.prodotto.nome }}</strong>
-                                <small class="text-muted d-block">
-                                    {{ tp.quantita_per_ettaro }} {{ tp.prodotto.unita_misura }}/ha
-                                </small>
+                    <td class="prodotti-cell">
+                        {% if trattamento.trattamentoprodotto_set.all %}
+                            <div class="prodotti-list">
+                                {% for tp in trattamento.trattamentoprodotto_set.all %}
+                                    <div class="prodotto-item">
+                                        <span class="prodotto-nome">{{ tp.prodotto.nome }}</span>
+                                        <span class="prodotto-quantita">
+                                            {{ tp.quantita_per_ettaro|floatformat:2 }} {{ tp.prodotto.unita_misura }}/ha
+                                        </span>
+                                        <small class="prodotto-totale text-muted">
+                                            (Tot: {{ tp.quantita_totale|floatformat:3 }} {{ tp.prodotto.unita_misura }})
+                                        </small>
+                                    </div>
+                                {% endfor %}
                             </div>
-                        {% empty %}
-                            <span class="text-muted">Nessun prodotto</span>
-                        {% endfor %}
+                        {% else %}
+                            <span class="text-muted">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                Nessun prodotto associato
+                            </span>
+                        {% endif %}
                     </td>
                     
                     <td>

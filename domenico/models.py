@@ -198,6 +198,7 @@ class Trattamento(models.Model):
             return self.cascina.contoterzista
         return None
     
+
 class TrattamentoProdotto(models.Model):
     """Tabella intermedia per gestire quantità dei prodotti nei trattamenti"""
     trattamento = models.ForeignKey(Trattamento, on_delete=models.CASCADE)
@@ -218,30 +219,26 @@ class TrattamentoProdotto(models.Model):
         try:
             superficie = self.trattamento.get_superficie_interessata()
             
-            # Assicurati che superficie sia un numero
-            if superficie is None:
-                return self.quantita_per_ettaro  # Fallback se superficie non disponibile
-            
-            # Converti a Decimal per evitare errori di tipo
+            # Conversione sicura a Decimal
             from decimal import Decimal
-            if isinstance(superficie, str):
-                superficie = Decimal(superficie)
-            elif not isinstance(superficie, (int, float, Decimal)):
-                superficie = Decimal(str(superficie))
-            else:
-                superficie = Decimal(str(superficie))
+            if superficie is None or superficie == 0:
+                return self.quantita_per_ettaro
             
-            return self.quantita_per_ettaro * superficie
+            superficie_decimal = Decimal(str(superficie))
+            return self.quantita_per_ettaro * superficie_decimal
             
         except (ValueError, TypeError, AttributeError) as e:
-            # Log dell'errore per debug
             import logging
             logger = logging.getLogger(__name__)
             logger.error(f"Errore calcolo quantita_totale per {self}: {e}")
-            
-            # Ritorna quantità per ettaro come fallback
             return self.quantita_per_ettaro
-        
+    
+    class Meta:
+        unique_together = ['trattamento', 'prodotto']
+        verbose_name = "Prodotto del Trattamento"
+        verbose_name_plural = "Prodotti del Trattamento"
+
+     
 class ComunicazioneTrattamento(models.Model):
     """Traccia le comunicazioni inviate per ogni trattamento"""
     trattamento = models.ForeignKey(Trattamento, on_delete=models.CASCADE, related_name='comunicazioni')

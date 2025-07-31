@@ -1321,23 +1321,32 @@ def api_dashboard_summary(request):
         }, status=500)
                 
 
+
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_create_trattamento(request):
-    """API per creare un nuovo trattamento con logging"""
+    """API per creare un nuovo trattamento con gestione corretta dei prodotti"""
+
+    from decimal import Decimal
+    
+    print("=== DEBUG API CREATE TRATTAMENTO ===")
+    print("POST data keys:", list(request.POST.keys()))
+    print("POST data:", dict(request.POST))
+    
     try:
-        print("=== DEBUG API CREATE TRATTAMENTO con LOGGING ===")
-        print("POST data:", dict(request.POST))
-        
         with transaction.atomic():
-            # Parsing dei dati (mantieni la logica esistente)
+            # 1. Parsing dati base
             cliente_id = request.POST.get('cliente')
             cascina_id = request.POST.get('cascina') or None
             livello_applicazione = request.POST.get('livello_applicazione', 'cliente')
             data_esecuzione_prevista = request.POST.get('data_esecuzione_prevista') or None
             note = request.POST.get('note', '')
             
-            # Validazione
+            print(f"Cliente ID: {cliente_id}")
+            print(f"Cascina ID: {cascina_id}")
+            print(f"Livello: {livello_applicazione}")
+            
+            # 2. Validazioni
             if not cliente_id:
                 return JsonResponse({
                     'success': False,
@@ -1350,7 +1359,7 @@ def api_create_trattamento(request):
             if cascina_id:
                 cascina = get_object_or_404(Cascina, id=cascina_id)
             
-            # Crea il trattamento
+            # 3. Crea il trattamento
             trattamento = Trattamento.objects.create(
                 cliente=cliente,
                 cascina=cascina,
@@ -1360,49 +1369,97 @@ def api_create_trattamento(request):
                 stato='programmato'
             )
             
-            # Gestisci terreni se livello è 'terreno'
+            print(f"✅ Trattamento creato: ID {trattamento.id}")
+            
+            # 4. Gestisci terreni se livello è 'terreno'
             if livello_applicazione == 'terreno':
-                terreni_ids = request.POST.getlist('terreni[]')
+                terreni_ids = request.POST.getlist('terreni_selezionati')
+                print(f"Terreni IDS: {terreni_ids}")
+                
                 if terreni_ids:
                     terreni = Terreno.objects.filter(id__in=terreni_ids)
                     trattamento.terreni.set(terreni)
+                    print(f"✅ Associati {terreni.count()} terreni")
             
-            # Gestisci prodotti
-            prodotti_data = request.POST.get('prodotti_data')
-            if prodotti_data:
+            # 5. ⚠️ GESTIONE PRODOTTI - QUI ERA IL PROBLEMA!
+            prodotti_data_str = request.POST.get('prodotti_data')
+            print(f"Prodotti data raw: {prodotti_data_str}")
+            
+            if prodotti_data_str:
                 try:
-                    prodotti_list = json.loads(prodotti_data)
-                    for prodotto_data in prodotti_list:
-                        prodotto_id = prodotto_data.get('prodotto_id')
-                        quantita = prodotto_data.get('quantita')
+                    prodotti_data = json.loads(prodotti_data_str)
+                    print(f"Prodotti parsed: {prodotti_data}")
+                    
+                    prodotti_creati = 0
+                    for prodotto_info in prodotti_data:
+                        prodotto_id = prodotto_info.get('prodotto_id')
+                        quantita_per_ettaro = prodotto_info.get('quantita_per_ettaro')
                         
-                        if prodotto_id and quantita:
-                            prodotto = Prodotto.objects.get(id=prodotto_id)
-                            TrattamentoProdotto.objects.create(
-                                trattamento=trattamento,
-                                prodotto=prodotto,
-                                quantita=float(quantita)
-                            )
-                except (json.JSONDecodeError, KeyError, ValueError) as e:
-                    print(f"Errore nel parsing prodotti: {e}")
+                        print(f"Elaboro prodotto: ID={prodotto_id}, Quantità/ha={quantita_per_ettaro}")
+                        
+                        if prodotto_id and quantita_per_ettaro:
+                            try:
+                                prodotto = Prodotto.objects.get(id=prodotto_id)
+                                
+                                # ✅ USA IL NOME CAMPO CORRETTO
+                                trattamento_prodotto = TrattamentoProdotto.objects.create(
+                                    trattamento=trattamento,
+                                    prodotto=prodotto,
+                                    quantita_per_ettaro=Decimal(str(quantita_per_ettaro))
+                                )
+                                
+                                prodotti_creati += 1
+                                print(f"✅ Prodotto salvato: {prodotto.nome} - {quantita_per_ettaro} {prodotto.unita_misura}/ha")
+                                
+                            except Prodotto.DoesNotExist:
+                                print(f"❌ Prodotto non trovato: ID {prodotto_id}")
+                            except Exception as e:
+                                print(f"❌ Errore salvataggio prodotto {prodotto_id}: {e}")
+                        else:
+                            print(f"⚠️ Dati prodotto incompleti: {prodotto_info}")
+                    
+                    print(f"✅ Salvati {prodotti_creati} prodotti su {len(prodotti_data)} forniti")
+                    
+                except json.JSONDecodeError as e:
+                    print(f"❌ Errore parsing JSON prodotti: {e}")
+                    return JsonResponse({
+                        'success': False,
+                        'error': 'Formato dati prodotti non valido'
+                    }, status=400)
+            else:
+                print("⚠️ Nessun dato prodotti fornito")
             
-            # 🔥 NUOVO: Log dell'attività
-            log_trattamento_created(trattamento, request)
+            # 6. Verifica finale
+            prodotti_count = trattamento.trattamentoprodotto_set.count()
+            superficie = trattamento.get_superficie_interessata()
+            contoterzista = trattamento.get_contoterzista()
             
-            print(f"✅ Trattamento creato con logging: {trattamento.id}")
+            print(f"✅ TRATTAMENTO COMPLETATO:")
+            print(f"   - ID: {trattamento.id}")
+            print(f"   - Prodotti associati: {prodotti_count}")
+            print(f"   - Superficie: {superficie} ha")
+            print(f"   - Contoterzista: {contoterzista.nome if contoterzista else 'N/A'}")
             
             return JsonResponse({
                 'success': True,
-                'message': 'Trattamento creato con successo',
+                'message': f'Trattamento creato con successo con {prodotti_count} prodotti',
                 'trattamento_id': trattamento.id,
-                'redirect_url': f'/trattamenti/?highlight={trattamento.id}'
+                'dettagli': {
+                    'livello_applicazione': trattamento.livello_applicazione,
+                    'superficie_interessata': float(superficie),
+                    'contoterzista': contoterzista.nome if contoterzista else None,
+                    'prodotti_count': prodotti_count,
+                    'terreni_count': trattamento.terreni.count() if livello_applicazione == 'terreno' else 0
+                }
             })
             
     except Exception as e:
-        print(f"❌ Errore nella creazione trattamento: {str(e)}")
+        print(f"❌ ERRORE GENERALE: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return JsonResponse({
             'success': False,
-            'error': f'Errore nella creazione del trattamento: {str(e)}'
+            'error': f'Errore durante la creazione: {str(e)}'
         }, status=500)
 
 

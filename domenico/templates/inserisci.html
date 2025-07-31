@@ -1066,6 +1066,45 @@
     }
 }
 
+.suggestion-highlighted {
+    background-color: #007bff !important;
+    color: white !important;
+}
+
+.suggestion-highlighted i {
+    color: white !important;
+}
+
+.suggestion-highlighted small {
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.suggestion-item {
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.suggestion-item:hover {
+    background-color: #f8f9fa;
+}
+
+.suggestion-item.suggestion-highlighted:hover {
+    background-color: #0056b3 !important;
+}
+
+/* Indicatori visivi per istruzioni tastiera */
+.search-step small {
+    display: block;
+    margin-top: 0.5rem;
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+
+.search-step small i {
+    color: #007bff;
+}
+
+
 </style>
 {% endblock %}
 
@@ -1213,6 +1252,26 @@
                 </button>
             </div>
         </form>
+    </div>
+</div>
+
+<div id="keyboard-shortcuts" class="keyboard-shortcuts">
+    <h6><i class="fas fa-keyboard me-1"></i>Scorciatoie Tastiera</h6>
+    <div class="shortcut">
+        <span>Naviga su/giù</span>
+        <span class="key">↑ ↓</span>
+    </div>
+    <div class="shortcut">
+        <span>Seleziona</span>
+        <span class="key">Enter</span>
+    </div>
+    <div class="shortcut">
+        <span>Chiudi</span>
+        <span class="key">Esc</span>
+    </div>
+    <div class="shortcut">
+        <span>Torna indietro</span>
+        <span class="key">Alt + ←</span>
     </div>
 </div>
 
@@ -1391,32 +1450,68 @@ function generateSummary() {
 
 // === SUBMIT FORM (SEMPLIFICATO) ===
 function submitForm() {
-    console.log('Invio form ultra semplificato...');
-    if (!validateCurrentStep()) return;
+     console.log('=== INIZIO SALVATAGGIO TRATTAMENTI ===');
     
-    document.getElementById('loading').classList.add('show');
-    document.getElementById('submit-btn').disabled = true;
+    // Verifica selezioni
+    if (!selectedTarget) {
+        showError('Devi selezionare un tipo di trattamento');
+        return;
+    }
     
-    // Preparazione dati prodotti
-    const productItems = document.querySelectorAll('.product-item');
+    let selectedCount = 0;
+    if (selectedTarget === 'cliente') selectedCount = selectedData.clienti.length;
+    else if (selectedTarget === 'cascina') selectedCount = selectedData.cascine.length;
+    else if (selectedTarget === 'terreno') selectedCount = selectedData.terreni.length;
+    
+    if (selectedCount === 0) {
+        showError('Devi selezionare almeno un elemento per il trattamento');
+        return;
+    }
+    
+    // ✅ RACCOLTA PRODOTTI CORRETTA
+    const productContainers = document.querySelectorAll('.product-item');
+    if (productContainers.length === 0) {
+        showError('Devi aggiungere almeno un prodotto');
+        return;
+    }
+    
     const prodottiData = [];
-    productItems.forEach(item => {
-        const select = item.querySelector('.product-select');
-        const quantity = item.querySelector('.quantity-input');
+    let prodottiValidi = true;
+    
+    productContainers.forEach((container, index) => {
+        const productSelect = container.querySelector('.product-select');
+        const quantityInput = container.querySelector('.quantity-input');
         
-        if (select.value && quantity.value) {
+        const prodotto_id = productSelect ? productSelect.value : '';
+        const quantita_per_ettaro = quantityInput ? quantityInput.value : '';
+        
+        console.log(`Prodotto ${index + 1}:`, {
+            prodotto_id,
+            quantita_per_ettaro,
+            valid: prodotto_id && quantita_per_ettaro && parseFloat(quantita_per_ettaro) > 0
+        });
+        
+        if (!prodotto_id || !quantita_per_ettaro || parseFloat(quantita_per_ettaro) <= 0) {
+            prodottiValidi = false;
+        } else {
+            // ✅ USA LA CHIAVE CORRETTA
             prodottiData.push({
-                prodotto_id: select.value,
-                quantita_per_ettaro: quantity.value
+                prodotto_id: parseInt(prodotto_id),
+                quantita_per_ettaro: parseFloat(quantita_per_ettaro)
             });
         }
     });
     
-    // Note minime automatiche
-    let noteAutomatiche = 'Trattamento programmato';
+    if (!prodottiValidi) {
+        showError('Tutti i prodotti devono avere una quantità valida');
+        return;
+    }
     
-    // Strategia: Creare trattamenti multipli in base al tipo di selezione
+    console.log('✅ Prodotti validati:', prodottiData);
+    
+    // Creazione trattamenti
     let trattamentiDaCreare = [];
+    const noteAutomatiche = 'Trattamento programmato';
     
     if (selectedTarget === 'cliente') {
         selectedData.clienti.forEach(cliente => {
@@ -1425,7 +1520,7 @@ function submitForm() {
                 cliente: cliente.id,
                 cascina: null,
                 terreni_selezionati: [],
-                prodotti_data: JSON.stringify(prodottiData),
+                prodotti_data: JSON.stringify(prodottiData), // ✅ STRINGIFY CORRETTO
                 data_esecuzione_prevista: null,
                 note: noteAutomatiche + ` [${cliente.nome}]`
             });
@@ -1437,7 +1532,7 @@ function submitForm() {
                 cliente: cascina.cliente_id,
                 cascina: cascina.id,
                 terreni_selezionati: [],
-                prodotti_data: JSON.stringify(prodottiData),
+                prodotti_data: JSON.stringify(prodottiData), // ✅ STRINGIFY CORRETTO
                 data_esecuzione_prevista: null,
                 note: noteAutomatiche + ` [${cascina.nome}]`
             });
@@ -1448,13 +1543,13 @@ function submitForm() {
             cliente: selectedData.terreni[0].cliente_id,
             cascina: selectedData.terreni[0].cascina_id,
             terreni_selezionati: selectedData.terreni.map(t => t.id),
-            prodotti_data: JSON.stringify(prodottiData),
+            prodotti_data: JSON.stringify(prodottiData), // ✅ STRINGIFY CORRETTO
             data_esecuzione_prevista: null,
             note: noteAutomatiche + ` [${selectedData.terreni.length} terreni]`
         });
     }
     
-    console.log('Trattamenti da creare:', trattamentiDaCreare);
+    console.log('✅ Trattamenti da creare:', trattamentiDaCreare);
     createTrattamentiSequentially(trattamentiDaCreare);
 }
 
@@ -1560,7 +1655,6 @@ function loadTargetSelection(type) {
             </div>
         `;
     } else if (type === 'cascina') {
-
         container.innerHTML = `
             <div class="selection-interface">
                 <div class="interface-header">
@@ -1571,37 +1665,46 @@ function loadTargetSelection(type) {
                 </div>
                 
                 <!-- Step 1: Ricerca Cliente -->
-                <div class="search-step mb-4">
-                    <h6 class="text-muted mb-2"><i class="fas fa-search me-1"></i>1. Cerca Cliente</h6>
+                <div class="search-step">
+                    <h6><i class="fas fa-search"></i>1. Cerca e Seleziona Cliente</h6>
                     <div class="search-box">
                         <div class="input-group">
-                            <input type="text" class="form-control" id="search-cliente-cascine" 
-                                   placeholder="Digita nome cliente..." 
-                                   onkeyup="searchClienteForCascine()" 
-                                   onfocus="showClienteSuggestions()">
+                            <input type="text" 
+                                class="form-control" 
+                                id="search-cliente-cascine" 
+                                placeholder="Digita il nome del cliente..." 
+                                autocomplete="off"
+                                onkeyup="searchClienteForCascine()"
+                                onkeydown="handleSearchKeydown(event)">
                             <span class="input-group-text">
                                 <i class="fas fa-search"></i>
                             </span>
                         </div>
-                        <!-- Dropdown suggerimenti clienti -->
-                        <div id="cliente-suggestions" class="suggestions-dropdown" style="display: none;">
-                            <!-- Popolato dinamicamente -->
-                        </div>
+                        <div id="cliente-suggestions" class="suggestions-dropdown" style="display: none;"></div>
                     </div>
+                    <small>
+                        <i class="fas fa-keyboard"></i>
+                        <strong>Scorciatoie:</strong> ↑/↓ naviga • Enter seleziona • Esc chiude
+                    </small>
                 </div>
                 
-                <!-- Step 2: Selezione Cascine (inizialmente nascosto) -->
+                <!-- Step 2: Area Cascine (inizialmente nascosta) -->
                 <div id="cascine-selection-area" style="display: none;">
-                    <h6 class="text-muted mb-3"><i class="fas fa-home me-1"></i>2. Seleziona Cascine</h6>
-                    <div class="cascine-grid" id="cascine-container">
-                        <!-- Popolato dinamicamente quando si seleziona un cliente -->
-                    </div>
+                    <!-- Contenuto popolato dinamicamente da loadCascineForCliente -->
                 </div>
             </div>
         `;
         
-        // Carica tutti i clienti per i suggerimenti
+        // ✅ CARICA CLIENTI E INIZIALIZZA EVENTI
         loadClientiForSuggestions();
+        
+        // ✅ FOCUS AUTOMATICO SUL CAMPO RICERCA
+        setTimeout(() => {
+            const searchInput = document.getElementById('search-cliente-cascine');
+            if (searchInput) {
+                searchInput.focus();
+            }
+        }, 300);
     } else if (type === 'terreno') {
         container.innerHTML = `
             <div class="selection-interface">
@@ -1612,27 +1715,36 @@ function loadTargetSelection(type) {
                     </button>
                 </div>
                 
-                <!-- Step 1: Ricerca Cliente -->
-                <div class="search-step mb-4">
-                    <h6 class="text-muted mb-2"><i class="fas fa-search me-1"></i>1. Cerca Cliente</h6>
+                <!-- Step 1: Ricerca Cliente MIGLIORATA -->
+                <div class="search-step">
+                    <h6><i class="fas fa-search"></i>1. Cerca e Seleziona Cliente</h6>
                     <div class="search-box">
                         <div class="input-group">
-                            <input type="text" class="form-control" id="search-cliente-terreni" 
-                                placeholder="Digita nome cliente..." 
-                                onkeyup="searchClienteForTerreni()" 
-                                onfocus="showClienteSuggestionsTerreni()">
+                            <input type="text" 
+                                class="form-control" 
+                                id="search-cliente-terreni" 
+                                placeholder="Digita il nome del cliente..." 
+                                autocomplete="off"
+                                onkeyup="searchClienteForTerreni()"
+                                onkeydown="handleSearchKeydown(event)"
+                                onfocus="showKeyboardShortcuts()"
+                                onblur="hideKeyboardShortcuts()">
                             <span class="input-group-text">
                                 <i class="fas fa-search"></i>
                             </span>
                         </div>
                         <div id="cliente-suggestions-terreni" class="suggestions-dropdown" style="display: none;"></div>
                     </div>
+                    <small>
+                        <i class="fas fa-keyboard"></i>
+                        <strong>Scorciatoie:</strong> ↑/↓ naviga • Enter seleziona • Esc chiude
+                    </small>
                 </div>
                 
                 <!-- Step 2: Selezione Cascina -->
                 <div id="cascina-selection-step" style="display: none;">
-                    <h6 class="text-muted mb-2"><i class="fas fa-home me-1"></i>2. Seleziona Cascina</h6>
-                    <div class="search-box mb-3">
+                    <div class="search-step">
+                        <h6><i class="fas fa-home"></i>2. Seleziona la Cascina</h6>
                         <select class="form-select" id="cascina-select-terreni" onchange="selectCascinaForTerreni()">
                             <option value="">-- Seleziona una cascina --</option>
                         </select>
@@ -1641,13 +1753,19 @@ function loadTargetSelection(type) {
                 
                 <!-- Step 3: Selezione Terreni -->
                 <div id="terreni-selection-area" style="display: none;">
-                    <h6 class="text-muted mb-3"><i class="fas fa-seedling me-1"></i>3. Seleziona Terreni</h6>
-                    <div class="terreni-grid" id="terreni-container">
-                        <!-- Popolato dinamicamente -->
+                    <div class="search-step">
+                        <h6><i class="fas fa-seedling"></i>3. Seleziona i Terreni Desiderati</h6>
+                        <div class="terreni-grid" id="terreni-container">
+                            <!-- Popolato dinamicamente -->
+                        </div>
                     </div>
                 </div>
             </div>
         `;
+        
+        // Carica clienti e inizializza eventi
+        loadClientiForSuggestions();
+        initializeSearchEvents();
     }
 }
 
@@ -1967,21 +2085,6 @@ function createTrattamentiSequentially(trattamentiDaCreare) {
     createNext(0);
 }
 
-// === INITIALIZATION ===
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 Inizializzazione form ultra semplificato (3 step)...');
-    
-    // Add first product by default
-    addProduct();
-    
-    // Debug info
-    console.log('📊 Dati disponibili:');
-    console.log('- Clienti:', {{ clienti|length }});
-    console.log('- Prodotti:', {{ prodotti|length }});
-    
-    console.log('✅ Form pronto! Solo 3 step: Target → Prodotti → Conferma');
-});
-
 // === FILTER FUNCTIONS ===
 function filterClients() {
     const searchTerm = document.getElementById('search-clienti').value.toLowerCase();
@@ -2086,6 +2189,8 @@ function debugCurrentState() {
 
 let allClienti = [];
 let selectedClienteForCascine = null;
+let selectedClienteForTerreni = null;
+let selectedCascinaForTerreni = null;
 
 function loadClientiForSuggestions() {
     fetch('/api/clienti/')
@@ -2121,9 +2226,13 @@ function searchClienteForCascine() {
         return;
     }
     
-    // Genera HTML suggerimenti
-    const suggestionsHTML = filteredClienti.map(cliente => `
-        <div class="suggestion-item" onclick="selectClienteForCascine(${cliente.id}, '${cliente.nome}')">
+    // Genera HTML suggerimenti con indice per navigazione
+    const suggestionsHTML = filteredClienti.map((cliente, index) => `
+        <div class="suggestion-item ${index === 0 ? 'suggestion-highlighted' : ''}" 
+             data-cliente-id="${cliente.id}" 
+             data-cliente-nome="${cliente.nome}"
+             data-suggestion-index="${index}"
+             onclick="selectClienteForCascine(${cliente.id}, '${cliente.nome}')">
             <i class="fas fa-building text-primary me-2"></i>
             <strong>${cliente.nome}</strong>
             <small class="text-muted ms-2">${cliente.cascine?.length || 0} cascine</small>
@@ -2132,88 +2241,152 @@ function searchClienteForCascine() {
     
     suggestionsDiv.innerHTML = suggestionsHTML;
     suggestionsDiv.style.display = 'block';
+    
+    // ✅ MEMORIZZA I SUGGERIMENTI PER NAVIGAZIONE CON FRECCE
+    window.currentSuggestions = {
+        type: 'cliente-cascine',
+        items: filteredClienti,
+        selectedIndex: 0
+    };
 }
 
-function selectClienteForCascine(clienteId, clienteNome) {
-    selectedClienteForCascine = { id: clienteId, nome: clienteNome };
-    
-    // Aggiorna input
-    document.getElementById('search-cliente-cascine').value = clienteNome;
-    document.getElementById('cliente-suggestions').style.display = 'none';
-    
-    // Carica cascine del cliente selezionato
-    loadCascineForCliente(clienteId);
-    
-    console.log(`Cliente selezionato per cascine: ${clienteNome} (${clienteId})`);
-}
+
 
 function loadCascineForCliente(clienteId) {
+    console.log(`🔍 Caricamento cascine per cliente ${clienteId}`);
+    
+    // ✅ VERIFICA ESISTENZA ELEMENTI DOM
     const cascineArea = document.getElementById('cascine-selection-area');
-    const cascineContainer = document.getElementById('cascine-container');
+    if (!cascineArea) {
+        console.error('❌ Elemento cascine-selection-area non trovato');
+        return;
+    }
     
-    // Mostra loading
-    cascineContainer.innerHTML = '<div class="text-center p-4"><i class="fas fa-spinner fa-spin"></i> Caricamento cascine...</div>';
+    // ✅ CREA LA STRUTTURA HTML CORRETTA
     cascineArea.style.display = 'block';
+    cascineArea.innerHTML = `
+        <div class="search-step">
+            <h6><i class="fas fa-home text-primary"></i>2. Seleziona le Cascine Desiderate</h6>
+            <div class="cascine-grid" id="cascine-container">
+                <div class="text-center p-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Caricamento cascine...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Caricamento cascine per ${selectedClienteForCascine?.nome || 'cliente selezionato'}...</p>
+                </div>
+            </div>
+        </div>
+    `;
     
-    // Fetch cascine del cliente
+    // ✅ ADESSO IL CONTAINER ESISTE, POSSIAMO UTILIZZARLO
+    const cascineContainer = document.getElementById('cascine-container');
+    if (!cascineContainer) {
+        console.error('❌ Elemento cascine-container non trovato dopo la creazione');
+        return;
+    }
+    
+    console.log('✅ Container cascine creato correttamente');
+    
+    // ✅ FETCH CASCINE DEL CLIENTE
     fetch(`/api/clienti/${clienteId}/cascine/`)
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
     .then(cascine => {
+        console.log(`✅ Ricevute ${cascine.length} cascine per cliente ${clienteId}:`, cascine);
+        
         if (cascine.length === 0) {
             cascineContainer.innerHTML = `
                 <div class="text-center p-4 text-muted">
-                    <i class="fas fa-info-circle mb-2"></i>
-                    <p>Nessuna cascina trovata per questo cliente</p>
+                    <i class="fas fa-info-circle mb-3" style="font-size: 2rem;"></i>
+                    <h6>Nessuna cascina trovata</h6>
+                    <p>Il cliente selezionato non ha cascine associate.</p>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="resetTargetSelection()">
+                        <i class="fas fa-arrow-left me-1"></i>Seleziona altro cliente
+                    </button>
                 </div>
             `;
             return;
         }
         
-        // Genera HTML cascine
-        const cascineHTML = cascine.map(cascina => `
-            <div class="selection-item" 
-                 data-cascina-id="${cascina.id}"
-                 data-cascina-nome="${cascina.nome}"
-                 data-cliente-id="${cascina.cliente_id}"
-                 data-cliente-nome="${selectedClienteForCascine.nome}"
-                 data-superficie="${cascina.superficie_totale || 0}"
-                 onclick="toggleCascinaSelectionSafe(this)">
-                
-                <div class="selection-checkbox">
-                    <i class="fas fa-check"></i>
-                </div>
-                
-                <div class="selection-content">
-                    <div class="selection-name">${cascina.nome}</div>
-                    <div class="selection-info">
-                        <i class="fas fa-map me-1"></i>${cascina.superficie_totale?.toFixed(2) || '0.00'} ha
+        // ✅ GENERA HTML CASCINE CON GESTIONE ERRORI
+        const cascineHTML = cascine.map(cascina => {
+            const superficie = cascina.superficie_totale || 0;
+            const terreniCount = cascina.terreni_count || (cascina.terreni ? cascina.terreni.length : 0);
+            const contoterzista = cascina.contoterzista || 'Nessun contoterzista';
+            
+            return `
+                <div class="selection-item" 
+                     data-cascina-id="${cascina.id}"
+                     data-cascina-nome="${cascina.nome}"
+                     data-cliente-id="${cascina.cliente_id || clienteId}"
+                     data-cliente-nome="${selectedClienteForCascine.nome}"
+                     data-superficie="${superficie}"
+                     onclick="toggleCascinaSelectionSafe(this)">
+                    
+                    <div class="selection-checkbox">
+                        <i class="fas fa-check"></i>
                     </div>
-                    <div class="selection-extra">
-                        ${cascina.terreni?.length || 0} terreni - 
-                        ${cascina.contoterzista ? cascina.contoterzista : 'Nessun contoterzista'}
+                    
+                    <div class="selection-content">
+                        <div class="selection-name">${cascina.nome}</div>
+                        <div class="selection-info">
+                            <i class="fas fa-map me-1"></i>${superficie.toFixed(2)} ha
+                        </div>
+                        <div class="selection-extra">
+                            ${terreniCount} terreni • ${contoterzista}
+                        </div>
                     </div>
                 </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
         
+        // ✅ INSERISCI L'HTML GENERATO
         cascineContainer.innerHTML = cascineHTML;
         
-        console.log(`✅ Caricate ${cascine.length} cascine per ${selectedClienteForCascine.nome}`);
+        console.log(`✅ Visualizzate ${cascine.length} cascine per ${selectedClienteForCascine.nome}`);
+        
+        // ✅ AGGIUNGI MESSAGGIO INFORMATIVO
+        const infoMessage = document.createElement('div');
+        infoMessage.className = 'alert alert-info mt-3';
+        infoMessage.innerHTML = `
+            <i class="fas fa-info-circle me-2"></i>
+            <strong>Cliente selezionato:</strong> ${selectedClienteForCascine.nome}<br>
+            <strong>Cascine disponibili:</strong> ${cascine.length} • 
+            <strong>Superficie totale:</strong> ${cascine.reduce((sum, c) => sum + (c.superficie_totale || 0), 0).toFixed(2)} ha
+        `;
+        cascineArea.appendChild(infoMessage);
+        
     })
     .catch(error => {
-        console.error('Errore caricamento cascine:', error);
-        cascineContainer.innerHTML = `
-            <div class="text-center p-4 text-danger">
-                <i class="fas fa-exclamation-triangle mb-2"></i>
-                <p>Errore nel caricamento delle cascine</p>
-            </div>
-        `;
+        console.error('❌ Errore caricamento cascine:', error);
+        
+        // ✅ VERIFICA CHE IL CONTAINER ESISTA ANCORA
+        const currentContainer = document.getElementById('cascine-container');
+        if (currentContainer) {
+            currentContainer.innerHTML = `
+                <div class="text-center p-4 text-danger">
+                    <i class="fas fa-exclamation-triangle mb-3" style="font-size: 2rem;"></i>
+                    <h6>Errore nel caricamento</h6>
+                    <p>Non è stato possibile caricare le cascine per questo cliente.</p>
+                    <small class="text-muted">Errore: ${error.message}</small>
+                    <div class="mt-3">
+                        <button class="btn btn-outline-danger btn-sm me-2" onclick="loadCascineForCliente(${clienteId})">
+                            <i class="fas fa-redo me-1"></i>Riprova
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="resetTargetSelection()">
+                            <i class="fas fa-arrow-left me-1"></i>Torna indietro
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
     });
 }
 
-// Variabili per la gestione terreni
-let selectedClienteForTerreni = null;
-let selectedCascinaForTerreni = null;
 
 function searchClienteForTerreni() {
     const searchInput = document.getElementById('search-cliente-terreni');
@@ -2235,8 +2408,13 @@ function searchClienteForTerreni() {
         return;
     }
     
-    const suggestionsHTML = filteredClienti.map(cliente => `
-        <div class="suggestion-item" onclick="selectClienteForTerreni(${cliente.id}, '${cliente.nome}')">
+    // Genera HTML suggerimenti con indice per navigazione
+    const suggestionsHTML = filteredClienti.map((cliente, index) => `
+        <div class="suggestion-item ${index === 0 ? 'suggestion-highlighted' : ''}" 
+             data-cliente-id="${cliente.id}" 
+             data-cliente-nome="${cliente.nome}"
+             data-suggestion-index="${index}"
+             onclick="selectClienteForTerreni(${cliente.id}, '${cliente.nome}')">
             <i class="fas fa-building text-primary me-2"></i>
             <strong>${cliente.nome}</strong>
             <small class="text-muted ms-2">${cliente.cascine?.length || 0} cascine</small>
@@ -2245,18 +2423,13 @@ function searchClienteForTerreni() {
     
     suggestionsDiv.innerHTML = suggestionsHTML;
     suggestionsDiv.style.display = 'block';
-}
-
-function selectClienteForTerreni(clienteId, clienteNome) {
-    selectedClienteForTerreni = { id: clienteId, nome: clienteNome };
     
-    document.getElementById('search-cliente-terreni').value = clienteNome;
-    document.getElementById('cliente-suggestions-terreni').style.display = 'none';
-    
-    // Carica cascine per la selezione
-    loadCascineSelectForTerreni(clienteId);
-    
-    console.log(`Cliente selezionato per terreni: ${clienteNome} (${clienteId})`);
+    // ✅ MEMORIZZA I SUGGERIMENTI PER NAVIGAZIONE CON FRECCE
+    window.currentSuggestions = {
+        type: 'cliente-terreni',
+        items: filteredClienti,
+        selectedIndex: 0
+    };
 }
 
 function loadCascineSelectForTerreni(clienteId) {
@@ -2366,16 +2539,6 @@ function loadTerreniForCascina(cascinaId) {
     });
 }
 
-// Nascondi suggerimenti quando si clicca fuori
-document.addEventListener('click', function(event) {
-    const suggestions = document.querySelectorAll('.suggestions-dropdown');
-    suggestions.forEach(dropdown => {
-        if (!dropdown.contains(event.target) && !event.target.closest('.search-box')) {
-            dropdown.style.display = 'none';
-        }
-    });
-});
-
 // Reset delle selezioni quando si cambia target
 function resetAllSelections() {
     selectedClienteForCascine = null;
@@ -2389,15 +2552,6 @@ function resetAllSelections() {
         terreni: []
     };
 }
-// 2. ✅ AGGIUNGI FUNZIONE PER NASCONDERE SUGGERIMENTI AL CLICK ESTERNO
-document.addEventListener('click', function(event) {
-    const suggestions = document.querySelectorAll('.suggestions-dropdown');
-    suggestions.forEach(dropdown => {
-        if (!dropdown.contains(event.target) && !event.target.closest('.search-box')) {
-            dropdown.style.display = 'none';
-        }
-    });
-});
 
 // 3. ✅ MIGLIORA LA FUNZIONE resetTargetSelection
 function resetTargetSelection() {
@@ -2552,6 +2706,446 @@ function showSuccess(message, duration = 3000) {
     }, duration);
 }
 
+
+function saveTrattamenti() {
+    console.log('=== INIZIO SALVATAGGIO TRATTAMENTI ===');
+    
+    // Verifica selezioni
+    if (!selectedTarget) {
+        showError('Devi selezionare un tipo di trattamento');
+        return;
+    }
+    
+    let selectedCount = 0;
+    if (selectedTarget === 'cliente') selectedCount = selectedData.clienti.length;
+    else if (selectedTarget === 'cascina') selectedCount = selectedData.cascine.length;
+    else if (selectedTarget === 'terreno') selectedCount = selectedData.terreni.length;
+    
+    if (selectedCount === 0) {
+        showError('Devi selezionare almeno un elemento per il trattamento');
+        return;
+    }
+    
+    // ✅ RACCOLTA PRODOTTI CORRETTA
+    const productContainers = document.querySelectorAll('.product-item');
+    if (productContainers.length === 0) {
+        showError('Devi aggiungere almeno un prodotto');
+        return;
+    }
+    
+    const prodottiData = [];
+    let prodottiValidi = true;
+    
+    productContainers.forEach((container, index) => {
+        const productSelect = container.querySelector('.product-select');
+        const quantityInput = container.querySelector('.quantity-input');
+        
+        const prodotto_id = productSelect ? productSelect.value : '';
+        const quantita_per_ettaro = quantityInput ? quantityInput.value : '';
+        
+        console.log(`Prodotto ${index + 1}:`, {
+            prodotto_id,
+            quantita_per_ettaro,
+            valid: prodotto_id && quantita_per_ettaro && parseFloat(quantita_per_ettaro) > 0
+        });
+        
+        if (!prodotto_id || !quantita_per_ettaro || parseFloat(quantita_per_ettaro) <= 0) {
+            prodottiValidi = false;
+        } else {
+            // ✅ USA LA CHIAVE CORRETTA
+            prodottiData.push({
+                prodotto_id: parseInt(prodotto_id),
+                quantita_per_ettaro: parseFloat(quantita_per_ettaro)
+            });
+        }
+    });
+    
+    if (!prodottiValidi) {
+        showError('Tutti i prodotti devono avere una quantità valida');
+        return;
+    }
+    
+    console.log('✅ Prodotti validati:', prodottiData);
+    
+    // Creazione trattamenti
+    let trattamentiDaCreare = [];
+    const noteAutomatiche = 'Trattamento programmato';
+    
+    if (selectedTarget === 'cliente') {
+        selectedData.clienti.forEach(cliente => {
+            trattamentiDaCreare.push({
+                livello_applicazione: 'cliente',
+                cliente: cliente.id,
+                cascina: null,
+                terreni_selezionati: [],
+                prodotti_data: JSON.stringify(prodottiData), // ✅ STRINGIFY CORRETTO
+                data_esecuzione_prevista: null,
+                note: noteAutomatiche + ` [${cliente.nome}]`
+            });
+        });
+    } else if (selectedTarget === 'cascina') {
+        selectedData.cascine.forEach(cascina => {
+            trattamentiDaCreare.push({
+                livello_applicazione: 'cascina',
+                cliente: cascina.cliente_id,
+                cascina: cascina.id,
+                terreni_selezionati: [],
+                prodotti_data: JSON.stringify(prodottiData), // ✅ STRINGIFY CORRETTO
+                data_esecuzione_prevista: null,
+                note: noteAutomatiche + ` [${cascina.nome}]`
+            });
+        });
+    } else if (selectedTarget === 'terreno') {
+        trattamentiDaCreare.push({
+            livello_applicazione: 'terreno',
+            cliente: selectedData.terreni[0].cliente_id,
+            cascina: selectedData.terreni[0].cascina_id,
+            terreni_selezionati: selectedData.terreni.map(t => t.id),
+            prodotti_data: JSON.stringify(prodottiData), // ✅ STRINGIFY CORRETTO
+            data_esecuzione_prevista: null,
+            note: noteAutomatiche + ` [${selectedData.terreni.length} terreni]`
+        });
+    }
+    
+    console.log('✅ Trattamenti da creare:', trattamentiDaCreare);
+    createTrattamentiSequentially(trattamentiDaCreare);
+}
+
+
+function handleSearchKeydown(event) {
+    const suggestionsDiv = event.target.nextElementSibling?.classList.contains('suggestions-dropdown') 
+        ? event.target.nextElementSibling 
+        : document.querySelector('.suggestions-dropdown[style*="block"]');
+    
+    if (!suggestionsDiv || suggestionsDiv.style.display === 'none') {
+        return;
+    }
+    
+    const suggestions = suggestionsDiv.querySelectorAll('.suggestion-item:not(.text-muted)');
+    
+    if (suggestions.length === 0) {
+        return;
+    }
+    
+    switch (event.key) {
+        case 'Enter':
+            event.preventDefault(); // ✅ IMPEDISCE IL SUBMIT DEL FORM
+            
+            // Seleziona il primo suggerimento evidenziato
+            const highlighted = suggestionsDiv.querySelector('.suggestion-highlighted');
+            if (highlighted) {
+                highlighted.click();
+            } else {
+                // Fallback: seleziona il primo suggerimento
+                suggestions[0].click();
+            }
+            break;
+            
+        case 'ArrowDown':
+            event.preventDefault();
+            navigateSuggestions('down', suggestions);
+            break;
+            
+        case 'ArrowUp':
+            event.preventDefault();
+            navigateSuggestions('up', suggestions);
+            break;
+            
+        case 'Escape':
+            event.preventDefault();
+            suggestionsDiv.style.display = 'none';
+            event.target.blur();
+            break;
+    }
+}
+
+function navigateSuggestions(direction, suggestions) {
+    const currentHighlighted = document.querySelector('.suggestion-highlighted');
+    let currentIndex = 0;
+    
+    if (currentHighlighted) {
+        currentIndex = Array.from(suggestions).indexOf(currentHighlighted);
+        currentHighlighted.classList.remove('suggestion-highlighted');
+    }
+    
+    if (direction === 'down') {
+        currentIndex = (currentIndex + 1) % suggestions.length;
+    } else {
+        currentIndex = currentIndex <= 0 ? suggestions.length - 1 : currentIndex - 1;
+    }
+    
+    suggestions[currentIndex].classList.add('suggestion-highlighted');
+    
+    // Scroll automatico se necessario
+    suggestions[currentIndex].scrollIntoView({
+        block: 'nearest',
+        behavior: 'smooth'
+    });
+}
+
+// Migliora l'evento click esterno esistente:
+
+document.addEventListener('click', function(event) {
+    // Nascondi suggerimenti quando si clicca fuori
+    const suggestions = document.querySelectorAll('.suggestions-dropdown');
+    suggestions.forEach(dropdown => {
+        if (!dropdown.contains(event.target) && !event.target.closest('.search-box')) {
+            dropdown.style.display = 'none';
+        }
+    });
+    
+    // Reset evidenziazione
+    document.querySelectorAll('.suggestion-highlighted').forEach(item => {
+        item.classList.remove('suggestion-highlighted');
+    });
+});
+
+
+// Funzioni per mostrare/nascondere le scorciatoie tastiera
+function showKeyboardShortcuts() {
+    const shortcuts = document.getElementById('keyboard-shortcuts');
+    if (shortcuts) {
+        shortcuts.classList.add('show');
+    }
+}
+
+function hideKeyboardShortcuts() {
+    setTimeout(() => {
+        const shortcuts = document.getElementById('keyboard-shortcuts');
+        if (shortcuts && !document.querySelector('input:focus')) {
+            shortcuts.classList.remove('show');
+        }
+    }, 200);
+}
+
+// Inizializza gli eventi di ricerca per ogni input
+function initializeSearchEvents() {
+    // Trova tutti gli input di ricerca e aggiungi gli eventi
+    const searchInputs = document.querySelectorAll('input[id*="search-"]');
+    
+    searchInputs.forEach(input => {
+        // Rimuovi eventi esistenti per evitare duplicati
+        input.removeEventListener('keydown', handleSearchKeydown);
+        input.removeEventListener('focus', showKeyboardShortcuts);
+        input.removeEventListener('blur', hideKeyboardShortcuts);
+        
+        // Aggiungi nuovi eventi
+        input.addEventListener('keydown', handleSearchKeydown);
+        input.addEventListener('focus', showKeyboardShortcuts);
+        input.addEventListener('blur', hideKeyboardShortcuts);
+        
+        console.log(`✅ Eventi inizializzati per: ${input.id}`);
+    });
+}
+
+// Migliora la funzione di selezione clienti con feedback visivo
+function selectClienteForCascine(clienteId, clienteNome) {
+    console.log(`🎯 Selezione cliente per cascine: ${clienteNome} (${clienteId})`);
+    
+    selectedClienteForCascine = { id: clienteId, nome: clienteNome };
+    
+    // ✅ AGGIORNA INPUT CON VERIFICA ESISTENZA
+    const searchInput = document.getElementById('search-cliente-cascine');
+    const suggestionsDiv = document.getElementById('cliente-suggestions');
+    
+    if (searchInput) {
+        searchInput.value = clienteNome;
+        searchInput.classList.add('success');
+        setTimeout(() => searchInput.classList.remove('success'), 1000);
+    }
+    
+    if (suggestionsDiv) {
+        suggestionsDiv.style.display = 'none';
+    }
+    
+    // ✅ CARICA CASCINE CON DELAY PER ASSICURARE DOM READY
+    setTimeout(() => {
+        loadCascineForCliente(clienteId);
+    }, 100);
+    
+    console.log(`✅ Cliente ${clienteNome} selezionato, caricamento cascine in corso...`);
+}
+
+function selectClienteForTerreni(clienteId, clienteNome) {
+    selectedClienteForTerreni = { id: clienteId, nome: clienteNome };
+    
+    const searchInput = document.getElementById('search-cliente-terreni');
+    const suggestionsDiv = document.getElementById('cliente-suggestions-terreni');
+    
+    // Aggiorna input con animazione
+    searchInput.value = clienteNome;
+    searchInput.classList.add('success');
+    setTimeout(() => searchInput.classList.remove('success'), 1000);
+    
+    // Nascondi suggerimenti
+    suggestionsDiv.style.display = 'none';
+    
+    // Carica cascine per la selezione
+    loadCascineSelectForTerreni(clienteId);
+    
+    console.log(`✅ Cliente selezionato per terreni: ${clienteNome} (${clienteId})`);
+}
+
+// Feedback visivo per stati di ricerca
+function setSearchState(inputId, state) {
+    const searchBox = document.querySelector(`#${inputId}`).closest('.search-box');
+    
+    // Rimuovi stati precedenti
+    searchBox.classList.remove('searching', 'found', 'not-found');
+    
+    // Aggiungi nuovo stato
+    if (state) {
+        searchBox.classList.add(state);
+    }
+    
+    // Rimuovi stato dopo un po'
+    if (state !== 'searching') {
+        setTimeout(() => {
+            searchBox.classList.remove(state);
+        }, 2000);
+    }
+}
+
+// Gestione migliorata del focus per accessibilità
+document.addEventListener('DOMContentLoaded', function() {
+    // Aggiungi supporto per Alt + Left Arrow per tornare indietro
+    document.addEventListener('keydown', function(event) {
+        if (event.altKey && event.key === 'ArrowLeft') {
+            event.preventDefault();
+            const backButton = document.querySelector('button[onclick="resetTargetSelection()"]');
+            if (backButton) {
+                backButton.click();
+            }
+        }
+    });
+    
+    // Focus automatico sul primo input di ricerca quando si carica un target
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            if (mutation.type === 'childList') {
+                const addedNodes = Array.from(mutation.addedNodes);
+                addedNodes.forEach(node => {
+                    if (node.nodeType === 1 && node.querySelector) {
+                        const firstSearchInput = node.querySelector('input[id*="search-"]');
+                        if (firstSearchInput) {
+                            setTimeout(() => {
+                                firstSearchInput.focus();
+                            }, 500);
+                        }
+                    }
+                });
+            }
+        });
+    });
+    
+    observer.observe(document.getElementById('target-selection-area'), {
+        childList: true,
+        subtree: true
+    });
+    
+    console.log('✅ Gestione avanzata ricerca inizializzata');
+});
+
+// CSS Success State Class
+const style = document.createElement('style');
+style.textContent = `
+    .form-control.success {
+        border-color: #28a745 !important;
+        box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25) !important;
+        animation: successPulse 0.6s ease-out;
+    }
+    
+    @keyframes successPulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.02); }
+        100% { transform: scale(1); }
+    }
+`;
+document.head.appendChild(style);
+
+async function testCascineAPI(clienteId) {
+    try {
+        console.log(`🧪 Test API cascine per cliente ${clienteId}`);
+        const response = await fetch(`/api/clienti/${clienteId}/cascine/`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        console.log('✅ API Response:', data);
+        return data;
+        
+    } catch (error) {
+        console.error('❌ API Error:', error);
+        throw error;
+    }
+}
+
+function debugDOMElements() {
+    console.log('🧪 DEBUG DOM ELEMENTS:');
+    console.log('cascine-selection-area:', document.getElementById('cascine-selection-area'));
+    console.log('cascine-container:', document.getElementById('cascine-container'));
+    console.log('search-cliente-cascine:', document.getElementById('search-cliente-cascine'));
+    console.log('cliente-suggestions:', document.getElementById('cliente-suggestions'));
+    
+    // Verifica se i listener sono attaccati
+    const searchInput = document.getElementById('search-cliente-cascine');
+    if (searchInput) {
+        console.log('Search input events:', {
+            onkeyup: searchInput.onkeyup,
+            onkeydown: searchInput.onkeydown
+        });
+    }
+}
+
+function showCascineError(clienteId, error) {
+    const cascineArea = document.getElementById('cascine-selection-area');
+    if (!cascineArea) return;
+    
+    cascineArea.style.display = 'block';
+    cascineArea.innerHTML = `
+        <div class="search-step">
+            <h6><i class="fas fa-exclamation-triangle text-danger"></i>Errore Caricamento Cascine</h6>
+            <div class="alert alert-danger">
+                <h6>Non è stato possibile caricare le cascine</h6>
+                <p><strong>Cliente ID:</strong> ${clienteId}</p>
+                <p><strong>Errore:</strong> ${error.message}</p>
+                
+                <div class="mt-3">
+                    <button class="btn btn-outline-danger btn-sm me-2" onclick="testCascineAPI(${clienteId}).then(data => console.log('Test API:', data)).catch(e => console.error('Test failed:', e))">
+                        <i class="fas fa-flask me-1"></i>Test API
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm me-2" onclick="debugDOMElements()">
+                        <i class="fas fa-bug me-1"></i>Debug DOM
+                    </button>
+                    <button class="btn btn-primary btn-sm" onclick="loadCascineForCliente(${clienteId})">
+                        <i class="fas fa-redo me-1"></i>Riprova
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Aggiungi funzioni di debug al window per accesso da console
+    window.debugCascine = {
+        testAPI: testCascineAPI,
+        debugDOM: debugDOMElements,
+        loadCascine: loadCascineForCliente,
+        checkElements: () => {
+            return {
+                cascineArea: !!document.getElementById('cascine-selection-area'),
+                cascineContainer: !!document.getElementById('cascine-container'),
+                searchInput: !!document.getElementById('search-cliente-cascine'),
+                suggestions: !!document.getElementById('cliente-suggestions')
+            };
+        }
+    };
+    
+    console.log('✅ Debug cascine disponibile: window.debugCascine');
+});
 
 </script>
 

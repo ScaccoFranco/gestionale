@@ -242,3 +242,23 @@ def paginate_with_filters(page_obj, request):
         'request': request,
         'is_paginated': page_obj.has_other_pages() if page_obj else False
     }
+
+@register.filter
+def prodotti_summary(trattamento):
+    prodotti = trattamento.trattamentoprodotto_set.all()
+    if not prodotti:
+        return "Nessun prodotto"
+    
+    if prodotti.count() == 1:
+        tp = prodotti.first()
+        return f"{tp.prodotto.nome}: {tp.quantita_per_ettaro} {tp.prodotto.unita_misura}/ha"
+    else:
+        return f"{prodotti.count()} prodotti utilizzati"
+
+@register.filter
+def has_prodotti(trattamento):
+    return trattamento.trattamentoprodotto_set.exists()
+
+@register.filter
+def prodotti_count(trattamento):
+    return trattamento.trattamentoprodotto_set.count()
