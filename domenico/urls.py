@@ -87,7 +87,13 @@ urlpatterns = [
     # API Statistiche Database
     path('api/database/stats/', api_views.api_database_stats, name='api_database_stats'),
 
-    # API Weather
+   # API Meteo - Endpoint principali
     path('api/weather/current/', views.api_weather_current, name='api_weather_current'),
-    path('api/weather/test/', views.api_weather_test, name='api_weather_test'),
+    # path('api/weather/test/', views.api_weather_test, name='api_weather_test'),       DA INSERIRE
+    
+    # API Meteo - Debug e gestione cache
+    path('api/weather/clear-cache/', views.api_weather_clear_cache, name='api_weather_clear_cache'),
+    path('api/weather/debug-cache/', views.api_weather_debug_cache, name='api_weather_debug_cache'),
+    path('api/weather/location-test/', views.api_weather_location_test, name='api_weather_location_test'),
+    path('api/weather/debug/<str:location>/', views.api_weather_debug_location, name='api_weather_debug_location'),
 ]

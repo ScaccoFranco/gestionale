@@ -193,7 +193,7 @@ LOGGING = {
 # ============== CONFIGURAZIONE API METEO ======================
 
 WEATHER_API_KEY = os.getenv("API_KEY_WEATHER") 
-WEATHER_LOCATION = 'Barolo, Piemonte, Italy'  # Località predefinita
+WEATHER_LOCATION = 'Alba, Piemonte, Italy'  # Località predefinita
 
 # Cache configuration (se non già presente)
 CACHES = {

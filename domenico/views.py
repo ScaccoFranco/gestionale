@@ -1216,29 +1216,53 @@ def api_contoterzista_create(request):
 
 logger = logging.getLogger(__name__)
 
+
 @require_http_methods(["GET"])
 def api_weather_current(request):
-    """API endpoint per ottenere il meteo corrente"""
+    """Endpoint per ottenere i dati meteo correnti con gestione località"""
     try:
-        # Ottieni location dalla query string (opzionale)
-        location = request.GET.get('location')
+        # Ottieni parametri
+        location = request.GET.get('location', None)
+        force_refresh = request.GET.get('force_refresh', 'false').lower() == 'true'
+        
+        if location:
+            location = location.strip()
+            logger.info(f"🌍 Weather request for custom location: '{location}'")
+        else:
+            location = weather_service.default_location
+            logger.info(f"🌍 Weather request for default location: '{location}'")
+        
+        # Se richiesto force refresh, cancella cache
+        if force_refresh:
+            logger.info(f"🔄 Force refresh requested for {location}")
+            cache_key = weather_service.clear_location_cache(location)
         
         # Chiama il servizio meteo
         weather_data = weather_service.get_current_weather(location)
         
-        # Genera consigli per trattamenti
-        advice = weather_service.get_treatment_advice(weather_data)
+        # Genera consigli per trattamenti (se abilitati)
+        advice = None
+        try:
+            advice = weather_service.get_treatment_advice(weather_data)
+        except Exception as e:
+            logger.warning(f"Treatment advice generation failed: {e}")
         
         # Prepara risposta
         response_data = {
             'success': True,
             'data': weather_data,
             'advice': advice,
-            'cached': 'fetched_at' in weather_data,
-            'location_used': location or weather_service.default_location
+            'location_requested': location,
+            'location_found': weather_data.get('location', {}).get('name', 'Sconosciuta'),
+            'from_cache': weather_data.get('from_cache', False),
+            'cache_key': weather_data.get('cache_key', ''),
+            'force_refresh': force_refresh
         }
         
-        logger.info(f"Weather data served successfully for {response_data['location_used']}")
+        # Log dettagliato
+        found_name = weather_data.get('location', {}).get('name', 'Unknown')
+        cache_status = "cache" if weather_data.get('from_cache') else "API"
+        logger.info(f"✅ Weather served: '{location}' -> '{found_name}' (from {cache_status})")
         
         return JsonResponse(response_data)
         
@@ -1247,7 +1271,8 @@ def api_weather_current(request):
         return JsonResponse({
             'success': False,
             'error': 'configuration',
-            'message': str(e)
+            'message': str(e),
+            'location_requested': location
         }, status=400)
         
     except Exception as e:
@@ -1255,39 +1280,143 @@ def api_weather_current(request):
         return JsonResponse({
             'success': False,  
             'error': 'api_error',
-            'message': 'Errore nel recupero dei dati meteo'
+            'message': 'Errore nel recupero dei dati meteo',
+            'location_requested': location
         }, status=500)
 
-@require_http_methods(["GET"])
-def api_weather_test(request):
-    """Endpoint per testare la configurazione WeatherAPI"""
+# Aggiungi endpoint per cancellare cache
+@require_http_methods(["POST"])
+def api_weather_clear_cache(request):
+    """Cancella la cache per una località specifica"""
     try:
-        # Test configurazione
-        if not weather_service.api_key:
-            return JsonResponse({
-                'success': False,
-                'error': 'missing_api_key',
-                'message': 'WEATHER_API_KEY non configurata in settings.py'
-            })
-            
-        # Test connessione
-        test_data = weather_service.get_current_weather('London')  # Test con località sicura
+        import json
+        data = json.loads(request.body)
+        location = data.get('location', weather_service.default_location)
+        
+        cache_key = weather_service.clear_location_cache(location)
         
         return JsonResponse({
             'success': True,
-            'message': 'Configurazione WeatherAPI funzionante',
-            'api_key_present': bool(weather_service.api_key),
-            'location': weather_service.default_location,
-            'test_data': {
-                'location': test_data.get('location', {}).get('name'),
-                'temp': test_data.get('current', {}).get('temp_c'),
-                'condition': test_data.get('current', {}).get('condition', {}).get('text')
-            }
+            'message': f'Cache cleared for {location}',
+            'cache_key': cache_key
         })
         
     except Exception as e:
         return JsonResponse({
             'success': False,
-            'error': str(e),
-            'message': 'Errore nella configurazione WeatherAPI'
+            'error': str(e)
+        }, status=500)
+
+# Endpoint di debug per vedere tutte le cache
+@require_http_methods(["GET"])
+def api_weather_debug_cache(request):
+    """Debug: mostra tutte le località in cache"""
+    try:
+        cached_locations = weather_service.get_all_cached_locations()
+        
+        return JsonResponse({
+            'success': True,
+            'cached_locations': cached_locations,
+            'default_location': weather_service.default_location,
+            'cache_timeout': weather_service.cache_timeout
         })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        })
+    
+
+@require_http_methods(["GET", "POST"])
+def api_weather_location_test(request):
+    """Endpoint per testare una località specifica"""
+    try:
+        if request.method == 'POST':
+            import json
+            data = json.loads(request.body)
+            test_location = data.get('location', 'Turin')
+        else:
+            test_location = request.GET.get('location', 'Turin')
+        
+        logger.info(f"Testing weather for location: {test_location}")
+        
+        # Test con la località specificata
+        weather_data = weather_service.get_current_weather(test_location)
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Test completato per {test_location}',
+            'requested_location': test_location,
+            'found_location': weather_data.get('location', {}).get('name'),
+            'found_region': weather_data.get('location', {}).get('region'),
+            'found_country': weather_data.get('location', {}).get('country'),
+            'coordinates': {
+                'lat': weather_data.get('location', {}).get('lat'),
+                'lon': weather_data.get('location', {}).get('lon')
+            },
+            'weather': {
+                'temp': weather_data.get('current', {}).get('temp_c'),
+                'condition': weather_data.get('current', {}).get('condition', {}).get('text')
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Location test error: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': str(e),
+            'message': f'Errore nel test per la località: {test_location}'
+        })
+    
+
+@require_http_methods(["GET"])
+def api_weather_debug_location(request, location):
+    """Debug endpoint per testare come WeatherAPI interpreta le località"""
+    try:
+        logger.info(f"🔍 Debug richiesto per località: {location}")
+        
+        # Usa il metodo di debug del weather service
+        debug_results = weather_service.debug_location_search(location)
+        
+        return JsonResponse({
+            'success': True,
+            'debug_location': location,
+            'test_results': debug_results,
+            'recommendation': get_location_recommendation(debug_results),
+            'current_default': weather_service.default_location
+        })
+        
+    except Exception as e:
+        logger.error(f"Debug location error: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': str(e),
+            'message': f'Errore nel debug per {location}'
+        })
+
+def get_location_recommendation(debug_results):
+    """Suggerisce la migliore variante di località basata sui risultati"""
+    
+    successful_results = {k: v for k, v in debug_results.items() if v.get('success')}
+    
+    if not successful_results:
+        return "Nessuna variante funzionante trovata"
+    
+    # Preferisci risultati che includono la regione corretta
+    for location, result in successful_results.items():
+        if 'Piemonte' in result.get('found_region', '') or 'Piedmont' in result.get('found_region', ''):
+            return {
+                'recommended': location,
+                'reason': f"Trovata in regione corretta: {result['found_name']}, {result['found_region']}",
+                'coordinates': result.get('coordinates')
+            }
+    
+    # Altrimenti prendi il primo risultato
+    first_result = list(successful_results.items())[0]
+    return {
+        'recommended': first_result[0],
+        'reason': f"Prima opzione funzionante: {first_result[1]['found_name']}",
+        'coordinates': first_result[1].get('coordinates')
+    }
+

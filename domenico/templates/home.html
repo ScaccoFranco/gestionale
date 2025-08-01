@@ -536,223 +536,131 @@
     transform: translateY(-1px);
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
-
 .weather-widget {
-        background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
-        color: white;
-        border-radius: 20px;
-        padding: 2rem;
-        margin-bottom: 2rem;
-        position: relative;
-        overflow: hidden;
-        min-height: 280px;
-    }
-    
-    .weather-widget::before {
-        content: '';
-        position: absolute;
-        top: -50%;
-        right: -50%;
-        width: 200px;
-        height: 200px;
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 50%;
-        animation: float 6s ease-in-out infinite;
-    }
-    
-    .weather-widget::after {
-        content: '';
-        position: absolute;
-        bottom: -30%;
-        left: -30%;
-        width: 150px;
-        height: 150px;
-        background: rgba(255, 255, 255, 0.05);
-        border-radius: 50%;
-        animation: float 8s ease-in-out infinite reverse;
-    }
-    
-    @keyframes float {
-        0%, 100% { transform: translateY(0) rotate(0deg); }
-        50% { transform: translateY(-10px) rotate(5deg); }
-    }
-    
-    .weather-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 1rem;
-        position: relative;
-        z-index: 2;
-    }
-    
-    .weather-location {
-        font-size: 0.9rem;
-        opacity: 0.8;
-        font-weight: 300;
-    }
-    
-    .weather-main {
-        text-align: center;
-        margin: 1.5rem 0;
-        position: relative;
-        z-index: 2;
-    }
-    
-    .weather-temp {
-        font-size: 3.5rem;
-        font-weight: 700;
-        margin-bottom: 0.5rem;
-        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-    }
-    
-    .weather-condition {
-        font-size: 1.1rem;
-        opacity: 0.9;
-        margin-bottom: 1rem;
-    }
-    
-    .weather-details {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 0.75rem;
-        margin: 1.5rem 0;
-        position: relative;
-        z-index: 2;
-    }
-    
-    .weather-detail {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        font-size: 0.85rem;
-        background: rgba(255, 255, 255, 0.1);
-        padding: 0.5rem;
-        border-radius: 8px;
-        backdrop-filter: blur(10px);
-    }
-    
-    .weather-detail i {
-        width: 16px;
-        opacity: 0.8;
-    }
-    
-    .treatment-advice {
-        background: rgba(255, 255, 255, 0.15);
-        padding: 1rem;
-        border-radius: 12px;
-        margin: 1rem 0;
-        font-size: 0.9rem;
-        border-left: 4px solid rgba(255, 255, 255, 0.5);
-        position: relative;
-        z-index: 2;
-    }
-    
-    .treatment-advice.good {
-        background: rgba(40, 167, 69, 0.2);
-        border-left-color: #28a745;
-    }
-    
-    .treatment-advice.warning {
-        background: rgba(255, 193, 7, 0.2);
-        border-left-color: #ffc107;
-    }
-    
-    .treatment-advice.bad {
-        background: rgba(220, 53, 69, 0.2);
-        border-left-color: #dc3545;
-    }
-    
-    .weather-footer {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-top: 1rem;
-        position: relative;
-        z-index: 2;
-    }
-    
-    .weather-footer small {
-        opacity: 0.7;
-        font-size: 0.75rem;
-    }
-    
-    .btn-refresh {
-        background: rgba(255, 255, 255, 0.2);
-        border: none;
-        color: white;
-        padding: 0.5rem;
-        border-radius: 50%;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        backdrop-filter: blur(10px);
-    }
-    
-    .btn-refresh:hover {
-        background: rgba(255, 255, 255, 0.3);
-        transform: rotate(90deg);
-    }
-    
-    .btn-refresh.spinning {
-        animation: spin 1s linear infinite;
-    }
-    
-    @keyframes spin {
-        from { transform: rotate(0deg); }
-        to { transform: rotate(360deg); }
-    }
-    
-    /* Loading State */
-    .weather-loading {
-        text-align: center;
-        position: relative;
-        z-index: 2;
-    }
-    
-    .weather-spinner {
-        width: 40px;
-        height: 40px;
-        border: 3px solid rgba(255, 255, 255, 0.3);
-        border-top: 3px solid white;
-        border-radius: 50%;
-        margin: 0 auto 1rem;
-        animation: spin 1s linear infinite;
-    }
-    
-    /* Error State */
-    #weather-error {
-        text-align: center;
-        position: relative;
-        z-index: 2;
-    }
-    
-    .weather-error-msg {
-        margin: 1rem 0;
-        opacity: 0.9;
-    }
-    
-    /* Weather Icons */
-    .weather-icon {
-        font-size: 1.2rem;
-        margin-right: 0.5rem;
-    }
-    
-    /* Responsive */
-    @media (max-width: 768px) {
-        .weather-widget {
-            padding: 1.5rem;
-            min-height: 240px;
-        }
-        
-        .weather-temp {
-            font-size: 2.5rem;
-        }
-        
-        .weather-details {
-            grid-template-columns: 1fr;
-            gap: 0.5rem;
-        }
-    }
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 15px;
+    padding: 20px;
+    color: white;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    min-height: 220px;
+    position: relative;
+}
+
+.weather-widget:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+}
+
+.weather-content {
+    animation: fadeIn 0.5s ease-in;
+}
+
+.weather-content.stale-data {
+    opacity: 0.8;
+    border: 2px solid #ffc107;
+    border-radius: 10px;
+    padding: 15px;
+    background: rgba(255, 193, 7, 0.1);
+}
+
+.weather-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+}
+
+.weather-location {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.9rem;
+    margin-bottom: 5px;
+}
+
+.weather-temp {
+    display: flex;
+    align-items: baseline;
+}
+
+.temp-value {
+    font-size: 3rem;
+    font-weight: 300;
+    line-height: 1;
+}
+
+.temp-unit {
+    font-size: 1.2rem;
+    margin-left: 4px;
+    opacity: 0.8;
+}
+
+.weather-icon i {
+    font-size: 3rem;
+    color: rgba(255, 255, 255, 0.9);
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.weather-condition {
+    font-size: 1.1rem;
+    color: rgba(255, 255, 255, 0.9);
+    text-transform: capitalize;
+}
+
+.weather-details {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.detail-item {
+    display: flex;
+    align-items: center;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.detail-item i {
+    margin-right: 6px;
+    width: 16px;
+}
+
+.weather-update {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.weather-loading,
+.weather-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 180px;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.weather-error .btn {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.3);
+    color: white;
+}
+
+.weather-error .btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    color: white;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 768px) {
+    .weather-details { grid-template-columns: 1fr; }
+    .temp-value { font-size: 2.5rem; }
+    .weather-icon i { font-size: 2.5rem; }
+}
 
 </style>
 {% endblock %}
@@ -869,80 +777,12 @@
 
 <div class="row">
 
-    <!-- Weather Widget -->
     <div class="col-md-4">
         <div class="weather-widget" id="weather-widget">
-            <!-- Loading State -->
-            <div id="weather-loading" class="weather-loading">
-                <div class="weather-spinner"></div>
-                <h4><i class="fas fa-cloud me-2"></i>Caricamento Meteo...</h4>
-                <div class="weather-location">📍 Roatto, Piemonte</div>
-            </div>
-            
-            <!-- Weather Content (hidden initially) -->
-            <div id="weather-content" style="display: none;">
-                <div class="weather-header">
-                    <h4>
-                        <i class="weather-icon" id="weather-icon"></i>
-                        Meteo Oggi
-                    </h4>
-                    <div class="weather-location" id="weather-location">📍 Caricamento...</div>
-                </div>
-                
-                <div class="weather-main">
-                    <div class="weather-temp" id="weather-temp">--°C</div>
-                    <div class="weather-condition" id="weather-condition">Caricamento...</div>
-                </div>
-                
-                <div class="weather-details">
-                    <div class="weather-detail">
-                        <i class="fas fa-eye"></i>
-                        <span>Visibilità</span>
-                        <span id="weather-visibility">-- km</span>
-                    </div>
-                    <div class="weather-detail">
-                        <i class="fas fa-wind"></i>
-                        <span>Vento</span>
-                        <span id="weather-wind">-- km/h</span>
-                    </div>
-                    <div class="weather-detail">
-                        <i class="fas fa-tint"></i>
-                        <span>Umidità</span>
-                        <span id="weather-humidity">--%</span>
-                    </div>
-                    <div class="weather-detail">
-                        <i class="fas fa-thermometer-half"></i>
-                        <span>Percepita</span>
-                        <span id="weather-feelslike">--°C</span>
-                    </div>
-                </div>
-                
-                <!-- Consiglio per trattamenti -->
-                <div class="treatment-advice" id="treatment-advice">
-                    <i class="fas fa-flask me-2"></i>
-                    <span id="advice-text">Valutazione condizioni in corso...</span>
-                </div>
-                
-                <div class="weather-footer">
-                    <small id="weather-time">Ultimo aggiornamento: --</small>
-                    <button class="btn-refresh" onclick="refreshWeather()" id="refresh-btn">
-                        <i class="fas fa-sync-alt"></i>
-                    </button>
-                </div>
-            </div>
-            
-            <!-- Error State -->
-            <div id="weather-error" style="display: none;">
-                <h4><i class="fas fa-exclamation-triangle me-2"></i>Errore Meteo</h4>
-                <div class="weather-error-msg" id="error-message">
-                    Non è stato possibile caricare i dati meteo
-                </div>
-                <button class="btn btn-light btn-sm mt-2" onclick="refreshWeather()">
-                    <i class="fas fa-redo me-1"></i>Riprova
-                </button>
-            </div>
+            <!-- Verrà popolato dinamicamente dal JavaScript -->
         </div>
     </div>
+
 
     <div class="col-md-8">
     <div class="recent-activity">
@@ -1256,70 +1096,220 @@ function updateFilterUI(activeFilter) {
 setInterval(() => {
     refreshActivities();
 }, 120000);
-// ================================================================ 
-// CONFIGURAZIONE METEO AGGIORNATA PER BACKEND PROXY
-// ================================================================
+
 
 const WEATHER_CONFIG = {
-    apiUrl: '/api/weather/current/',  // ✅ USA BACKEND PROXY
+    apiUrl: '/api/weather/current/',
     testUrl: '/api/weather/test/',
     cacheTime: 10 * 60 * 1000, // 10 minuti
     retryAttempts: 3,
     retryDelay: 2000
 };
 
+// State globale
 let weatherState = {
     data: null,
     lastUpdate: null,
-    loading: false,
-    error: null
+    error: null,
+    isLoading: false,
+    currentLocation: null
 };
 
 // ================================================================
-// FUNZIONI PRINCIPALI AGGIORNATE
+// FUNZIONI CACHE
 // ================================================================
 
-async function loadWeatherData() {
-    console.log('🌤️ Caricamento dati meteo via backend...');
-    
-    if (isWeatherCacheValid()) {
-        console.log('✅ Uso cache meteo valida');
-        displayWeatherData(weatherState.data);
+function getWeatherCacheKey(location = null) {
+    const loc = location || 'default';
+    return `weather_data_cache_${loc.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+}
+
+function isWeatherCacheValid(location = null) {
+    try {
+        const cached = localStorage.getItem(getWeatherCacheKey(location));
+        if (!cached) return false;
+        
+        const cacheData = JSON.parse(cached);
+        const now = Date.now();
+        const timeDiff = now - cacheData.timestamp;
+        
+        return timeDiff < WEATHER_CONFIG.cacheTime;
+    } catch (error) {
+        return false;
+    }
+}
+
+function saveWeatherCache(data, location = null) {
+    try {
+        const cacheKey = getWeatherCacheKey(location);
+        const cacheData = {
+            data: data,
+            timestamp: Date.now(),
+            location: location
+        };
+        localStorage.setItem(cacheKey, JSON.stringify(cacheData));
+        console.log(`💾 Cache salvata per: ${location || 'default'}`);
+    } catch (error) {
+        console.warn('⚠️ Errore salvataggio cache:', error);
+    }
+}
+
+function getWeatherCache(location = null) {
+    try {
+        const cached = localStorage.getItem(getWeatherCacheKey(location));
+        if (!cached) return null;
+        
+        const cacheData = JSON.parse(cached);
+        return cacheData.data;
+    } catch (error) {
+        return null;
+    }
+}
+
+// ================================================================
+// FUNZIONI UI
+// ================================================================
+
+function showWeatherLoading() {
+    const weatherWidget = document.getElementById('weather-widget');
+    if (!weatherWidget) {
+        console.error('❌ Widget weather-widget non trovato!');
         return;
     }
     
+    weatherWidget.innerHTML = `
+        <div class="weather-loading text-center">
+            <div class="spinner-border text-light mb-3" role="status">
+                <span class="visually-hidden">Caricamento...</span>
+            </div>
+            <p class="mb-0">Caricamento dati meteo...</p>
+        </div>
+    `;
+}
+
+function showWeatherError(message) {
+    const weatherWidget = document.getElementById('weather-widget');
+    if (!weatherWidget) {
+        console.error('❌ Widget weather-widget non trovato!');
+        return;
+    }
+    
+    weatherWidget.innerHTML = `
+        <div class="weather-error text-center">
+            <i class="fas fa-exclamation-triangle text-warning mb-3" style="font-size: 2rem;"></i>
+            <p class="mb-3">${message}</p>
+            <button class="btn btn-sm btn-outline-light" onclick="loadWeatherData()">
+                <i class="fas fa-redo me-1"></i>Riprova
+            </button>
+        </div>
+    `;
+}
+
+function getWeatherIcon(conditionCode, isDay) {
+    const iconMap = {
+        1000: isDay ? 'fa-sun' : 'fa-moon',
+        1003: isDay ? 'fa-cloud-sun' : 'fa-cloud-moon',
+        1006: 'fa-cloud',
+        1009: 'fa-cloud',
+        1030: 'fa-smog',
+        1063: 'fa-cloud-rain',
+        1066: 'fa-snowflake',
+        1087: 'fa-bolt',
+        1135: 'fa-smog',
+        1180: 'fa-cloud-rain',
+        1183: 'fa-cloud-rain',
+        1186: 'fa-cloud-rain',
+        1189: 'fa-cloud-rain',
+        1192: 'fa-cloud-showers-heavy',
+        1195: 'fa-cloud-showers-heavy'
+    };
+    
+    return iconMap[conditionCode] || (isDay ? 'fa-sun' : 'fa-moon');
+}
+
+// ================================================================
+// FUNZIONE PRINCIPALE
+// ================================================================
+
+async function loadWeatherData(location = null, forceRefresh = false) {
+    console.log(`🌤️ Caricamento meteo per: ${location || 'default'}`);
+    
+    // Verifica cache se non force refresh
+    if (!forceRefresh && isWeatherCacheValid(location)) {
+        const cachedData = getWeatherCache(location);
+        if (cachedData) {
+            console.log('✅ Uso cache valida');
+            displayWeatherData(cachedData);
+            return;
+        }
+    }
+    
+    if (weatherState.isLoading) {
+        console.log('⏳ Caricamento già in corso...');
+        return;
+    }
+    
+    weatherState.isLoading = true;
     showWeatherLoading();
     
     try {
-        const response = await fetch(WEATHER_CONFIG.apiUrl, {
+        let url = WEATHER_CONFIG.apiUrl;
+        if (location) {
+            url += `?location=${encodeURIComponent(location)}`;
+        }
+        if (forceRefresh) {
+            url += (location ? '&' : '?') + 'force_refresh=true';
+        }
+        
+        console.log(`🌐 Richiesta: ${url}`);
+        
+        const response = await fetch(url, {
             method: 'GET',
             headers: {
-                'X-Requested-With': 'XMLHttpRequest',
+                'X-Requested-With': 'XMLHttpRequest'
             }
         });
         
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        
         const result = await response.json();
+        console.log('📥 Risposta:', result);
         
         if (!result.success) {
             throw new Error(result.message || 'Errore dal server');
         }
         
+        // Estrai i dati meteo
+        const weatherData = result.data;
+        if (!weatherData || !weatherData.current) {
+            throw new Error('Dati meteo non validi');
+        }
+        
         weatherState.data = result;
         weatherState.lastUpdate = Date.now();
         weatherState.error = null;
+        weatherState.isLoading = false;
+        weatherState.currentLocation = location;
         
-        saveWeatherCache(result);
+        // Salva cache
+        saveWeatherCache(result, location);
+        
+        // Mostra dati
         displayWeatherData(result);
         
-        console.log('✅ Dati meteo caricati dal backend');
+        console.log('✅ Meteo caricato con successo!');
         
     } catch (error) {
         console.error('❌ Errore caricamento meteo:', error);
         weatherState.error = error.message;
+        weatherState.isLoading = false;
+        
         showWeatherError(error.message);
         
-        // Fallback su cache
-        const cachedData = getWeatherCache();
+        // Fallback cache
+        const cachedData = getWeatherCache(location);
         if (cachedData) {
             console.log('⚠️ Uso cache come fallback');
             displayWeatherData(cachedData, true);
@@ -1328,332 +1318,217 @@ async function loadWeatherData() {
 }
 
 function displayWeatherData(result, isStale = false) {
-    const weatherData = result.data;
-    const current = weatherData.current;
-    const location = weatherData.location;
-    const advice = result.advice;
+    console.log('🎨 Rendering widget:', result);
     
-    // Aggiorna elementi DOM
-    document.getElementById('weather-temp').textContent = `${Math.round(current.temp_c)}°C`;
-    document.getElementById('weather-condition').textContent = current.condition.text;
-    document.getElementById('weather-location').textContent = `📍 ${location.name}, ${location.region}`;
-    document.getElementById('weather-visibility').textContent = `${current.vis_km} km`;
-    document.getElementById('weather-wind').textContent = `${current.wind_kph} km/h`;
-    document.getElementById('weather-humidity').textContent = `${current.humidity}%`;
-    document.getElementById('weather-feelslike').textContent = `${Math.round(current.feelslike_c)}°C`;
+    const weatherWidget = document.getElementById('weather-widget');
+    if (!weatherWidget) {
+        console.error('❌ Element weather-widget non trovato!');
+        return;
+    }
     
-    // Icona meteo
-    const iconElement = document.getElementById('weather-icon');
-    iconElement.className = `fas ${getWeatherIcon(current.condition.code, current.is_day)} weather-icon`;
+    // Estrai dati dalla struttura della risposta
+    let data, advice;
     
-    // Timestamp
-    const timeElement = document.getElementById('weather-time');
-    const isDataStale = weatherData.is_stale || isStale;
-    const updateTime = isDataStale ? 'Dati non aggiornati' : `Aggiornato: ${new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}`;
-    timeElement.textContent = updateTime;
-    timeElement.style.color = isDataStale ? '#ffc107' : 'rgba(255,255,255,0.7)';
+    if (result.data) {
+        // Struttura completa dalla API
+        data = result.data;
+        advice = result.advice;
+    } else {
+        // Struttura diretta (cache fallback)
+        data = result;
+        advice = null;
+    }
     
-    // Consigli trattamenti dal backend
-    updateTreatmentAdviceFromBackend(advice);
+    if (!data || !data.current || !data.location) {
+        console.error('❌ Struttura dati non valida:', result);
+        showWeatherError('Dati meteo non validi');
+        return;
+    }
     
-    showWeatherContent();
-}
-
-function updateTreatmentAdviceFromBackend(advice) {
-    const adviceElement = document.getElementById('treatment-advice');
-    const adviceText = document.getElementById('advice-text');
+    const { location, current } = data;
+    const temp = Math.round(current.temp_c);
+    const condition = current.condition.text;
+    const iconCode = current.condition.code;
+    const isDay = current.is_day === 1;
+    const humidity = current.humidity;
+    const windKph = current.wind_kph;
+    const windDir = current.wind_dir;
+    const visibility = current.vis_km;
+    const feelsLike = Math.round(current.feelslike_c);
     
-    adviceText.textContent = advice.text;
-    adviceElement.className = `treatment-advice ${advice.level}`;
+    const iconClass = getWeatherIcon(iconCode, isDay);
     
-    // Aggiungi tooltip con dettagli
-    adviceElement.title = advice.details;
+    weatherWidget.innerHTML = `
+        <div class="weather-content ${isStale ? 'stale-data' : ''}">
+            <div class="weather-header">
+                <div>
+                    <h6 class="weather-location mb-1">
+                        <i class="fas fa-map-marker-alt me-1"></i>
+                        ${location.name}${location.region ? ', ' + location.region : ''}
+                    </h6>
+                    <div class="weather-temp">
+                        <span class="temp-value">${temp}°</span>
+                        <span class="temp-unit">C</span>
+                    </div>
+                </div>
+                <div class="weather-icon">
+                    <i class="fas ${iconClass}"></i>
+                </div>
+            </div>
+            
+            <div class="weather-condition mb-3">
+                ${condition}
+            </div>
+            
+            <div class="weather-details">
+                <div class="detail-item">
+                    <i class="fas fa-tint"></i>
+                    <span>Umidità: ${humidity}%</span>
+                </div>
+                <div class="detail-item">
+                    <i class="fas fa-wind"></i>
+                    <span>Vento: ${windKph} km/h ${windDir}</span>
+                </div>
+                <div class="detail-item">
+                    <i class="fas fa-eye"></i>
+                    <span>Visibilità: ${visibility} km</span>
+                </div>
+                <div class="detail-item">
+                    <i class="fas fa-thermometer-half"></i>
+                    <span>Percepita: ${feelsLike}°C</span>
+                </div>
+            </div>
+            
+            <div class="weather-update d-flex justify-content-between align-items-center mt-3">
+                <small>
+                    ${isStale ? 'Dati non aggiornati' : `Aggiornato: ${new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}`}
+                </small>
+                <button class="btn btn-sm btn-outline-light" onclick="refreshWeather()" title="Aggiorna">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
+        </div>
+    `;
+    
+    console.log('✅ Widget renderizzato con successo');
 }
 
 // ================================================================
-// FUNZIONI DI TEST E DEBUG
+// FUNZIONI UTILITÀ
 // ================================================================
+
+function refreshWeather() {
+    console.log('🔄 Refresh meteo...');
+    const currentLocation = weatherState.currentLocation;
+    loadWeatherData(currentLocation, true);
+}
+
+function changeWeatherLocation(newLocation) {
+    console.log(`🌍 Cambio località: ${newLocation}`);
+    loadWeatherData(newLocation, true);
+}
 
 async function testWeatherConfiguration() {
     try {
-        console.log('🧪 Test configurazione WeatherAPI...');
-        
         const response = await fetch(WEATHER_CONFIG.testUrl);
         const result = await response.json();
         
         if (result.success) {
-            console.log('✅ Configurazione WeatherAPI OK:', result);
-            alert('✅ Configurazione WeatherAPI funzionante!');
+            console.log('✅ Configurazione OK:', result);
+            alert(`✅ Test OK!\nLocalità: ${result.location}\nTest: ${result.test_data?.location} - ${result.test_data?.temp}°C`);
         } else {
-            console.error('❌ Configurazione WeatherAPI fallita:', result);
-            alert(`❌ Errore configurazione: ${result.message}`);
+            console.error('❌ Test fallito:', result);
+            alert(`❌ Errore: ${result.message}`);
         }
         
         return result;
-        
     } catch (error) {
-        console.error('❌ Errore test configurazione:', error);
+        console.error('❌ Errore test:', error);
         alert(`❌ Errore test: ${error.message}`);
         return { success: false, error: error.message };
     }
 }
 
 // ================================================================
-// FUNZIONI PRINCIPALI METEO
-// ================================================================
-
-async function loadWeatherData() {
-    console.log('🌤️ Caricamento dati meteo...');
-    
-    // Verifica cache
-    if (isWeatherCacheValid()) {
-        console.log('✅ Uso cache meteo valida');
-        displayWeatherData(weatherState.data);
-        return;
-    }
-    
-    showWeatherLoading();
-    
-    try {
-        const weatherData = await fetchWeatherWithRetry();
-        weatherState.data = weatherData;
-        weatherState.lastUpdate = Date.now();
-        weatherState.error = null;
-        
-        // Salva in localStorage
-        saveWeatherCache(weatherData);
-        
-        displayWeatherData(weatherData);
-        console.log('✅ Dati meteo caricati con successo');
-        
-    } catch (error) {
-        console.error('❌ Errore caricamento meteo:', error);
-        weatherState.error = error.message;
-        showWeatherError(error.message);
-        
-        // Prova a usare cache scaduta come fallback
-        const cachedData = getWeatherCache();
-        if (cachedData) {
-            console.log('⚠️ Uso cache scaduta come fallback');
-            displayWeatherData(cachedData, true);
-        }
-    }
-}
-
-async function fetchWeatherWithRetry(attempt = 1) {
-    try {
-        const response = await fetch(
-            `https://api.weatherapi.com/v1/current.json?key=${WEATHER_CONFIG.apiKey}&q=${encodeURIComponent(WEATHER_CONFIG.location)}&lang=${WEATHER_CONFIG.language}&aqi=no`,
-            {
-                method: 'GET',
-                timeout: 10000 // 10 secondi timeout
-            }
-        );
-        
-        if (!response.ok) {
-            if (response.status === 401) {
-                throw new Error('API Key non valida. Verifica la configurazione.');
-            } else if (response.status === 400) {
-                throw new Error('Località non trovata. Verifica la configurazione.');
-            } else {
-                throw new Error(`Errore API: ${response.status} ${response.statusText}`);
-            }
-        }
-        
-        const data = await response.json();
-        
-        if (!data.current) {
-            throw new Error('Dati meteo non validi ricevuti dall\'API');
-        }
-        
-        return data;
-        
-    } catch (error) {
-        console.error(`❌ Tentativo ${attempt} fallito:`, error);
-        
-        if (attempt < WEATHER_CONFIG.retryAttempts) {
-            console.log(`🔄 Riprovo in ${WEATHER_CONFIG.retryDelay}ms...`);
-            await new Promise(resolve => setTimeout(resolve, WEATHER_CONFIG.retryDelay));
-            return fetchWeatherWithRetry(attempt + 1);
-        }
-        
-        throw error;
-    }
-}
-
-function getWeatherIcon(conditionCode, isDay) {
-    // Mapping codici WeatherAPI a FontAwesome icons
-    const iconMap = {
-        1000: isDay ? 'fa-sun' : 'fa-moon', // Clear
-        1003: isDay ? 'fa-cloud-sun' : 'fa-cloud-moon', // Partly cloudy
-        1006: 'fa-cloud', // Cloudy
-        1009: 'fa-cloud', // Overcast
-        1030: 'fa-smog', // Mist
-        1063: 'fa-cloud-rain', // Patchy rain possible
-        1066: 'fa-snowflake', // Patchy snow possible
-        1069: 'fa-cloud-rain', // Patchy sleet possible
-        1072: 'fa-cloud-rain', // Patchy freezing drizzle possible
-        1087: 'fa-bolt', // Thundery outbreaks possible
-        1114: 'fa-wind', // Blowing snow
-        1117: 'fa-wind', // Blizzard
-        1135: 'fa-smog', // Fog
-        1147: 'fa-smog', // Freezing fog
-        1150: 'fa-cloud-drizzle', // Patchy light drizzle
-        1153: 'fa-cloud-drizzle', // Light drizzle
-        1168: 'fa-cloud-drizzle', // Freezing drizzle
-        1171: 'fa-cloud-drizzle', // Heavy freezing drizzle
-        1180: 'fa-cloud-rain', // Patchy light rain
-        1183: 'fa-cloud-rain', // Light rain
-        1186: 'fa-cloud-rain', // Moderate rain at times
-        1189: 'fa-cloud-rain', // Moderate rain
-        1192: 'fa-cloud-showers-heavy', // Heavy rain at times
-        1195: 'fa-cloud-showers-heavy', // Heavy rain
-        1198: 'fa-cloud-rain', // Light freezing rain
-        1201: 'fa-cloud-rain', // Moderate or heavy freezing rain
-        1204: 'fa-cloud-rain', // Light sleet
-        1207: 'fa-cloud-rain', // Moderate or heavy sleet
-        1210: 'fa-snowflake', // Patchy light snow
-        1213: 'fa-snowflake', // Light snow
-        1216: 'fa-snowflake', // Patchy moderate snow
-        1219: 'fa-snowflake', // Moderate snow
-        1222: 'fa-snowflake', // Patchy heavy snow
-        1225: 'fa-snowflake', // Heavy snow
-        1237: 'fa-snowflake', // Ice pellets
-        1240: 'fa-cloud-rain', // Light rain shower
-        1243: 'fa-cloud-showers-heavy', // Moderate or heavy rain shower
-        1246: 'fa-cloud-showers-heavy', // Torrential rain shower
-        1249: 'fa-cloud-rain', // Light sleet showers
-        1252: 'fa-cloud-rain', // Moderate or heavy sleet showers
-        1255: 'fa-snowflake', // Light snow showers
-        1258: 'fa-snowflake', // Moderate or heavy snow showers
-        1261: 'fa-snowflake', // Light showers of ice pellets
-        1264: 'fa-snowflake', // Moderate or heavy showers of ice pellets
-        1273: 'fa-bolt', // Patchy light rain with thunder
-        1276: 'fa-bolt', // Moderate or heavy rain with thunder
-        1279: 'fa-bolt', // Patchy light snow with thunder
-        1282: 'fa-bolt' // Moderate or heavy snow with thunder
-    };
-    
-    return iconMap[conditionCode] || 'fa-question';
-}
-
-// ================================================================
-// FUNZIONI UI STATE
-// ================================================================
-
-function showWeatherLoading() {
-    document.getElementById('weather-loading').style.display = 'block';
-    document.getElementById('weather-content').style.display = 'none';
-    document.getElementById('weather-error').style.display = 'none';
-    weatherState.loading = true;
-}
-
-function showWeatherContent() {
-    document.getElementById('weather-loading').style.display = 'none';
-    document.getElementById('weather-content').style.display = 'block';
-    document.getElementById('weather-error').style.display = 'none';
-    weatherState.loading = false;
-}
-
-function showWeatherError(message) {
-    document.getElementById('weather-loading').style.display = 'none';
-    document.getElementById('weather-content').style.display = 'none';
-    document.getElementById('weather-error').style.display = 'block';
-    document.getElementById('error-message').textContent = message;
-    weatherState.loading = false;
-}
-
-// ================================================================
-// CACHE FUNCTIONS
-// ================================================================
-
-function isWeatherCacheValid() {
-    const cachedData = getWeatherCache();
-    if (!cachedData || !weatherState.lastUpdate) return false;
-    
-    const now = Date.now();
-    return (now - weatherState.lastUpdate) < WEATHER_CONFIG.cacheTime;
-}
-
-function saveWeatherCache(data) {
-    try {
-        localStorage.setItem('weather_data', JSON.stringify({
-            data: data,
-            timestamp: Date.now()
-        }));
-    } catch (error) {
-        console.warn('Non è stato possibile salvare la cache meteo:', error);
-    }
-}
-
-function getWeatherCache() {
-    try {
-        const cached = localStorage.getItem('weather_data');
-        if (!cached) return null;
-        
-        const parsed = JSON.parse(cached);
-        return parsed.data;
-    } catch (error) {
-        console.warn('Errore lettura cache meteo:', error);
-        return null;
-    }
-}
-
-// ================================================================
-// FUNZIONI PUBBLICHE
-// ================================================================
-
-function refreshWeather() {
-    const refreshBtn = document.getElementById('refresh-btn');
-    refreshBtn.classList.add('spinning');
-    
-    // Reset cache
-    weatherState.lastUpdate = null;
-    localStorage.removeItem('weather_data');
-    
-    loadWeatherData().finally(() => {
-        setTimeout(() => {
-            refreshBtn.classList.remove('spinning');
-        }, 1000);
-    });
-}
-
-
-// ================================================================
-// INIZIALIZZAZIONE AGGIORNATA
+// INIZIALIZZAZIONE
 // ================================================================
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🌤️ Inizializzazione widget meteo con backend proxy...');
+    console.log('🌤️ Inizializzazione widget meteo...');
     
-    // Test configurazione in development
-    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-        console.log('🧪 Modalità sviluppo - test configurazione disponibile');
-        window.testWeatherConfig = testWeatherConfiguration;
+    // Verifica che l'elemento esista
+    const weatherWidget = document.getElementById('weather-widget');
+    if (!weatherWidget) {
+        console.error('❌ ERRORE: Element #weather-widget non trovato nel DOM!');
+        console.log('DOM elements trovati:', document.querySelectorAll('[id*="weather"]'));
+        return;
     }
     
-    // Carica dati meteo
+    console.log('✅ Widget element trovato');
+    
+    // Carica cache se disponibile
+    const cachedData = getWeatherCache();
+    if (cachedData) {
+        console.log('📖 Cache trovata, mostro dati...');
+        displayWeatherData(cachedData, true);
+    }
+    
+    // Carica dati freschi
     loadWeatherData();
     
-    // Aggiorna ogni 10 minuti
-    setInterval(loadWeatherData, WEATHER_CONFIG.cacheTime);
+    // Auto-refresh ogni 10 minuti
+    setInterval(() => {
+        if (!weatherState.isLoading) {
+            loadWeatherData(weatherState.currentLocation);
+        }
+    }, WEATHER_CONFIG.cacheTime);
     
-    console.log('✅ Widget meteo inizializzato con backend proxy');
+    console.log('✅ Widget meteo inizializzato');
 });
 
-// Debug tools aggiornati
+// ================================================================
+// DEBUG TOOLS
+// ================================================================
+
 window.weatherDebug = {
     loadWeather: loadWeatherData,
     refreshWeather: refreshWeather,
+    changeLocation: changeWeatherLocation,
     testConfig: testWeatherConfiguration,
-    checkCache: () => console.log('Cache:', getWeatherCache()),
-    clearCache: () => {
-        localStorage.removeItem('weather_data');
-        weatherState.lastUpdate = null;
-        console.log('Cache cleared');
+    getState: () => weatherState,
+    
+    // Quick location tests
+    loadTorino: () => changeWeatherLocation('Torino'),
+    loadMilano: () => changeWeatherLocation('Milano'),
+    loadRoma: () => changeWeatherLocation('Roma'),
+    
+    // Cache management
+    checkCache: (location = null) => {
+        const cache = getWeatherCache(location);
+        console.log(`Cache per ${location || 'default'}:`, cache);
+        return cache;
     },
-    getState: () => weatherState
+    clearCache: () => {
+        const keys = Object.keys(localStorage);
+        const weatherKeys = keys.filter(key => key.startsWith('weather_data_cache_'));
+        weatherKeys.forEach(key => localStorage.removeItem(key));
+        console.log(`🗑️ Cancellate ${weatherKeys.length} cache meteo`);
+    },
+    
+    // Debug DOM
+    checkDOM: () => {
+        const widget = document.getElementById('weather-widget');
+        console.log('Widget element:', widget);
+        console.log('Widget HTML:', widget ? widget.innerHTML : 'NOT FOUND');
+        return widget;
+    }
 };
 
+console.log('🌤️ Weather widget loaded successfully!');
+console.log('Available debug commands:');
+console.log('- weatherDebug.loadTorino()');
+console.log('- weatherDebug.changeLocation("Milano")');
+console.log('- weatherDebug.checkDOM()');
+console.log('- weatherDebug.getState()');
 </script>
 {% endblock %}
