@@ -71,3 +71,9 @@ WARNING 2025-07-29 21:58:17,932 email_utils Né WeasyPrint né xhtml2pdf sono in
 WARNING 2025-07-29 22:01:46,551 email_utils Né WeasyPrint né xhtml2pdf sono installati. Le funzioni PDF non saranno disponibili.
 WARNING 2025-07-29 22:10:35,472 email_utils Né WeasyPrint né xhtml2pdf sono installati. Le funzioni PDF non saranno disponibili.
 WARNING 2025-07-29 22:11:50,714 email_utils Né WeasyPrint né xhtml2pdf sono installati. Le funzioni PDF non saranno disponibili.
+INFO 2025-08-01 13:18:59,367 email_utils Iniziando comunicazione per trattamento 58
+ERROR 2025-08-01 13:18:59,393 email_utils Errore generale nella comunicazione per trattamento 58: Cannot resolve keyword 'attivo' into field. Choices are: cliente, cliente_id, email, id, nome
+INFO 2025-08-01 13:19:21,245 email_utils Iniziando comunicazione per trattamento 58
+ERROR 2025-08-01 13:19:21,248 email_utils Errore generale nella comunicazione per trattamento 58: Cannot resolve keyword 'attivo' into field. Choices are: cliente, cliente_id, email, id, nome
+INFO 2025-08-01 13:19:31,087 email_utils Iniziando comunicazione per trattamento 58
+ERROR 2025-08-01 13:19:31,088 email_utils Errore generale nella comunicazione per trattamento 58: Cannot resolve keyword 'attivo' into field. Choices are: cliente, cliente_id, email, id, nome

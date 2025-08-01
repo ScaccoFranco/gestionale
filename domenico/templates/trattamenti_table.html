@@ -667,8 +667,26 @@ function showConfirmModal(title, message, onConfirm) {
 }
 
 function getCsrfToken() {
-    return document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
-           document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || '';
+    // Prova diversi metodi per ottenere il token CSRF
+    let token = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+    
+    if (!token) {
+        token = document.querySelector('meta[name=csrf-token]')?.getAttribute('content');
+    }
+    
+    if (!token) {
+        // Cerca nei cookie
+        const cookies = document.cookie.split(';');
+        for (let cookie of cookies) {
+            const [name, value] = cookie.trim().split('=');
+            if (name === 'csrftoken') {
+                token = value;
+                break;
+            }
+        }
+    }
+    
+    return token || '';
 }
 
 // Azioni in blocco
@@ -703,14 +721,131 @@ function bulkAnnulla() {
 }
 
 function executeBulkAction(action) {
-    // Implementa le azioni in blocco qui
+    if (selectedTreatments.length === 0) {
+        alert('Nessun trattamento selezionato');
+        return;
+    }
+
     console.log(`Executing ${action} on treatments:`, selectedTreatments);
     
-    // Simula azione
-    alert(`Azione "${action}" eseguita su ${selectedTreatments.length} trattamenti`);
+    // Per l'azione 'comunica', reindirizza al wizard
+    if (action === 'comunica') {
+        // Salva i trattamenti selezionati e reindirizza al wizard
+        const treatmentIds = selectedTreatments.join(',');
+        window.location.href = `/comunicazione-wizard/?treatments=${treatmentIds}`;
+        return;
+    }
     
-    // Pulisci selezione dopo l'azione
-    clearSelection();
+    // Per le altre azioni (completa, annulla), usa la logica esistente
+    showLoadingForAction(action);
+
+    const formData = new FormData();
+    formData.append('action', action);
+    formData.append('trattamenti_ids', JSON.stringify(selectedTreatments));
+    formData.append('csrfmiddlewaretoken', getCsrfToken());
+
+    fetch('/api/trattamenti/bulk-action/', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': getCsrfToken(),
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideLoadingForAction();
+        
+        if (data.success) {
+            showSuccessMessage(data.message || `Azione "${action}" completata con successo`);
+            clearSelection();
+            
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+            
+        } else {
+            showErrorMessage(data.error || 'Errore durante l\'esecuzione dell\'azione');
+        }
+    })
+    .catch(error => {
+        hideLoadingForAction();
+        console.error('Errore:', error);
+        showErrorMessage('Errore di connessione. Riprova più tardi.');
+    });
+}
+
+// Funzioni di utility per il loading
+function showLoadingForAction(action) {
+    const loadingAlert = document.createElement('div');
+    loadingAlert.id = 'loadingAlert';
+    loadingAlert.className = 'alert alert-info position-fixed';
+    loadingAlert.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    loadingAlert.innerHTML = `
+        <div class="d-flex align-items-center">
+            <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+            Elaborazione ${action} in corso...
+        </div>
+    `;
+    document.body.appendChild(loadingAlert);
+}
+
+function hideLoadingForAction() {
+    const loadingAlert = document.getElementById('loadingAlert');
+    if (loadingAlert) {
+        loadingAlert.remove();
+    }
+}
+
+
+function showSuccessMessage(message) {
+    const successDiv = document.createElement('div');
+    successDiv.className = 'alert alert-success alert-dismissible fade show';
+    successDiv.style.position = 'fixed';
+    successDiv.style.top = '20px';
+    successDiv.style.right = '20px';
+    successDiv.style.zIndex = '10000';
+    successDiv.style.minWidth = '300px';
+    
+    successDiv.innerHTML = `
+        <i class="fas fa-check-circle me-2"></i>
+        <strong>Successo:</strong> ${message}
+        <button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>
+    `;
+    
+    document.body.appendChild(successDiv);
+    
+    setTimeout(() => {
+        if (successDiv.parentElement) {
+            successDiv.classList.remove('show');
+            setTimeout(() => successDiv.remove(), 300);
+        }
+    }, 5000);
+}
+
+
+function showErrorMessage(message) {
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'alert alert-danger alert-dismissible fade show';
+    errorDiv.style.position = 'fixed';
+    errorDiv.style.top = '20px';
+    errorDiv.style.right = '20px';
+    errorDiv.style.zIndex = '10000';
+    errorDiv.style.minWidth = '300px';
+    
+    errorDiv.innerHTML = `
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        <strong>Errore:</strong> ${message}
+        <button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>
+    `;
+    
+    document.body.appendChild(errorDiv);
+    
+    setTimeout(() => {
+        if (errorDiv.parentElement) {
+            errorDiv.classList.remove('show');
+            setTimeout(() => errorDiv.remove(), 300);
+        }
+    }, 7000);
 }
 
 // Inizializzazione

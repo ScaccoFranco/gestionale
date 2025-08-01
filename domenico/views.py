@@ -14,6 +14,11 @@ from .weather_service import weather_service
 import logging
 from django.contrib import messages
 from django.urls import reverse
+from django.template.loader import render_to_string
+from decimal import Decimal
+import io
+from django.http import HttpResponse
+
 
 # Import delle funzioni email
 from .email_utils import (
@@ -795,130 +800,363 @@ def api_update_trattamento_stato(request, trattamento_id):
             'success': False,
             'error': f'Errore nell\'aggiornamento: {str(e)}'
         }, status=500)
- 
+
+# Sostituisci la funzione api_communication_preview esistente in domenico/views.py con questa versione corretta:
 
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_communication_preview(request):
-    """API per generare anteprima delle comunicazioni email"""
+    """
+    API per ottenere l'anteprima dei dati dei trattamenti da comunicare
+    raggruppati per azienda - supporta sia JSON che FormData
+    """
     try:
-        import json
+        print(f"🔍 DEBUG: Content-Type: {request.content_type}")
+        print(f"🔍 DEBUG: Method: {request.method}")
         
-        # Parse degli ID trattamenti
-        trattamenti_ids_json = request.POST.get('trattamenti_ids', '[]')
+        # Gestisce sia JSON che FormData
+        if request.content_type and 'application/json' in request.content_type:
+            # Dati JSON dal wizard
+            import json
+            data = json.loads(request.body.decode('utf-8'))
+            trattamenti_ids = data.get('trattamenti_ids', [])
+            print(f"🔍 DEBUG JSON: {data}")
+        else:
+            # Dati FormData (per compatibilità)
+            trattamenti_ids_json = request.POST.get('trattamenti_ids', '[]')
+            print(f"🔍 DEBUG FormData: {dict(request.POST)}")
+            try:
+                trattamenti_ids = json.loads(trattamenti_ids_json)
+            except json.JSONDecodeError:
+                trattamenti_ids = []
         
-        try:
-            trattamenti_ids = json.loads(trattamenti_ids_json)
-        except json.JSONDecodeError:
-            return JsonResponse({
-                'success': False,
-                'error': 'Lista ID trattamenti non valida'
-            }, status=400)
+        print(f"🔍 DEBUG: trattamenti_ids = {trattamenti_ids}")
         
         if not trattamenti_ids:
             return JsonResponse({
                 'success': False,
-                'error': 'Nessun trattamento selezionato'
+                'error': 'Nessun trattamento specificato'
             }, status=400)
         
-        # Ottieni i trattamenti
+        # Recupera i trattamenti con tutte le relazioni necessarie
         trattamenti = Trattamento.objects.filter(
-            id__in=trattamenti_ids,
-            stato='programmato'  # Solo trattamenti programmati
-        ).select_related('cliente').prefetch_related('cliente__contatti_email')
+            id__in=trattamenti_ids
+        ).select_related(
+            'cliente', 'cascina'
+        ).prefetch_related(
+            'terreni', 'trattamentoprodotto_set__prodotto'
+        )
+        
+        print(f"🔍 DEBUG: Trovati {trattamenti.count()} trattamenti")
         
         if not trattamenti.exists():
             return JsonResponse({
                 'success': False,
-                'error': 'Nessun trattamento programmato trovato con gli ID specificati'
+                'error': 'Nessun trattamento trovato con gli ID specificati'
             }, status=404)
         
-        # Genera anteprime per ogni trattamento
-        email_previews = []
-        all_recipients = []
+        # Raggruppa per cliente e prepara i dati
+        clienti_map = {}
         
         for trattamento in trattamenti:
-
-            # Prepara dati email per questo trattamento
-            recipients = []
-            for contatto in trattamento.cliente.contatti_email:
-                recipients.append(contatto.email)
-                all_recipients.append({
-                    'nome': contatto.nome,
-                    'email': contatto.email,
-                    'trattamento_id': trattamento.id,
-                    'cliente_nome': trattamento.cliente.nome
+            cliente_nome = trattamento.cliente.nome
+            print(f"🔍 DEBUG: Elaborando trattamento {trattamento.id} per {cliente_nome}")
+            
+            # Calcola superficie interessata
+            try:
+                superficie = trattamento.get_superficie_interessata()
+                print(f"🔍 DEBUG: Superficie trattamento {trattamento.id}: {superficie}")
+            except Exception as e:
+                print(f"❌ DEBUG: Errore calcolo superficie: {e}")
+                superficie = 0
+            
+            # Prepara dati prodotti
+            prodotti_data = []
+            for tp in trattamento.trattamentoprodotto_set.all():
+                # Usa il campo corretto (quantita_per_ettaro invece di quantita)
+                quantita_per_ettaro = getattr(tp, 'quantita_per_ettaro', getattr(tp, 'quantita', 0))
+                
+                prodotti_data.append({
+                    'nome': tp.prodotto.nome,
+                    'quantita_per_ettaro': float(quantita_per_ettaro),
+                    'unita_misura': tp.prodotto.unita_misura,
+                    'quantita_totale': float(quantita_per_ettaro * Decimal(str(superficie)))
                 })
             
-            # Genera anteprima email
-            oggetto = f"Trattamento #{trattamento.id} - {trattamento.cliente.nome}"
-            if trattamento.data_esecuzione_prevista:
-                oggetto += f" - Esecuzione prevista: {trattamento.data_esecuzione_prevista.strftime('%d/%m/%Y')}"
+            # Prepara dati terreni (se applicabile)
+            terreni_data = []
+            if trattamento.livello_applicazione == 'terreno':
+                for terreno in trattamento.terreni.all():
+                    terreni_data.append({
+                        'nome': terreno.nome,
+                        'superficie': float(terreno.superficie)
+                    })
             
-            # Genera corpo email (usa funzione esistente se disponibile)
-            try:
-                from .email_utils import generate_email_body
-                corpo_email = generate_email_body(trattamento)
-            except (ImportError, AttributeError):
-                # Fallback se email_utils non disponibile
-                corpo_email = f"""
-Gentile Contoterzista,
-
-in allegato la comunicazione per il trattamento #{trattamento.id}.
-
-DETTAGLI TRATTAMENTO:
-• Cliente: {trattamento.cliente.nome}
-• Superficie interessata: {trattamento.get_superficie_interessata():.2f} ettari
-• Stato: {trattamento.get_stato_display()}
-"""
-                if trattamento.data_esecuzione_prevista:
-                    corpo_email += f"• Data esecuzione prevista: {trattamento.data_esecuzione_prevista.strftime('%d/%m/%Y')}\n"
-                
-                corpo_email += f"• Prodotti: {trattamento.trattamentoprodotto_set.count()} prodotti specificati\n\n"
-                
-                if trattamento.note:
-                    corpo_email += f"NOTE SPECIALI:\n{trattamento.note}\n\n"
-                
-                corpo_email += """
-Si prega di confermare la ricezione e di comunicare l'avvenuta esecuzione del trattamento.
-
-Cordiali saluti,
-Domenico Franco
-Sistema di Gestione Trattamenti Agricoli
-"""
+            trattamento_data = {
+                'id': trattamento.id,
+                'livello_applicazione': trattamento.livello_applicazione,
+                'superficie_interessata': float(superficie),
+                'data_esecuzione_prevista': trattamento.data_esecuzione_prevista.strftime('%d/%m/%Y') if trattamento.data_esecuzione_prevista else None,
+                'note': trattamento.note or '',
+                'prodotti': prodotti_data,
+                'terreni': terreni_data,
+                'cascina_nome': trattamento.cascina.nome if trattamento.cascina else None,
+                'stato': trattamento.stato
+            }
             
-            # Nome file PDF
-            filename = f"Trattamento_{trattamento.id}_{trattamento.cliente.nome.replace(' ', '_')}.pdf"
+            if cliente_nome not in clienti_map:
+                clienti_map[cliente_nome] = {
+                    'cliente_nome': cliente_nome,
+                    'trattamenti': [],
+                    'superficie_totale': 0
+                }
             
-            email_previews.append({
-                'trattamento_id': trattamento.id,
-                'cliente_nome': trattamento.cliente.nome,
-                'from_email': getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@gestionale.com'),
-                'recipients': recipients,
-                'subject': oggetto,
-                'body': corpo_email,
-                'attachments': [filename]
-            })
+            clienti_map[cliente_nome]['trattamenti'].append(trattamento_data)
+            clienti_map[cliente_nome]['superficie_totale'] += float(superficie)
         
-        if not email_previews:
-            return JsonResponse({
-                'success': False,
-                'error': 'Nessun trattamento ha contatti email attivi configurati'
-            }, status=400)
+        # Converte in lista per la risposta
+        email_previews = list(clienti_map.values())
         
-        return JsonResponse({
+        print(f"🔍 DEBUG: Preparati {len(email_previews)} gruppi cliente")
+        
+        response_data = {
             'success': True,
-            'trattamenti_count': len(email_previews),
-            'total_recipients': len(set(r['email'] for r in all_recipients)),
             'email_previews': email_previews,
-            'all_recipients': all_recipients
-        })
+            'trattamenti_count': len(trattamenti),
+            'clienti_count': len(clienti_map)
+        }
         
-    except Exception as e:
+        print(f"🔍 DEBUG: Risposta preparata: {len(str(response_data))} caratteri")
+        
+        return JsonResponse(response_data)
+        
+    except json.JSONDecodeError as e:
+        print(f"❌ DEBUG: Errore JSON: {e}")
         return JsonResponse({
             'success': False,
-            'error': f'Errore durante la generazione anteprima: {str(e)}'
+            'error': f'Formato JSON non valido: {str(e)}'
+        }, status=400)
+    except Exception as e:
+        print(f"❌ DEBUG: Errore generale: {e}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'success': False,
+            'error': f'Errore durante la preparazione anteprima: {str(e)}'
         }, status=500)
+
+
+# Aggiungi anche questa nuova API per la generazione PDF:
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_generate_company_pdf(request):
+    """
+    API per generare un PDF di comunicazione per una specifica azienda
+    con tutti i suoi trattamenti e note personalizzate
+    """
+    try:
+        print(f"🔍 DEBUG PDF: Content-Type: {request.content_type}")
+        
+        # Gestisce sia JSON che FormData
+        if request.content_type and 'application/json' in request.content_type:
+            import json
+            data = json.loads(request.body.decode('utf-8'))
+        else:
+            data = dict(request.POST)
+            # Converte liste a valori singoli se necessario
+            for key, value in data.items():
+                if isinstance(value, list) and len(value) == 1:
+                    data[key] = value[0]
+        
+        trattamenti_ids = data.get('trattamenti_ids', [])
+        company_name = data.get('company_name', '')
+        custom_notes = data.get('custom_notes', '')
+        update_status = data.get('update_status', True)
+        
+        print(f"🔍 DEBUG PDF: trattamenti_ids={trattamenti_ids}, company={company_name}")
+        
+        if not trattamenti_ids:
+            return JsonResponse({
+                'success': False,
+                'error': 'Nessun trattamento specificato'
+            }, status=400)
+        
+        # Recupera i trattamenti
+        trattamenti = Trattamento.objects.filter(
+            id__in=trattamenti_ids
+        ).select_related(
+            'cliente', 'cascina'
+        ).prefetch_related(
+            'terreni', 'trattamentoprodotto_set__prodotto'
+        )
+        
+        if not trattamenti.exists():
+            return JsonResponse({
+                'success': False,
+                'error': 'Nessun trattamento trovato'
+            }, status=404)
+        
+        # Verifica che tutti i trattamenti appartengano alla stessa azienda
+        cliente = trattamenti.first().cliente
+        if not all(t.cliente == cliente for t in trattamenti):
+            return JsonResponse({
+                'success': False,
+                'error': 'Tutti i trattamenti devono appartenere alla stessa azienda'
+            }, status=400)
+        
+        # Genera il PDF
+        try:
+            pdf_content = generate_company_communication_pdf(trattamenti, custom_notes)
+            print(f"🔍 DEBUG PDF: Generato PDF di {len(pdf_content)} bytes")
+        except Exception as e:
+            print(f"❌ DEBUG PDF: Errore generazione: {e}")
+            return JsonResponse({
+                'success': False,
+                'error': f'Errore nella generazione del PDF: {str(e)}'
+            }, status=500)
+        
+        # Aggiorna lo stato dei trattamenti se richiesto
+        if update_status:
+            with transaction.atomic():
+                for trattamento in trattamenti:
+                    if trattamento.stato == 'programmato':
+                        trattamento.stato = 'comunicato'
+                        trattamento.data_comunicazione = timezone.now()
+                        trattamento.save()
+                        print(f"🔍 DEBUG PDF: Aggiornato stato trattamento {trattamento.id}")
+        
+        # Prepara la risposta HTTP con il PDF
+        filename = f"Comunicazione_{company_name.replace(' ', '_')}_{timezone.now().strftime('%Y%m%d')}.pdf"
+        
+        response = HttpResponse(pdf_content, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        
+        print(f"🔍 DEBUG PDF: Risposta preparata con filename: {filename}")
+        return response
+        
+    except json.JSONDecodeError as e:
+        print(f"❌ DEBUG PDF: Errore JSON: {e}")
+        return JsonResponse({
+            'success': False,
+            'error': f'Formato JSON non valido: {str(e)}'
+        }, status=400)
+    except Exception as e:
+        print(f"❌ DEBUG PDF: Errore generale: {e}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'success': False,
+            'error': f'Errore durante la generazione del PDF: {str(e)}'
+        }, status=500)
+
+
+def generate_company_communication_pdf(trattamenti, custom_notes=''):
+    """
+    Genera un PDF di comunicazione per un'azienda con tutti i suoi trattamenti
+    """
+    try:
+        print(f"🔍 DEBUG PDF Generator: Inizio generazione per {len(trattamenti)} trattamenti")
+        
+        # Import per PDF (prova prima WeasyPrint, poi xhtml2pdf)
+        pdf_engine = None
+        try:
+            from weasyprint import HTML, CSS
+            pdf_engine = 'weasyprint'
+            print("🔍 DEBUG PDF: Usando WeasyPrint")
+        except ImportError:
+            try:
+                from xhtml2pdf import pisa
+                pdf_engine = 'xhtml2pdf'
+                print("🔍 DEBUG PDF: Usando xhtml2pdf")
+            except ImportError:
+                raise Exception("Nessun motore PDF disponibile. Installa WeasyPrint o xhtml2pdf.")
+        
+        # Prepara i dati per il template
+        cliente = trattamenti.first().cliente
+        
+        # Calcola totali
+        superficie_totale = sum(float(t.get_superficie_interessata()) for t in trattamenti)
+        
+        # Raggruppa prodotti per calcolare totali
+        prodotti_totali = {}
+        for trattamento in trattamenti:
+            superficie_trattamento = trattamento.get_superficie_interessata()
+            for tp in trattamento.trattamentoprodotto_set.all():
+                # Usa il campo corretto (quantita_per_ettaro invece di quantita)
+                quantita_per_ettaro = getattr(tp, 'quantita_per_ettaro', getattr(tp, 'quantita', 0))
+                
+                prodotto_nome = tp.prodotto.nome
+                if prodotto_nome not in prodotti_totali:
+                    prodotti_totali[prodotto_nome] = {
+                        'nome': prodotto_nome,
+                        'unita_misura': tp.prodotto.unita_misura,
+                        'quantita_totale': Decimal('0')
+                    }
+                
+                quantita_trattamento = Decimal(str(quantita_per_ettaro)) * Decimal(str(superficie_trattamento))
+                prodotti_totali[prodotto_nome]['quantita_totale'] += quantita_trattamento
+        
+        # Context per il template
+        context = {
+            'cliente': cliente,
+            'trattamenti': trattamenti,
+            'superficie_totale': superficie_totale,
+            'prodotti_totali': list(prodotti_totali.values()),
+            'custom_notes': custom_notes,
+            'data_comunicazione': timezone.now(),
+            'numero_trattamenti': len(trattamenti)
+        }
+        
+        print(f"🔍 DEBUG PDF: Context preparato con {len(context)} elementi")
+        
+        # Renderizza il template HTML
+        try:
+            html_content = render_to_string('pdf/comunicazione_trattamenti.html', context)
+            print(f"🔍 DEBUG PDF: Template renderizzato, {len(html_content)} caratteri")
+        except Exception as e:
+            print(f"❌ DEBUG PDF: Errore template: {e}")
+            raise Exception(f"Errore nel rendering del template: {str(e)}")
+        
+        # Genera PDF in base al motore disponibile
+        if pdf_engine == 'weasyprint':
+            # CSS per il PDF (inline per semplicità)
+            css_content = """
+                @page { size: A4; margin: 2cm; }
+                body { font-family: Arial, sans-serif; font-size: 11pt; line-height: 1.4; }
+                .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #0d6efd; padding-bottom: 20px; }
+                .company-info { background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+                .treatment-item { border: 1px solid #dee2e6; margin-bottom: 15px; padding: 15px; page-break-inside: avoid; }
+                table { width: 100%; border-collapse: collapse; }
+                th, td { border: 1px solid #dee2e6; padding: 8px; text-align: left; }
+                th { background: #f8f9fa; font-weight: bold; }
+            """
+            
+            html_doc = HTML(string=html_content)
+            pdf_content = html_doc.write_pdf(stylesheets=[CSS(string=css_content)])
+            
+        else:  # xhtml2pdf
+            result = io.BytesIO()
+            pdf = pisa.pisaDocument(io.BytesIO(html_content.encode('UTF-8')), result)
+            
+            if not pdf.err:
+                pdf_content = result.getvalue()
+            else:
+                raise Exception("Errore nella generazione del PDF con xhtml2pdf")
+        
+        print(f"🔍 DEBUG PDF: PDF generato con successo, {len(pdf_content)} bytes")
+        return pdf_content
+        
+    except Exception as e:
+        print(f"❌ DEBUG PDF Generator: Errore: {e}")
+        import traceback
+        traceback.print_exc()
+        raise Exception(f"Errore nella generazione del PDF: {str(e)}")
+
+
+# Aggiungi anche la vista per il wizard:
+def comunicazione_wizard(request):
+    """Vista per il wizard di comunicazione trattamenti"""
+    return render(request, 'comunicazione_wizard.html')
 
 # Modifica la funzione api_bulk_action_trattamenti esistente per supportare le nuove modalità
 @csrf_exempt
@@ -1698,6 +1936,10 @@ def edit_terreno(request, terreno_id):
     if search_param:
         redirect_url += f'?search={search_param}'
     
+
+def comunicazione_wizard(request):
+    """Vista per il wizard di comunicazione trattamenti"""
+    return render(request, 'comunicazione_wizard.html')
     return redirect(redirect_url)
 
 @require_http_methods(["GET"])

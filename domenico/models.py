@@ -211,27 +211,41 @@ class TrattamentoProdotto(models.Model):
     )
     
     def __str__(self):
-        return f"{self.prodotto.nome} - {self.quantita_per_ettaro} {self.prodotto.unita_misura}/ha"
+        quantita = self.get_quantita_per_ettaro()
+        return f"{self.prodotto.nome} - {quantita} {self.prodotto.unita_misura}/ha"
     
+
+    def get_quantita_per_ettaro(self):
+        """
+        Metodo helper per ottenere la quantità per ettaro
+        indipendentemente dal nome del campo nel database
+        """
+        # Prova prima 'quantita_per_ettaro', poi 'quantita' come fallback
+        if hasattr(self, 'quantita_per_ettaro'):
+            return self.quantita_per_ettaro
+        elif hasattr(self, 'quantita'):
+            return self.quantita
+        
     @property
     def quantita_totale(self):
         """Calcola la quantità totale moltiplicando per la superficie interessata"""
         try:
             superficie = self.trattamento.get_superficie_interessata()
+            quantita_per_ettaro = self.get_quantita_per_ettaro()
             
-            # Conversione sicura a Decimal
             from decimal import Decimal
             if superficie is None or superficie == 0:
-                return self.quantita_per_ettaro
+                return quantita_per_ettaro
             
             superficie_decimal = Decimal(str(superficie))
-            return self.quantita_per_ettaro * superficie_decimal
+            quantita_decimal = Decimal(str(quantita_per_ettaro))
+            return quantita_decimal * superficie_decimal
             
         except (ValueError, TypeError, AttributeError) as e:
             import logging
             logger = logging.getLogger(__name__)
             logger.error(f"Errore calcolo quantita_totale per {self}: {e}")
-            return self.quantita_per_ettaro
+            return self.get_quantita_per_ettaro()
     
     class Meta:
         unique_together = ['trattamento', 'prodotto']

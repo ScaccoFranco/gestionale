@@ -3,6 +3,7 @@
 from django.urls import path
 from . import views
 from . import api_views  # Importa le nuove API views
+from . import api_communications
 
 urlpatterns = [
     # ============ PAGINE PRINCIPALI ============
@@ -108,4 +109,9 @@ urlpatterns = [
     path('aziende/edit/cliente/<int:cliente_id>/', views.edit_cliente, name='edit_cliente'),
     path('aziende/edit/cascina/<int:cascina_id>/', views.edit_cascina, name='edit_cascina'),
     path('aziende/edit/terreno/<int:terreno_id>/', views.edit_terreno, name='edit_terreno'),
+
+    # Aggiungi questi path
+    path('comunicazione-wizard/', views.comunicazione_wizard, name='comunicazione_wizard'),
+    path('api/trattamenti/communication-preview/', views.api_communication_preview, name='api_communication_preview'),
+    path('api/trattamenti/generate-company-pdf/', api_communications.api_generate_company_pdf, name='api_generate_company_pdf'),
 ]
