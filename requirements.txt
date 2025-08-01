@@ -5,3 +5,6 @@ Pillow>=9.0.0
 # Alternativa moderna per PDF
 weasyprint>=59.0
 cffi>=1.15.0
+
+# Weather API
+requests

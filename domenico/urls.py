@@ -86,4 +86,8 @@ urlpatterns = [
     
     # API Statistiche Database
     path('api/database/stats/', api_views.api_database_stats, name='api_database_stats'),
+
+    # API Weather
+    path('api/weather/current/', views.api_weather_current, name='api_weather_current'),
+    path('api/weather/test/', views.api_weather_test, name='api_weather_test'),
 ]

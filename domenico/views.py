@@ -10,6 +10,8 @@ from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
 import json
 from .models import *
+from .weather_service import weather_service
+import logging
 
 # Import delle funzioni email
 from .email_utils import (
@@ -1209,3 +1211,83 @@ def api_contoterzista_create(request):
             'success': False,
             'error': f'Errore nella creazione: {str(e)}'
         }, status=500)
+
+
+
+logger = logging.getLogger(__name__)
+
+@require_http_methods(["GET"])
+def api_weather_current(request):
+    """API endpoint per ottenere il meteo corrente"""
+    try:
+        # Ottieni location dalla query string (opzionale)
+        location = request.GET.get('location')
+        
+        # Chiama il servizio meteo
+        weather_data = weather_service.get_current_weather(location)
+        
+        # Genera consigli per trattamenti
+        advice = weather_service.get_treatment_advice(weather_data)
+        
+        # Prepara risposta
+        response_data = {
+            'success': True,
+            'data': weather_data,
+            'advice': advice,
+            'cached': 'fetched_at' in weather_data,
+            'location_used': location or weather_service.default_location
+        }
+        
+        logger.info(f"Weather data served successfully for {response_data['location_used']}")
+        
+        return JsonResponse(response_data)
+        
+    except ValueError as e:
+        logger.error(f"Weather API configuration error: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': 'configuration',
+            'message': str(e)
+        }, status=400)
+        
+    except Exception as e:
+        logger.error(f"Weather API unexpected error: {str(e)}")
+        return JsonResponse({
+            'success': False,  
+            'error': 'api_error',
+            'message': 'Errore nel recupero dei dati meteo'
+        }, status=500)
+
+@require_http_methods(["GET"])
+def api_weather_test(request):
+    """Endpoint per testare la configurazione WeatherAPI"""
+    try:
+        # Test configurazione
+        if not weather_service.api_key:
+            return JsonResponse({
+                'success': False,
+                'error': 'missing_api_key',
+                'message': 'WEATHER_API_KEY non configurata in settings.py'
+            })
+            
+        # Test connessione
+        test_data = weather_service.get_current_weather('London')  # Test con località sicura
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Configurazione WeatherAPI funzionante',
+            'api_key_present': bool(weather_service.api_key),
+            'location': weather_service.default_location,
+            'test_data': {
+                'location': test_data.get('location', {}).get('name'),
+                'temp': test_data.get('current', {}).get('temp_c'),
+                'condition': test_data.get('current', {}).get('condition', {}).get('text')
+            }
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e),
+            'message': 'Errore nella configurazione WeatherAPI'
+        })

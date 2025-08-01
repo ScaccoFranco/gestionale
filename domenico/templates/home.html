@@ -537,6 +537,222 @@
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
+.weather-widget {
+        background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
+        color: white;
+        border-radius: 20px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        position: relative;
+        overflow: hidden;
+        min-height: 280px;
+    }
+    
+    .weather-widget::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 200px;
+        height: 200px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 50%;
+        animation: float 6s ease-in-out infinite;
+    }
+    
+    .weather-widget::after {
+        content: '';
+        position: absolute;
+        bottom: -30%;
+        left: -30%;
+        width: 150px;
+        height: 150px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 50%;
+        animation: float 8s ease-in-out infinite reverse;
+    }
+    
+    @keyframes float {
+        0%, 100% { transform: translateY(0) rotate(0deg); }
+        50% { transform: translateY(-10px) rotate(5deg); }
+    }
+    
+    .weather-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        position: relative;
+        z-index: 2;
+    }
+    
+    .weather-location {
+        font-size: 0.9rem;
+        opacity: 0.8;
+        font-weight: 300;
+    }
+    
+    .weather-main {
+        text-align: center;
+        margin: 1.5rem 0;
+        position: relative;
+        z-index: 2;
+    }
+    
+    .weather-temp {
+        font-size: 3.5rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+    
+    .weather-condition {
+        font-size: 1.1rem;
+        opacity: 0.9;
+        margin-bottom: 1rem;
+    }
+    
+    .weather-details {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+        margin: 1.5rem 0;
+        position: relative;
+        z-index: 2;
+    }
+    
+    .weather-detail {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.85rem;
+        background: rgba(255, 255, 255, 0.1);
+        padding: 0.5rem;
+        border-radius: 8px;
+        backdrop-filter: blur(10px);
+    }
+    
+    .weather-detail i {
+        width: 16px;
+        opacity: 0.8;
+    }
+    
+    .treatment-advice {
+        background: rgba(255, 255, 255, 0.15);
+        padding: 1rem;
+        border-radius: 12px;
+        margin: 1rem 0;
+        font-size: 0.9rem;
+        border-left: 4px solid rgba(255, 255, 255, 0.5);
+        position: relative;
+        z-index: 2;
+    }
+    
+    .treatment-advice.good {
+        background: rgba(40, 167, 69, 0.2);
+        border-left-color: #28a745;
+    }
+    
+    .treatment-advice.warning {
+        background: rgba(255, 193, 7, 0.2);
+        border-left-color: #ffc107;
+    }
+    
+    .treatment-advice.bad {
+        background: rgba(220, 53, 69, 0.2);
+        border-left-color: #dc3545;
+    }
+    
+    .weather-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 1rem;
+        position: relative;
+        z-index: 2;
+    }
+    
+    .weather-footer small {
+        opacity: 0.7;
+        font-size: 0.75rem;
+    }
+    
+    .btn-refresh {
+        background: rgba(255, 255, 255, 0.2);
+        border: none;
+        color: white;
+        padding: 0.5rem;
+        border-radius: 50%;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        backdrop-filter: blur(10px);
+    }
+    
+    .btn-refresh:hover {
+        background: rgba(255, 255, 255, 0.3);
+        transform: rotate(90deg);
+    }
+    
+    .btn-refresh.spinning {
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+    
+    /* Loading State */
+    .weather-loading {
+        text-align: center;
+        position: relative;
+        z-index: 2;
+    }
+    
+    .weather-spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid rgba(255, 255, 255, 0.3);
+        border-top: 3px solid white;
+        border-radius: 50%;
+        margin: 0 auto 1rem;
+        animation: spin 1s linear infinite;
+    }
+    
+    /* Error State */
+    #weather-error {
+        text-align: center;
+        position: relative;
+        z-index: 2;
+    }
+    
+    .weather-error-msg {
+        margin: 1rem 0;
+        opacity: 0.9;
+    }
+    
+    /* Weather Icons */
+    .weather-icon {
+        font-size: 1.2rem;
+        margin-right: 0.5rem;
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+        .weather-widget {
+            padding: 1.5rem;
+            min-height: 240px;
+        }
+        
+        .weather-temp {
+            font-size: 2.5rem;
+        }
+        
+        .weather-details {
+            grid-template-columns: 1fr;
+            gap: 0.5rem;
+        }
+    }
 
 </style>
 {% endblock %}
@@ -652,12 +868,79 @@
 </div>
 
 <div class="row">
+
     <!-- Weather Widget -->
     <div class="col-md-4">
-        <div class="weather-widget">
-            <h4><i class="fas fa-sun me-2"></i>Meteo Oggi</h4>
-            <div class="weather-temp">22°C</div>
-            <div class="weather-desc">Soleggiato - Ideale per trattamenti</div>
+        <div class="weather-widget" id="weather-widget">
+            <!-- Loading State -->
+            <div id="weather-loading" class="weather-loading">
+                <div class="weather-spinner"></div>
+                <h4><i class="fas fa-cloud me-2"></i>Caricamento Meteo...</h4>
+                <div class="weather-location">📍 Roatto, Piemonte</div>
+            </div>
+            
+            <!-- Weather Content (hidden initially) -->
+            <div id="weather-content" style="display: none;">
+                <div class="weather-header">
+                    <h4>
+                        <i class="weather-icon" id="weather-icon"></i>
+                        Meteo Oggi
+                    </h4>
+                    <div class="weather-location" id="weather-location">📍 Caricamento...</div>
+                </div>
+                
+                <div class="weather-main">
+                    <div class="weather-temp" id="weather-temp">--°C</div>
+                    <div class="weather-condition" id="weather-condition">Caricamento...</div>
+                </div>
+                
+                <div class="weather-details">
+                    <div class="weather-detail">
+                        <i class="fas fa-eye"></i>
+                        <span>Visibilità</span>
+                        <span id="weather-visibility">-- km</span>
+                    </div>
+                    <div class="weather-detail">
+                        <i class="fas fa-wind"></i>
+                        <span>Vento</span>
+                        <span id="weather-wind">-- km/h</span>
+                    </div>
+                    <div class="weather-detail">
+                        <i class="fas fa-tint"></i>
+                        <span>Umidità</span>
+                        <span id="weather-humidity">--%</span>
+                    </div>
+                    <div class="weather-detail">
+                        <i class="fas fa-thermometer-half"></i>
+                        <span>Percepita</span>
+                        <span id="weather-feelslike">--°C</span>
+                    </div>
+                </div>
+                
+                <!-- Consiglio per trattamenti -->
+                <div class="treatment-advice" id="treatment-advice">
+                    <i class="fas fa-flask me-2"></i>
+                    <span id="advice-text">Valutazione condizioni in corso...</span>
+                </div>
+                
+                <div class="weather-footer">
+                    <small id="weather-time">Ultimo aggiornamento: --</small>
+                    <button class="btn-refresh" onclick="refreshWeather()" id="refresh-btn">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Error State -->
+            <div id="weather-error" style="display: none;">
+                <h4><i class="fas fa-exclamation-triangle me-2"></i>Errore Meteo</h4>
+                <div class="weather-error-msg" id="error-message">
+                    Non è stato possibile caricare i dati meteo
+                </div>
+                <button class="btn btn-light btn-sm mt-2" onclick="refreshWeather()">
+                    <i class="fas fa-redo me-1"></i>Riprova
+                </button>
+            </div>
         </div>
     </div>
 
@@ -973,6 +1256,404 @@ function updateFilterUI(activeFilter) {
 setInterval(() => {
     refreshActivities();
 }, 120000);
+// ================================================================ 
+// CONFIGURAZIONE METEO AGGIORNATA PER BACKEND PROXY
+// ================================================================
+
+const WEATHER_CONFIG = {
+    apiUrl: '/api/weather/current/',  // ✅ USA BACKEND PROXY
+    testUrl: '/api/weather/test/',
+    cacheTime: 10 * 60 * 1000, // 10 minuti
+    retryAttempts: 3,
+    retryDelay: 2000
+};
+
+let weatherState = {
+    data: null,
+    lastUpdate: null,
+    loading: false,
+    error: null
+};
+
+// ================================================================
+// FUNZIONI PRINCIPALI AGGIORNATE
+// ================================================================
+
+async function loadWeatherData() {
+    console.log('🌤️ Caricamento dati meteo via backend...');
+    
+    if (isWeatherCacheValid()) {
+        console.log('✅ Uso cache meteo valida');
+        displayWeatherData(weatherState.data);
+        return;
+    }
+    
+    showWeatherLoading();
+    
+    try {
+        const response = await fetch(WEATHER_CONFIG.apiUrl, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+            }
+        });
+        
+        const result = await response.json();
+        
+        if (!result.success) {
+            throw new Error(result.message || 'Errore dal server');
+        }
+        
+        weatherState.data = result;
+        weatherState.lastUpdate = Date.now();
+        weatherState.error = null;
+        
+        saveWeatherCache(result);
+        displayWeatherData(result);
+        
+        console.log('✅ Dati meteo caricati dal backend');
+        
+    } catch (error) {
+        console.error('❌ Errore caricamento meteo:', error);
+        weatherState.error = error.message;
+        showWeatherError(error.message);
+        
+        // Fallback su cache
+        const cachedData = getWeatherCache();
+        if (cachedData) {
+            console.log('⚠️ Uso cache come fallback');
+            displayWeatherData(cachedData, true);
+        }
+    }
+}
+
+function displayWeatherData(result, isStale = false) {
+    const weatherData = result.data;
+    const current = weatherData.current;
+    const location = weatherData.location;
+    const advice = result.advice;
+    
+    // Aggiorna elementi DOM
+    document.getElementById('weather-temp').textContent = `${Math.round(current.temp_c)}°C`;
+    document.getElementById('weather-condition').textContent = current.condition.text;
+    document.getElementById('weather-location').textContent = `📍 ${location.name}, ${location.region}`;
+    document.getElementById('weather-visibility').textContent = `${current.vis_km} km`;
+    document.getElementById('weather-wind').textContent = `${current.wind_kph} km/h`;
+    document.getElementById('weather-humidity').textContent = `${current.humidity}%`;
+    document.getElementById('weather-feelslike').textContent = `${Math.round(current.feelslike_c)}°C`;
+    
+    // Icona meteo
+    const iconElement = document.getElementById('weather-icon');
+    iconElement.className = `fas ${getWeatherIcon(current.condition.code, current.is_day)} weather-icon`;
+    
+    // Timestamp
+    const timeElement = document.getElementById('weather-time');
+    const isDataStale = weatherData.is_stale || isStale;
+    const updateTime = isDataStale ? 'Dati non aggiornati' : `Aggiornato: ${new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}`;
+    timeElement.textContent = updateTime;
+    timeElement.style.color = isDataStale ? '#ffc107' : 'rgba(255,255,255,0.7)';
+    
+    // Consigli trattamenti dal backend
+    updateTreatmentAdviceFromBackend(advice);
+    
+    showWeatherContent();
+}
+
+function updateTreatmentAdviceFromBackend(advice) {
+    const adviceElement = document.getElementById('treatment-advice');
+    const adviceText = document.getElementById('advice-text');
+    
+    adviceText.textContent = advice.text;
+    adviceElement.className = `treatment-advice ${advice.level}`;
+    
+    // Aggiungi tooltip con dettagli
+    adviceElement.title = advice.details;
+}
+
+// ================================================================
+// FUNZIONI DI TEST E DEBUG
+// ================================================================
+
+async function testWeatherConfiguration() {
+    try {
+        console.log('🧪 Test configurazione WeatherAPI...');
+        
+        const response = await fetch(WEATHER_CONFIG.testUrl);
+        const result = await response.json();
+        
+        if (result.success) {
+            console.log('✅ Configurazione WeatherAPI OK:', result);
+            alert('✅ Configurazione WeatherAPI funzionante!');
+        } else {
+            console.error('❌ Configurazione WeatherAPI fallita:', result);
+            alert(`❌ Errore configurazione: ${result.message}`);
+        }
+        
+        return result;
+        
+    } catch (error) {
+        console.error('❌ Errore test configurazione:', error);
+        alert(`❌ Errore test: ${error.message}`);
+        return { success: false, error: error.message };
+    }
+}
+
+// ================================================================
+// FUNZIONI PRINCIPALI METEO
+// ================================================================
+
+async function loadWeatherData() {
+    console.log('🌤️ Caricamento dati meteo...');
+    
+    // Verifica cache
+    if (isWeatherCacheValid()) {
+        console.log('✅ Uso cache meteo valida');
+        displayWeatherData(weatherState.data);
+        return;
+    }
+    
+    showWeatherLoading();
+    
+    try {
+        const weatherData = await fetchWeatherWithRetry();
+        weatherState.data = weatherData;
+        weatherState.lastUpdate = Date.now();
+        weatherState.error = null;
+        
+        // Salva in localStorage
+        saveWeatherCache(weatherData);
+        
+        displayWeatherData(weatherData);
+        console.log('✅ Dati meteo caricati con successo');
+        
+    } catch (error) {
+        console.error('❌ Errore caricamento meteo:', error);
+        weatherState.error = error.message;
+        showWeatherError(error.message);
+        
+        // Prova a usare cache scaduta come fallback
+        const cachedData = getWeatherCache();
+        if (cachedData) {
+            console.log('⚠️ Uso cache scaduta come fallback');
+            displayWeatherData(cachedData, true);
+        }
+    }
+}
+
+async function fetchWeatherWithRetry(attempt = 1) {
+    try {
+        const response = await fetch(
+            `https://api.weatherapi.com/v1/current.json?key=${WEATHER_CONFIG.apiKey}&q=${encodeURIComponent(WEATHER_CONFIG.location)}&lang=${WEATHER_CONFIG.language}&aqi=no`,
+            {
+                method: 'GET',
+                timeout: 10000 // 10 secondi timeout
+            }
+        );
+        
+        if (!response.ok) {
+            if (response.status === 401) {
+                throw new Error('API Key non valida. Verifica la configurazione.');
+            } else if (response.status === 400) {
+                throw new Error('Località non trovata. Verifica la configurazione.');
+            } else {
+                throw new Error(`Errore API: ${response.status} ${response.statusText}`);
+            }
+        }
+        
+        const data = await response.json();
+        
+        if (!data.current) {
+            throw new Error('Dati meteo non validi ricevuti dall\'API');
+        }
+        
+        return data;
+        
+    } catch (error) {
+        console.error(`❌ Tentativo ${attempt} fallito:`, error);
+        
+        if (attempt < WEATHER_CONFIG.retryAttempts) {
+            console.log(`🔄 Riprovo in ${WEATHER_CONFIG.retryDelay}ms...`);
+            await new Promise(resolve => setTimeout(resolve, WEATHER_CONFIG.retryDelay));
+            return fetchWeatherWithRetry(attempt + 1);
+        }
+        
+        throw error;
+    }
+}
+
+function getWeatherIcon(conditionCode, isDay) {
+    // Mapping codici WeatherAPI a FontAwesome icons
+    const iconMap = {
+        1000: isDay ? 'fa-sun' : 'fa-moon', // Clear
+        1003: isDay ? 'fa-cloud-sun' : 'fa-cloud-moon', // Partly cloudy
+        1006: 'fa-cloud', // Cloudy
+        1009: 'fa-cloud', // Overcast
+        1030: 'fa-smog', // Mist
+        1063: 'fa-cloud-rain', // Patchy rain possible
+        1066: 'fa-snowflake', // Patchy snow possible
+        1069: 'fa-cloud-rain', // Patchy sleet possible
+        1072: 'fa-cloud-rain', // Patchy freezing drizzle possible
+        1087: 'fa-bolt', // Thundery outbreaks possible
+        1114: 'fa-wind', // Blowing snow
+        1117: 'fa-wind', // Blizzard
+        1135: 'fa-smog', // Fog
+        1147: 'fa-smog', // Freezing fog
+        1150: 'fa-cloud-drizzle', // Patchy light drizzle
+        1153: 'fa-cloud-drizzle', // Light drizzle
+        1168: 'fa-cloud-drizzle', // Freezing drizzle
+        1171: 'fa-cloud-drizzle', // Heavy freezing drizzle
+        1180: 'fa-cloud-rain', // Patchy light rain
+        1183: 'fa-cloud-rain', // Light rain
+        1186: 'fa-cloud-rain', // Moderate rain at times
+        1189: 'fa-cloud-rain', // Moderate rain
+        1192: 'fa-cloud-showers-heavy', // Heavy rain at times
+        1195: 'fa-cloud-showers-heavy', // Heavy rain
+        1198: 'fa-cloud-rain', // Light freezing rain
+        1201: 'fa-cloud-rain', // Moderate or heavy freezing rain
+        1204: 'fa-cloud-rain', // Light sleet
+        1207: 'fa-cloud-rain', // Moderate or heavy sleet
+        1210: 'fa-snowflake', // Patchy light snow
+        1213: 'fa-snowflake', // Light snow
+        1216: 'fa-snowflake', // Patchy moderate snow
+        1219: 'fa-snowflake', // Moderate snow
+        1222: 'fa-snowflake', // Patchy heavy snow
+        1225: 'fa-snowflake', // Heavy snow
+        1237: 'fa-snowflake', // Ice pellets
+        1240: 'fa-cloud-rain', // Light rain shower
+        1243: 'fa-cloud-showers-heavy', // Moderate or heavy rain shower
+        1246: 'fa-cloud-showers-heavy', // Torrential rain shower
+        1249: 'fa-cloud-rain', // Light sleet showers
+        1252: 'fa-cloud-rain', // Moderate or heavy sleet showers
+        1255: 'fa-snowflake', // Light snow showers
+        1258: 'fa-snowflake', // Moderate or heavy snow showers
+        1261: 'fa-snowflake', // Light showers of ice pellets
+        1264: 'fa-snowflake', // Moderate or heavy showers of ice pellets
+        1273: 'fa-bolt', // Patchy light rain with thunder
+        1276: 'fa-bolt', // Moderate or heavy rain with thunder
+        1279: 'fa-bolt', // Patchy light snow with thunder
+        1282: 'fa-bolt' // Moderate or heavy snow with thunder
+    };
+    
+    return iconMap[conditionCode] || 'fa-question';
+}
+
+// ================================================================
+// FUNZIONI UI STATE
+// ================================================================
+
+function showWeatherLoading() {
+    document.getElementById('weather-loading').style.display = 'block';
+    document.getElementById('weather-content').style.display = 'none';
+    document.getElementById('weather-error').style.display = 'none';
+    weatherState.loading = true;
+}
+
+function showWeatherContent() {
+    document.getElementById('weather-loading').style.display = 'none';
+    document.getElementById('weather-content').style.display = 'block';
+    document.getElementById('weather-error').style.display = 'none';
+    weatherState.loading = false;
+}
+
+function showWeatherError(message) {
+    document.getElementById('weather-loading').style.display = 'none';
+    document.getElementById('weather-content').style.display = 'none';
+    document.getElementById('weather-error').style.display = 'block';
+    document.getElementById('error-message').textContent = message;
+    weatherState.loading = false;
+}
+
+// ================================================================
+// CACHE FUNCTIONS
+// ================================================================
+
+function isWeatherCacheValid() {
+    const cachedData = getWeatherCache();
+    if (!cachedData || !weatherState.lastUpdate) return false;
+    
+    const now = Date.now();
+    return (now - weatherState.lastUpdate) < WEATHER_CONFIG.cacheTime;
+}
+
+function saveWeatherCache(data) {
+    try {
+        localStorage.setItem('weather_data', JSON.stringify({
+            data: data,
+            timestamp: Date.now()
+        }));
+    } catch (error) {
+        console.warn('Non è stato possibile salvare la cache meteo:', error);
+    }
+}
+
+function getWeatherCache() {
+    try {
+        const cached = localStorage.getItem('weather_data');
+        if (!cached) return null;
+        
+        const parsed = JSON.parse(cached);
+        return parsed.data;
+    } catch (error) {
+        console.warn('Errore lettura cache meteo:', error);
+        return null;
+    }
+}
+
+// ================================================================
+// FUNZIONI PUBBLICHE
+// ================================================================
+
+function refreshWeather() {
+    const refreshBtn = document.getElementById('refresh-btn');
+    refreshBtn.classList.add('spinning');
+    
+    // Reset cache
+    weatherState.lastUpdate = null;
+    localStorage.removeItem('weather_data');
+    
+    loadWeatherData().finally(() => {
+        setTimeout(() => {
+            refreshBtn.classList.remove('spinning');
+        }, 1000);
+    });
+}
+
+
+// ================================================================
+// INIZIALIZZAZIONE AGGIORNATA
+// ================================================================
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🌤️ Inizializzazione widget meteo con backend proxy...');
+    
+    // Test configurazione in development
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        console.log('🧪 Modalità sviluppo - test configurazione disponibile');
+        window.testWeatherConfig = testWeatherConfiguration;
+    }
+    
+    // Carica dati meteo
+    loadWeatherData();
+    
+    // Aggiorna ogni 10 minuti
+    setInterval(loadWeatherData, WEATHER_CONFIG.cacheTime);
+    
+    console.log('✅ Widget meteo inizializzato con backend proxy');
+});
+
+// Debug tools aggiornati
+window.weatherDebug = {
+    loadWeather: loadWeatherData,
+    refreshWeather: refreshWeather,
+    testConfig: testWeatherConfiguration,
+    checkCache: () => console.log('Cache:', getWeatherCache()),
+    clearCache: () => {
+        localStorage.removeItem('weather_data');
+        weatherState.lastUpdate = null;
+        console.log('Cache cleared');
+    },
+    getState: () => weatherState
+};
 
 </script>
 {% endblock %}

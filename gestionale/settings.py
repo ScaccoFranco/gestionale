@@ -12,6 +12,9 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -179,7 +182,25 @@ LOGGING = {
             'level': 'INFO',
             'propagate': False,
         },
+        'domenico.weather_service': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
     },
+}
+
+# ============== CONFIGURAZIONE API METEO ======================
+
+WEATHER_API_KEY = os.getenv("API_KEY_WEATHER") 
+WEATHER_LOCATION = 'Barolo, Piemonte, Italy'  # Località predefinita
+
+# Cache configuration (se non già presente)
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'weather-cache',
+    }
 }
 
 # Crea la directory logs se non esistente
