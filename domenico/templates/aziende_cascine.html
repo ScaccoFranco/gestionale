@@ -1,0 +1,660 @@
+{% extends 'base.html' %}
+{% load aziende_extras %}
+
+{% block page_title %}Cascine - {{ cliente.nome }}{% endblock %}
+{% block page_icon %}<i class="fas fa-home"></i>{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --primary-color: #007bff;
+        --success-color: #28a745;
+        --warning-color: #ffc107;
+        --info-color: #17a2b8;
+        --danger-color: #dc3545;
+        --light-bg: #f8f9fa;
+        --border-color: #dee2e6;
+        --shadow: 0 2px 8px rgba(0,0,0,0.1);
+        --shadow-lg: 0 4px 12px rgba(0,0,0,0.15);
+        --border-radius: 12px;
+        --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --gradient-success: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    }
+
+    body {
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        min-height: 100vh;
+    }
+
+    /* Header Stile Trattamenti */
+    .page-header {
+        background: var(--gradient-primary);
+        color: white;
+        padding: 2rem 0;
+        margin: -2rem -2rem 2rem -2rem;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .page-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 100" fill="white" opacity="0.1"><polygon points="1000,100 1000,0 0,100"/></svg>');
+        background-size: cover;
+    }
+
+    .page-header-content {
+        position: relative;
+        z-index: 2;
+    }
+
+    .page-header h1 {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+
+    .page-header p {
+        font-size: 1.1rem;
+        opacity: 0.9;
+        font-weight: 300;
+    }
+
+    /* Breadcrumb Container */
+    .breadcrumb-container {
+        background: white;
+        padding: 1rem 1.5rem;
+        border-radius: var(--border-radius);
+        box-shadow: var(--shadow);
+        margin-bottom: 1.5rem;
+    }
+
+    .breadcrumb {
+        margin: 0;
+        background: none;
+        padding: 0;
+        font-size: 1rem;
+    }
+
+    .breadcrumb-item {
+        font-weight: 500;
+    }
+
+    .breadcrumb-item.active {
+        color: var(--primary-color);
+        font-weight: 600;
+    }
+
+    .breadcrumb-item a {
+        color: #6c757d;
+        text-decoration: none;
+        transition: color 0.3s ease;
+    }
+
+    .breadcrumb-item a:hover {
+        color: var(--primary-color);
+    }
+
+    /* Main Content Container */
+    .content-area {
+        background: white;
+        border-radius: var(--border-radius);
+        box-shadow: var(--shadow-lg);
+        overflow: hidden;
+        margin-bottom: 2rem;
+    }
+
+    .content-header {
+        background: var(--light-bg);
+        padding: 1.5rem 2rem;
+        border-bottom: 2px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .content-title {
+        font-size: 1.4rem;
+        font-weight: 600;
+        color: #333;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .back-button {
+        background: var(--primary-color);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .back-button:hover {
+        background: #0056b3;
+        color: white;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0,123,255,0.3);
+    }
+
+    /* Items Grid - Stile Selection Cards */
+    .items-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 1.5rem;
+        padding: 2rem;
+    }
+
+    .item-card {
+        background: white;
+        border: 2px solid var(--border-color);
+        border-radius: var(--border-radius);
+        transition: all 0.3s ease;
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+        min-height: 200px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .item-card:hover {
+        border-color: var(--success-color);
+        box-shadow: var(--shadow-lg);
+        transform: translateY(-3px);
+    }
+
+    .item-card.clickable {
+        cursor: pointer;
+    }
+
+    /* Item Header - Simile alle selection cards */
+    .item-header {
+        background: var(--light-bg);
+        padding: 1.5rem;
+        border-bottom: 1px solid var(--border-color);
+        flex-shrink: 0;
+    }
+
+    .item-title {
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 0.75rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        line-height: 1.3;
+    }
+
+    .item-title-content {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .item-title-text {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .item-icon {
+        color: var(--success-color);
+        font-size: 1.1rem;
+    }
+
+    .edit-icon {
+        color: var(--info-color);
+        font-size: 1rem;
+        cursor: pointer;
+        padding: 0.5rem;
+        border-radius: 6px;
+        transition: all 0.3s ease;
+        flex-shrink: 0;
+        margin-left: 0.5rem;
+    }
+
+    .edit-icon:hover {
+        background: var(--info-color);
+        color: white;
+        transform: scale(1.1);
+    }
+
+    /* Stats Row */
+    .item-stats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-top: 0.5rem;
+    }
+
+    .stat-item {
+        font-size: 0.9rem;
+        color: #6c757d;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .stat-value {
+        font-weight: 600;
+        color: var(--success-color);
+    }
+
+    .stat-icon {
+        font-size: 0.8rem;
+        opacity: 0.8;
+    }
+
+    /* Item Content */
+    .item-content {
+        padding: 1.5rem;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
+    .item-description {
+        color: #6c757d;
+        font-size: 0.95rem;
+        line-height: 1.5;
+        margin-bottom: 1rem;
+    }
+
+    .item-badge {
+        background: var(--success-color);
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 15px;
+        font-size: 0.8rem;
+        font-weight: 500;
+        align-self: flex-start;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .contoterzista-badge {
+        background: var(--info-color);
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 15px;
+        font-size: 0.8rem;
+        font-weight: 500;
+        margin-top: 0.5rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: #6c757d;
+    }
+
+    .empty-state i {
+        font-size: 4rem;
+        margin-bottom: 1.5rem;
+        color: #dee2e6;
+    }
+
+    .empty-state h4 {
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        color: #495057;
+    }
+
+    /* Edit Modal */
+    .modal-header {
+        background: var(--success-color);
+        color: white;
+        border-bottom: none;
+    }
+
+    .modal-title {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 600;
+    }
+
+    .form-control:focus {
+        border-color: var(--success-color);
+        box-shadow: 0 0 0 0.2rem rgba(40,167,69,0.25);
+    }
+
+    .btn-primary {
+        background: var(--success-color);
+        border-color: var(--success-color);
+        font-weight: 500;
+    }
+
+    .btn-primary:hover {
+        background: #218838;
+        border-color: #218838;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .items-grid {
+            grid-template-columns: 1fr;
+            padding: 1rem;
+        }
+        
+        .page-header h1 {
+            font-size: 2rem;
+        }
+        
+        .content-header {
+            flex-direction: column;
+            gap: 1rem;
+            text-align: center;
+        }
+        
+        .item-stats {
+            justify-content: center;
+        }
+        
+        .item-title {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+    }
+
+    /* Click Effect */
+    .item-card.clicking {
+        transform: scale(0.98);
+        box-shadow: var(--shadow);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header">
+    <div class="page-header-content">
+        <h1>
+            <i class="fas fa-home me-3"></i>
+            Cascine di {{ cliente.nome }}
+        </h1>
+        <p>Visualizza e gestisci le cascine di questa azienda</p>
+    </div>
+</div>
+
+<!-- Breadcrumb Navigation -->
+<div class="breadcrumb-container">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a href="{% url 'aziende' %}">
+                    <i class="fas fa-building me-1"></i>
+                    Aziende
+                </a>
+            </li>
+            <li class="breadcrumb-item active">
+                <i class="fas fa-home me-1"></i>
+                {{ cliente.nome }} ({{ cascine_data|length }} cascin{{ cascine_data|length|pluralize:"a,e" }})
+            </li>
+        </ol>
+    </nav>
+</div>
+
+<!-- Main Content -->
+<div class="content-area">
+    <div class="content-header">
+        <h2 class="content-title">
+            <i class="fas fa-home"></i>
+            Cascine di {{ cliente.nome }}
+            <span class="badge bg-success ms-2">{{ cascine_data|length }}</span>
+        </h2>
+        <a href="{% url 'aziende' %}" class="back-button">
+            <i class="fas fa-arrow-left"></i>
+            Torna alle Aziende
+        </a>
+    </div>
+
+    <div class="items-grid">
+        {% for cascina in cascine_data %}
+        <div class="item-card clickable" onclick="navigateToTerreni({{ cascina.id }}, '{{ cascina.nome|escapejs }}')">
+            <div class="item-header">
+                <div class="item-title">
+                    <div class="item-title-content">
+                        <div class="item-title-text">
+                            <i class="fas fa-home item-icon"></i>
+                            <span>{{ cascina.nome }}</span>
+                        </div>
+                        <div class="item-stats">
+                            <div class="stat-item">
+                                <i class="fas fa-expand-arrows-alt stat-icon"></i>
+                                <span class="stat-value">{{ cascina.superficie_totale|floatformat:1 }}</span> ha
+                            </div>
+                            <div class="stat-item">
+                                <i class="fas fa-seedling stat-icon"></i>
+                                <span class="stat-value">{{ cascina.terreni_count }}</span> terren{{ cascina.terreni_count|pluralize:"o,i" }}
+                            </div>
+                            {% if cascina.contoterzista %}
+                            <div class="stat-item">
+                                <i class="fas fa-user-tie stat-icon"></i>
+                                <span class="stat-value">{{ cascina.contoterzista.nome }}</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <i class="fas fa-edit edit-icon" onclick="editItem(event, {{ cascina.id }}, 'cascina', '{{ cascina.nome|escapejs }}')" title="Modifica cascina"></i>
+                </div>
+            </div>
+            <div class="item-content">
+                <div class="item-description">
+                    Cascina con {{ cascina.terreni_count }} terren{{ cascina.terreni_count|pluralize:"o,i" }} per un totale di {{ cascina.superficie_totale|floatformat:1 }} ettari.
+                    {% if cascina.contoterzista %}
+                        Gestita dal contoterzista {{ cascina.contoterzista.nome }}.
+                    {% else %}
+                        Nessun contoterzista assegnato.
+                    {% endif %}
+                </div>
+                <div class="item-badge">
+                    <i class="fas fa-arrow-right"></i>
+                    Visualizza Terreni
+                </div>
+                {% if cascina.contoterzista %}
+                <div class="contoterzista-badge">
+                    <i class="fas fa-user-tie"></i>
+                    {{ cascina.contoterzista.nome }}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% empty %}
+        <div class="empty-state">
+            <i class="fas fa-home"></i>
+            <h4>Nessuna Cascina Trovata</h4>
+            <p>L'azienda "{{ cliente.nome }}" non ha ancora cascine associate.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Edit Modal -->
+<div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editModalLabel">
+                    <i class="fas fa-edit"></i>
+                    Modifica Cascina
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editForm" method="post">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="editName" class="form-label">Nome Cascina *</label>
+                        <input type="text" class="form-control" id="editName" name="nome" required>
+                        <div class="form-text">Inserisci il nome della cascina</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>
+                        Annulla
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i>
+                        Salva Modifiche
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Navigation State Variables
+    let editModal = null;
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function() {
+        editModal = new bootstrap.Modal(document.getElementById('editModal'));
+        
+        // Initialize click effects
+        document.querySelectorAll('.item-card.clickable').forEach(card => {
+            card.addEventListener('mousedown', function() {
+                this.classList.add('clicking');
+            });
+            
+            card.addEventListener('mouseup', function() {
+                this.classList.remove('clicking');
+            });
+            
+            card.addEventListener('mouseleave', function() {
+                this.classList.remove('clicking');
+            });
+        });
+    });
+
+    // Navigate to Terreni
+    function navigateToTerreni(cascinaId, cascinaName) {
+        // Add fade out effect
+        const contentArea = document.querySelector('.content-area');
+        contentArea.style.opacity = '0.5';
+        
+        // Navigate to terreni page
+        const url = `{% url 'aziende_terreni' 0 %}`.replace('0', cascinaId);
+        window.location.href = url;
+    }
+
+    // Edit Item Function
+    function editItem(event, id, type, currentName) {
+        event.stopPropagation(); // Prevent card click
+        
+        // Set form values
+        document.getElementById('editName').value = currentName;
+        
+        // Set form action
+        const actionUrl = `{% url 'edit_cascina' 0 %}`.replace('0', id);
+        document.getElementById('editForm').action = actionUrl;
+        
+        // Show modal
+        editModal.show();
+        
+        // Focus on name field
+        setTimeout(() => {
+            document.getElementById('editName').focus();
+            document.getElementById('editName').select();
+        }, 300);
+    }
+
+    // Handle form submission
+    document.getElementById('editForm').addEventListener('submit', function(e) {
+        const name = document.getElementById('editName').value.trim();
+        
+        // Validate name
+        if (!name) {
+            e.preventDefault();
+            alert('Il nome della cascina è obbligatorio');
+            return;
+        }
+        
+        // Show loading state
+        const submitBtn = this.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Salvando...';
+        submitBtn.disabled = true;
+        
+        // Form will submit normally to Django view
+    });
+
+    // Keyboard Shortcuts
+    document.addEventListener('keydown', function(event) {
+        // Escape key - close modal or go back
+        if (event.key === 'Escape') {
+            if (editModal && document.querySelector('#editModal.show')) {
+                editModal.hide();
+            } else {
+                window.location.href = '{% url "aziende" %}';
+            }
+        }
+        
+        // Enter key in modal form
+        if (event.key === 'Enter' && event.target.closest('#editModal')) {
+            if (event.target.tagName === 'INPUT') {
+                event.preventDefault();
+                document.getElementById('editForm').requestSubmit();
+            }
+        }
+    });
+
+    // Success message handling
+    function showSuccessMessage(message) {
+        const successDiv = document.createElement('div');
+        successDiv.className = 'alert alert-success alert-dismissible fade show position-fixed';
+        successDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+        successDiv.innerHTML = `
+            <i class="fas fa-check-circle me-2"></i>
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+        
+        document.body.appendChild(successDiv);
+        
+        setTimeout(() => {
+            if (successDiv.parentNode) {
+                successDiv.parentNode.removeChild(successDiv);
+            }
+        }, 5000);
+    }
+
+    // Handle Django messages
+    {% if messages %}
+        {% for message in messages %}
+            {% if message.tags == 'success' %}
+                showSuccessMessage('{{ message|escapejs }}');
+            {% elif message.tags == 'error' %}
+                alert('{{ message|escapejs }}');
+            {% endif %}
+        {% endfor %}
+    {% endif %}
+</script>
+{% endblock %}

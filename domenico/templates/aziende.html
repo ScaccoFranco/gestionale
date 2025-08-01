@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load aziende_extras %}
 
-{% block page_title %}Le tue aziende{% endblock %}
+{% block page_title %}Le Tue Aziende{% endblock %}
 {% block page_icon %}<i class="fas fa-building"></i>{% endblock %}
 
 {% block extra_css %}
@@ -11,753 +11,1022 @@
         --success-color: #28a745;
         --warning-color: #ffc107;
         --info-color: #17a2b8;
+        --danger-color: #dc3545;
         --light-bg: #f8f9fa;
         --border-color: #dee2e6;
-        --shadow: 0 2px 4px rgba(0,0,0,0.1);
+        --shadow: 0 2px 8px rgba(0,0,0,0.1);
+        --shadow-lg: 0 4px 12px rgba(0,0,0,0.15);
+        --border-radius: 12px;
+        --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --gradient-success: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
     }
-    
-    .search-filters {
+
+    body {
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        min-height: 100vh;
+    }
+
+    /* Header Stile Trattamenti */
+    .page-header {
+        background: var(--gradient-primary);
+        color: white;
+        padding: 2rem 0;
+        margin: -2rem -2rem 2rem -2rem;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .page-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 100" fill="white" opacity="0.1"><polygon points="1000,100 1000,0 0,100"/></svg>');
+        background-size: cover;
+    }
+
+    .page-header-content {
+        position: relative;
+        z-index: 2;
+    }
+
+    .page-header h1 {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+
+    .page-header p {
+        font-size: 1.1rem;
+        opacity: 0.9;
+        font-weight: 300;
+    }
+
+    /* Search Section */
+    .search-section {
         background: white;
         padding: 1.5rem;
-        border-radius: 12px;
+        border-radius: var(--border-radius);
         box-shadow: var(--shadow);
         margin-bottom: 1.5rem;
     }
-    
-    .summary-cards {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 1rem;
-        margin-bottom: 2rem;
+
+    .search-box {
+        position: relative;
     }
-    
-    .summary-card {
-        background: white;
-        padding: 1.5rem;
-        border-radius: 12px;
-        box-shadow: var(--shadow);
-        text-align: center;
-        border-left: 4px solid var(--primary-color);
-    }
-    
-    .summary-card .number {
-        font-size: 2rem;
-        font-weight: bold;
-        color: var(--primary-color);
-        margin-bottom: 0.5rem;
-    }
-    
-    .summary-card .label {
+
+    .search-box .input-group-text {
+        background-color: var(--light-bg);
+        border-color: var(--border-color);
         color: #6c757d;
+    }
+
+    .search-box .form-control {
+        border-color: var(--border-color);
+        font-size: 1rem;
+        padding: 0.75rem 1rem;
+    }
+
+    .search-box .form-control:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.25);
+    }
+
+    .search-stats {
+        margin-top: 0.5rem;
         font-size: 0.9rem;
+        color: #6c757d;
+    }
+
+    .clear-search {
+        color: var(--info-color);
+        text-decoration: none;
         font-weight: 500;
     }
-    
-    /* Stile rettangoli aziende */
-    .aziende-container {
+
+    .clear-search:hover {
+        color: var(--primary-color);
+        text-decoration: underline;
+    }
+
+    /* Breadcrumb Container */
+    .breadcrumb-container {
+        background: white;
+        padding: 1rem 1.5rem;
+        border-radius: var(--border-radius);
+        box-shadow: var(--shadow);
+        margin-bottom: 1.5rem;
+    }
+
+    .breadcrumb {
+        margin: 0;
+        background: none;
+        padding: 0;
+        font-size: 1rem;
+    }
+
+    .breadcrumb-item {
+        font-weight: 500;
+    }
+
+    .breadcrumb-item.active {
+        color: var(--primary-color);
+        font-weight: 600;
+    }
+
+    .breadcrumb-item a {
+        color: #6c757d;
+        text-decoration: none;
+        transition: color 0.3s ease;
+    }
+
+    .breadcrumb-item a:hover {
+        color: var(--primary-color);
+    }
+
+    /* Main Content Container */
+    .content-area {
+        background: white;
+        border-radius: var(--border-radius);
+        box-shadow: var(--shadow-lg);
+        overflow: hidden;
+        margin-bottom: 2rem;
+    }
+
+    .content-header {
+        background: var(--light-bg);
+        padding: 1.5rem 2rem;
+        border-bottom: 2px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .content-title {
+        font-size: 1.4rem;
+        font-weight: 600;
+        color: #333;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .back-button {
+        background: var(--primary-color);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .back-button:hover {
+        background: #0056b3;
+        color: white;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0,123,255,0.3);
+    }
+
+    /* Items Grid - Stile Selection Cards */
+    .items-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
         gap: 1.5rem;
-        grid-auto-rows: max-content;
-        align-items: start;
+        padding: 2rem;
     }
-    
-    .azienda-card {
+
+    .item-card {
         background: white;
-        border-radius: 12px;
-        box-shadow: var(--shadow);
+        border: 2px solid var(--border-color);
+        border-radius: var(--border-radius);
         transition: all 0.3s ease;
-        overflow: hidden;
-        border: 1px solid var(--border-color);
-        position: relative;
-        height: fit-content;
-        align-self: start;
-    }
-    
-    .azienda-card:hover {
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        transform: translateY(-2px);
-    }
-    
-    .azienda-header {
-        padding: 1.5rem;
         cursor: pointer;
-        background: var(--light-bg);
-        border-bottom: 1px solid var(--border-color);
         position: relative;
-    }
-    
-    .azienda-title {
-        font-size: 1.1rem;
-        font-weight: 600;
-        color: #333;
-        margin-bottom: 0.5rem;
-        display: flex;
-        align-items: center;
-    }
-    
-    .expand-icon {
-        margin-left: auto;
-        transition: transform 0.3s ease;
-        color: var(--primary-color);
-        font-size: 1.2rem;
-    }
-    
-    .expand-icon.expanded {
-        transform: rotate(180deg);
-    }
-    
-    .azienda-info {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 1rem;
-        margin-top: 0.8rem;
-    }
-    
-    .info-item {
-        text-align: center;
-        padding: 0.5rem;
-        background: white;
-        border-radius: 8px;
-        border: 1px solid #e9ecef;
-    }
-    
-    .info-label {
-        font-size: 0.75rem;
-        color: #6c757d;
-        font-weight: 500;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-bottom: 0.3rem;
-    }
-    
-    .info-value {
-        font-size: 1.1rem;
-        font-weight: 600;
-        color: var(--primary-color);
-    }
-    
-    /* Cascine espanse */
-    .cascine-container {
-        display: none;
-        padding: 1rem;
-        background: #fafafa;
-        border-top: 1px solid var(--border-color);
-        transition: all 0.3s ease;
         overflow: hidden;
+        min-height: 200px;
+        display: flex;
+        flex-direction: column;
     }
-    
-    .cascine-container.expanded {
-        display: block;
-        animation: slideDown 0.3s ease-out;
-    }
-    
-    @keyframes slideDown {
-        from {
-            opacity: 0;
-            max-height: 0;
-            padding-top: 0;
-            padding-bottom: 0;
-        }
-        to {
-            opacity: 1;
-            max-height: 1000px;
-            padding-top: 1rem;
-            padding-bottom: 1rem;
-        }
-    }
-    
-    .cascina-card {
-        background: white;
-        border-radius: 8px;
-        padding: 1rem;
-        margin-bottom: 0.8rem;
-        border: 1px solid #e9ecef;
-        transition: all 0.2s ease;
-    }
-    
-    .cascina-card:hover {
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+
+    .item-card:hover {
         border-color: var(--primary-color);
+        box-shadow: var(--shadow-lg);
+        transform: translateY(-3px);
     }
-    
-    .cascina-card:last-child {
-        margin-bottom: 0;
+
+    .item-card.clickable {
+        cursor: pointer;
     }
-    
-    .cascina-header {
+
+    .item-card.hidden {
+        display: none !important;
+    }
+
+    .item-card.search-highlighted {
+        border-color: var(--warning-color);
+        box-shadow: 0 4px 12px rgba(255,193,7,0.3);
+    }
+
+    /* Item Header - Simile alle selection cards */
+    .item-header {
+        background: var(--light-bg);
+        padding: 1.5rem;
+        border-bottom: 1px solid var(--border-color);
+        flex-shrink: 0;
+    }
+
+    .item-title {
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 0.75rem;
         display: flex;
-        align-items: center;
         justify-content: space-between;
-        margin-bottom: 0.8rem;
+        align-items: flex-start;
+        line-height: 1.3;
     }
-    
-    .cascina-name {
-        font-weight: 600;
-        color: #333;
+
+    .item-title-content {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .item-title-text {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .item-icon {
+        color: var(--primary-color);
+        font-size: 1.1rem;
+    }
+
+    .edit-icon {
+        color: var(--info-color);
         font-size: 1rem;
-        display: flex;
-        align-items: center;
-    }
-    
-    .cascina-name i {
-        margin-right: 0.5rem;
-        color: var(--success-color);
-    }
-    
-    .cascina-surface {
-        background: #e3f2fd;
-        color: #1976d2;
-        padding: 0.3rem 0.8rem;
-        border-radius: 15px;
-        font-size: 0.85rem;
-        font-weight: 500;
-    }
-    
-    .cascina-details {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 0.8rem;
-        margin-top: 0.8rem;
-    }
-    
-    .cascina-detail {
-        text-align: center;
+        cursor: pointer;
         padding: 0.5rem;
-        background: #f8f9fa;
         border-radius: 6px;
+        transition: all 0.3s ease;
+        flex-shrink: 0;
+        margin-left: 0.5rem;
     }
-    
-    .detail-label {
-        font-size: 0.7rem;
-        color: #6c757d;
-        font-weight: 500;
-        margin-bottom: 0.2rem;
-        text-transform: uppercase;
-    }
-    
-    .detail-value {
-        font-size: 0.9rem;
-        font-weight: 600;
-        color: #333;
-    }
-    
-    .contoterzista-badge {
-        background: var(--success-color);
+
+    .edit-icon:hover {
+        background: var(--info-color);
         color: white;
-        padding: 0.2rem 0.6rem;
-        border-radius: 12px;
-        font-size: 0.8rem;
-        font-weight: 500;
+        transform: scale(1.1);
     }
-    
-    .no-contoterzista {
-        background: #6c757d;
-        color: white;
-        padding: 0.2rem 0.6rem;
-        border-radius: 12px;
-        font-size: 0.8rem;
-        font-weight: 500;
+
+    /* Search highlight */
+    .search-highlight {
+        background-color: #fff3cd;
+        padding: 0.1rem 0.2rem;
+        border-radius: 3px;
+        font-weight: bold;
     }
-    
-    /* Status indicators */
-    .status-indicators {
+
+    /* Stats Row */
+    .item-stats {
         display: flex;
-        gap: 0.5rem;
-        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
         margin-top: 0.5rem;
     }
-    
-    .status-dot {
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-        position: relative;
-    }
-    
-    .status-dot.programmato {
-        background-color: var(--warning-color);
-    }
-    
-    .status-dot.comunicato {
-        background-color: var(--info-color);
-    }
-    
-    .status-count {
-        background: #dc3545;
-        color: white;
-        border-radius: 50%;
-        width: 16px;
-        height: 16px;
-        font-size: 0.7rem;
+
+    .stat-item {
+        font-size: 0.9rem;
+        color: #6c757d;
         display: flex;
         align-items: center;
-        justify-content: center;
-        font-weight: bold;
-        position: absolute;
-        top: -8px;
-        right: -8px;
+        gap: 0.25rem;
     }
-    
+
+    .stat-value {
+        font-weight: 600;
+        color: var(--primary-color);
+    }
+
+    .stat-icon {
+        font-size: 0.8rem;
+        opacity: 0.8;
+    }
+
+    /* Item Content */
+    .item-content {
+        padding: 1.5rem;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
+    .item-description {
+        color: #6c757d;
+        font-size: 0.95rem;
+        line-height: 1.5;
+        margin-bottom: 1rem;
+    }
+
+    .item-badge {
+        background: var(--primary-color);
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 15px;
+        font-size: 0.8rem;
+        font-weight: 500;
+        align-self: flex-start;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    /* Empty State */
     .empty-state {
         text-align: center;
         padding: 4rem 2rem;
         color: #6c757d;
-        background: white;
-        border-radius: 12px;
-        box-shadow: var(--shadow);
     }
-    
+
     .empty-state i {
         font-size: 4rem;
+        margin-bottom: 1.5rem;
+        color: #dee2e6;
+    }
+
+    .empty-state h4 {
+        font-size: 1.5rem;
+        font-weight: 600;
         margin-bottom: 1rem;
-        opacity: 0.3;
-    }
-    
-    /* Animazioni */
-    .azienda-card {
-        animation: fadeInUp 0.5s ease-out;
-    }
-    
-    @keyframes fadeInUp {
-        from {
-            opacity: 0;
-            transform: translateY(20px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-    
-    /* Responsive */
-    @media (max-width: 1200px) {
-        .aziende-container {
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-        }
-    }
-    
-    @media (max-width: 768px) {
-        .aziende-container {
-            grid-template-columns: 1fr;
-        }
-        
-        .azienda-info,
-        .cascina-details {
-            grid-template-columns: 1fr;
-        }
-    }
-    
-    @media (max-width: 480px) {
-        .aziende-container {
-            gap: 1rem;
-        }
-        
-        .azienda-card {
-            margin-bottom: 0;
-        }
+        color: #495057;
     }
 
-    /* Overlay di caricamento */
-    .loading-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0,0,0,0.5);
-        display: none;
-        align-items: center;
-        justify-content: center;
-        z-index: 9999;
-    }
-
-    .loading-overlay.show {
-        display: flex;
-    }
-
-    .loading-spinner {
-        background: white;
-        padding: 2rem;
-        border-radius: 10px;
+    /* No Results State */
+    .no-results {
         text-align: center;
+        padding: 4rem 2rem;
+        color: #6c757d;
+    }
+
+    .no-results i {
+        font-size: 4rem;
+        margin-bottom: 1.5rem;
+        color: #dee2e6;
+    }
+
+    .no-results h4 {
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        color: #495057;
+    }
+
+    /* Loading State */
+    .loading {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 4rem;
+        flex-direction: column;
+        gap: 1rem;
     }
 
     .spinner {
-        width: 40px;
-        height: 40px;
+        width: 3rem;
+        height: 3rem;
         border: 4px solid #f3f3f3;
         border-top: 4px solid var(--primary-color);
         border-radius: 50%;
         animation: spin 1s linear infinite;
-        margin: 0 auto 1rem;
     }
 
     @keyframes spin {
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
     }
+
+    /* Edit Modal */
+    .modal-header {
+        background: var(--primary-color);
+        color: white;
+        border-bottom: none;
+    }
+
+    .modal-title {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 600;
+    }
+
+    .form-control:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.25);
+    }
+
+    .btn-primary {
+        background: var(--primary-color);
+        border-color: var(--primary-color);
+        font-weight: 500;
+    }
+
+    .btn-primary:hover {
+        background: #0056b3;
+        border-color: #0056b3;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .items-grid {
+            grid-template-columns: 1fr;
+            padding: 1rem;
+        }
+        
+        .page-header h1 {
+            font-size: 2rem;
+        }
+        
+        .content-header {
+            flex-direction: column;
+            gap: 1rem;
+            text-align: center;
+        }
+        
+        .item-stats {
+            justify-content: center;
+        }
+        
+        .item-title {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+    }
+
+    /* Success Animation */
+    .success-feedback {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+        background: var(--success-color);
+        color: white;
+        padding: 1rem 1.5rem;
+        border-radius: 8px;
+        box-shadow: var(--shadow-lg);
+        animation: slideInRight 0.3s ease-out;
+    }
+
+    @keyframes slideInRight {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    /* Click Effect */
+    .item-card.clicking {
+        transform: scale(0.98);
+        box-shadow: var(--shadow);
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<!-- Overlay di caricamento -->
-<div class="loading-overlay" id="loadingOverlay">
-    <div class="loading-spinner">
-        <div class="spinner"></div>
-        <p>Caricamento...</p>
+<!-- Page Header -->
+<div class="page-header">
+    <div class="page-header-content">
+        <h1>
+            <i class="fas fa-building me-3"></i>
+            Le Tue Aziende
+        </h1>
+        <p>Gestisci le tue aziende, cascine e terreni in modo semplice e intuitivo</p>
     </div>
 </div>
 
-<!-- Filtri e ricerca -->
-<div class="search-filters">
+<!-- Search Section -->
+<div class="search-section">
     <div class="row align-items-end">
-        <div class="col-md-4">
-            <label class="form-label">Cerca azienda</label>
-            <input type="text" class="form-control" id="searchInput" placeholder="Nome azienda..." onkeyup="filterAziende()">
-        </div>
-        <div class="col-md-3">
-            <label class="form-label">Stato trattamenti</label>
-            <select class="form-select" id="statusFilter" onchange="filterAziende()">
-                <option value="">Tutti</option>
-                <option value="programmato">Con trattamenti programmati</option>
-                <option value="comunicato">Con trattamenti comunicati</option>
-                <option value="nessuno">Senza trattamenti attivi</option>
-            </select>
-        </div>
-        <div class="col-md-2">
-            <button class="btn btn-outline-secondary w-100" onclick="expandAll()">
-                <i class="fas fa-expand-arrows-alt"></i> Espandi tutto
-            </button>
-        </div>
-        <div class="col-md-2">
-            <button class="btn btn-outline-secondary w-100" onclick="collapseAll()">
-                <i class="fas fa-compress-arrows-alt"></i> Comprimi tutto
-            </button>
-        </div>
-        <div class="col-md-1">
-            <button class="btn btn-primary w-100" onclick="location.reload()">
-                <i class="fas fa-sync-alt"></i>
-            </button>
-        </div>
-    </div>
-</div>
-
-<!-- Riepilogo -->
-{% if aziende_tree %}
-<div class="summary-cards">
-    <div class="summary-card">
-        <div class="number">{{ aziende_tree|length }}</div>
-        <div class="label">Clienti</div>
-    </div>
-    <div class="summary-card">
-        <div class="number">{{ aziende_tree|total_cascine }}</div>
-        <div class="label">Cascine</div>
-    </div>
-    <div class="summary-card">
-        <div class="number">{{ aziende_tree|total_terreni }}</div>
-        <div class="label">Terreni</div>
-    </div>
-    <div class="summary-card">
-        <div class="number">{{ aziende_tree|total_superficie|floatformat:1 }} ha</div>
-        <div class="label">Superficie Totale</div>
-    </div>
-</div>
-{% endif %}
-
-<!-- Rettangoli Aziende -->
-<div class="aziende-container" id="aziendeContainer">
-    {% if aziende_tree %}
-        {% for cliente in aziende_tree %}
-        <div class="azienda-card" 
-             data-azienda="{{ cliente.nome|lower }}" 
-             data-programmati="{{ cliente.trattamenti_programmati }}" 
-             data-comunicati="{{ cliente.trattamenti_comunicati }}">
-            
-            <!-- Header Azienda -->
-            <div class="azienda-header" onclick="toggleAzienda({{ cliente.id }})">
-                <div class="azienda-title">
-                    <i class="fas fa-building text-primary me-2"></i>
-                    {{ cliente.nome }}
-                    <i class="fas fa-chevron-down expand-icon" id="icon-{{ cliente.id }}"></i>
+        <div class="col-md-8">
+            <label for="searchInput" class="form-label">
+                <i class="fas fa-search me-1"></i>
+                <strong>Cerca Aziende</strong>
+            </label>
+            <div class="search-box">
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="fas fa-search"></i>
+                    </span>
+                    <input type="text" 
+                           class="form-control" 
+                           id="searchInput" 
+                           placeholder="Digita il nome dell'azienda..."
+                           autocomplete="off">
+                    <button class="btn btn-outline-secondary" 
+                            type="button" 
+                            id="clearSearch" 
+                            style="display: none;">
+                        <i class="fas fa-times"></i>
+                    </button>
                 </div>
-                
-                <div class="azienda-info">
-                    <div class="info-item">
-                        <div class="info-label">Superficie Cliente</div>
-                        <div class="info-value">{{ cliente.superficie_totale|floatformat:2 }} ha</div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-label">Cascine</div>
-                        <div class="info-value">{{ cliente.cascine|length }}</div>
-                    </div>
-                </div>
-                
-                <!-- Indicatori stato trattamenti -->
-                {% if cliente.trattamenti_programmati > 0 or cliente.trattamenti_comunicati > 0 %}
-                <div class="status-indicators">
-                    {% if cliente.trattamenti_programmati > 0 %}
-                    <div class="status-dot programmato" title="Trattamenti programmati">
-                        {% if cliente.trattamenti_programmati > 1 %}
-                        <span class="status-count">{{ cliente.trattamenti_programmati }}</span>
-                        {% endif %}
-                    </div>
-                    {% endif %}
-                    
-                    {% if cliente.trattamenti_comunicati > 0 %}
-                    <div class="status-dot comunicato" title="Trattamenti comunicati">
-                        {% if cliente.trattamenti_comunicati > 1 %}
-                        <span class="status-count">{{ cliente.trattamenti_comunicati }}</span>
-                        {% endif %}
-                    </div>
-                    {% endif %}
-                </div>
-                {% endif %}
             </div>
-            
-            <!-- Cascine espanse -->
-            <div class="cascine-container" id="cascine-{{ cliente.id }}">
-                {% for cascina in cliente.cascine %}
-                <div class="cascina-card">
-                    <div class="cascina-header">
-                        <div class="cascina-name">
-                            <i class="fas fa-home"></i>
-                            {{ cascina.nome }}
+        </div>
+        <div class="col-md-4">
+            <div class="search-stats" id="searchStats">
+                {{ aziende_tree|length }} aziend{{ aziende_tree|length|pluralize:"a,e" }} total{{ aziende_tree|length|pluralize:"e,i" }}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Breadcrumb Navigation -->
+<div class="breadcrumb-container">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb" id="breadcrumb">
+            <li class="breadcrumb-item active">
+                <i class="fas fa-building me-1"></i>
+                Aziende (<span id="breadcrumbCount">{{ aziende_tree|length }}</span>)
+            </li>
+        </ol>
+    </nav>
+</div>
+
+<!-- Main Content -->
+<div class="content-area">
+    <div class="content-header">
+        <h2 class="content-title">
+            <i class="fas fa-building"></i>
+            Tutte le Aziende
+            <span class="badge bg-primary ms-2" id="contentBadge">{{ aziende_tree|length }}</span>
+        </h2>
+    </div>
+
+    <div class="items-grid" id="itemsGrid">
+        {% for cliente in aziende_tree %}
+        <div class="item-card clickable" 
+             data-search-name="{{ cliente.nome|lower }}"
+             onclick="navigateToCascine({{ cliente.id }}, '{{ cliente.nome|escapejs }}')">
+            <div class="item-header">
+                <div class="item-title">
+                    <div class="item-title-content">
+                        <div class="item-title-text">
+                            <i class="fas fa-building item-icon"></i>
+                            <span class="item-name">{{ cliente.nome }}</span>
                         </div>
-                        <div class="cascina-surface">
-                            <i class="fas fa-map"></i> {{ cascina.superficie_totale|floatformat:2 }} ha
-                        </div>
-                    </div>
-                    
-                    <div class="cascina-details">
-                        <div class="cascina-detail">
-                            <div class="detail-label">Vigneti</div>
-                            <div class="detail-value">{{ cascina.terreni|length }}</div>
-                        </div>
-                        <div class="cascina-detail">
-                            <div class="detail-label">Contoterzista</div>
-                            <div class="detail-value">
-                                {% if cascina.contoterzista %}
-                                <span class="contoterzista-badge">{{ cascina.contoterzista }}</span>
-                                {% else %}
-                                <span class="no-contoterzista">Non assegnato</span>
-                                {% endif %}
+                        <div class="item-stats">
+                            <div class="stat-item">
+                                <i class="fas fa-expand-arrows-alt stat-icon"></i>
+                                <span class="stat-value">{{ cliente.superficie_totale|floatformat:1 }}</span> ha
+                            </div>
+                            <div class="stat-item">
+                                <i class="fas fa-home stat-icon"></i>
+                                <span class="stat-value">{{ cliente.cascine|length }}</span> cascin{{ cliente.cascine|length|pluralize:"a,e" }}
+                            </div>
+                            <div class="stat-item">
+                                <i class="fas fa-seedling stat-icon"></i>
+                                <span class="stat-value">{{ cliente.cascine|total_terreni }}</span> terren{{ cliente.cascine|total_terreni|pluralize:"o,i" }}
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- Status indicators per cascina -->
-                    {% if cascina.trattamenti_programmati > 0 or cascina.trattamenti_comunicati > 0 %}
-                    <div class="status-indicators">
-                        {% if cascina.trattamenti_programmati > 0 %}
-                        <div class="status-dot programmato" title="Trattamenti programmati">
-                            {% if cascina.trattamenti_programmati > 1 %}
-                            <span class="status-count">{{ cascina.trattamenti_programmati }}</span>
-                            {% endif %}
-                        </div>
-                        {% endif %}
-                        
-                        {% if cascina.trattamenti_comunicati > 0 %}
-                        <div class="status-dot comunicato" title="Trattamenti comunicati">
-                            {% if cascina.trattamenti_comunicati > 1 %}
-                            <span class="status-count">{{ cascina.trattamenti_comunicati }}</span>
-                            {% endif %}
-                        </div>
-                        {% endif %}
-                    </div>
+                    <i class="fas fa-edit edit-icon" onclick="editItem(event, {{ cliente.id }}, 'azienda', '{{ cliente.nome|escapejs }}')" title="Modifica azienda"></i>
+                </div>
+            </div>
+            <div class="item-content">
+                <div class="item-description">
+                    Azienda con {{ cliente.cascine|length }} cascin{{ cliente.cascine|length|pluralize:"a,e" }} e {{ cliente.cascine|total_terreni }} terren{{ cliente.cascine|total_terreni|pluralize:"o,i" }} per un totale di {{ cliente.superficie_totale|floatformat:1 }} ettari.
+                    {% if cliente.trattamenti_programmati or cliente.trattamenti_comunicati %}
+                        Trattamenti attivi: {{ cliente.trattamenti_programmati }} programmat{{ cliente.trattamenti_programmati|pluralize:"o,i" }}, {{ cliente.trattamenti_comunicati }} comunicat{{ cliente.trattamenti_comunicati|pluralize:"o,i" }}.
                     {% endif %}
                 </div>
-                {% endfor %}
+                <div class="item-badge">
+                    <i class="fas fa-arrow-right"></i>
+                    Visualizza Cascine
+                </div>
             </div>
         </div>
-        {% endfor %}
-    {% else %}
+        {% empty %}
         <div class="empty-state">
             <i class="fas fa-building"></i>
-            <h4>Nessuna azienda trovata</h4>
-            <p>Non sono state ancora aggiunte aziende al sistema.</p>
-            <a href="{% url 'database' %}" class="btn btn-primary">
-                <i class="fas fa-plus"></i> Aggiungi la prima azienda
-            </a>
+            <h4>Nessuna Azienda Trovata</h4>
+            <p>Non ci sono aziende da visualizzare. Aggiungi la tua prima azienda per iniziare.</p>
         </div>
-    {% endif %}
+        {% endfor %}
+    </div>
+
+    <!-- No Results State (Hidden by default) -->
+    <div class="no-results" id="noResults" style="display: none;">
+        <i class="fas fa-search"></i>
+        <h4>Nessun Risultato</h4>
+        <p>Nessuna azienda corrisponde alla tua ricerca. <a href="#" class="clear-search" onclick="clearSearch()">Cancella ricerca</a></p>
+    </div>
 </div>
 
+<!-- Edit Modal -->
+<div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editModalLabel">
+                    <i class="fas fa-edit"></i>
+                    Modifica Elemento
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editForm" method="post">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <input type="hidden" id="editType" name="edit_type">
+                    <input type="hidden" id="editId" name="edit_id">
+                    
+                    <div class="mb-3">
+                        <label for="editName" class="form-label">Nome *</label>
+                        <input type="text" class="form-control" id="editName" name="nome" required>
+                    </div>
+                    
+                    <div class="mb-3" id="editSuperficieContainer" style="display: none;">
+                        <label for="editSuperficie" class="form-label">Superficie (ettari) *</label>
+                        <input type="number" class="form-control" id="editSuperficie" name="superficie" step="0.01" min="0">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>
+                        Annulla
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i>
+                        Salva Modifiche
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-    // Variabili globali
-    let expandedStates = new Set();
-    
-    // Funzioni di toggle
-    function toggleAzienda(clienteId) {
-        const cascineContainer = document.getElementById(`cascine-${clienteId}`);
-        const icon = document.getElementById(`icon-${clienteId}`);
+    // Search functionality
+    let searchTimeout;
+    let allItems = [];
+    let editModal = null;
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function() {
+        editModal = new bootstrap.Modal(document.getElementById('editModal'));
         
-        if (cascineContainer.classList.contains('expanded')) {
-            cascineContainer.classList.remove('expanded');
-            icon.classList.remove('expanded');
-            expandedStates.delete(clienteId);
+        // Initialize search
+        initializeSearch();
+        
+        // Initialize click effects
+        initializeClickEffects();
+    });
+
+    function initializeSearch() {
+        const searchInput = document.getElementById('searchInput');
+        const clearButton = document.getElementById('clearSearch');
+        
+        // Store all items for filtering
+        allItems = document.querySelectorAll('.item-card[data-search-name]');
+        
+        // Search input handler
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                performSearch(this.value);
+            }, 300);
+        });
+
+        // Clear search handler  
+        clearButton.addEventListener('click', clearSearch);
+        
+        // Enter key handler
+        searchInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                performSearch(this.value);
+            }
+        });
+    }
+
+    function performSearch(query) {
+        const searchInput = document.getElementById('searchInput');
+        const clearButton = document.getElementById('clearSearch');
+        const itemsGrid = document.getElementById('itemsGrid');
+        const noResults = document.getElementById('noResults');
+        const searchStats = document.getElementById('searchStats');
+        
+        query = query.toLowerCase().trim();
+        
+        // Show/hide clear button
+        if (query) {
+            clearButton.style.display = 'block';
         } else {
-            cascineContainer.classList.add('expanded');
-            icon.classList.add('expanded');
-            expandedStates.add(clienteId);
+            clearButton.style.display = 'none';
+        }
+        
+        let visibleCount = 0;
+        let hasAnyItems = allItems.length > 0;
+        
+        // Filter items
+        allItems.forEach(item => {
+            const name = item.dataset.searchName;
+            const nameElement = item.querySelector('.item-name');
+            
+            if (!query || name.includes(query)) {
+                item.classList.remove('hidden');
+                item.classList.remove('search-highlighted');
+                
+                // Reset highlighted text
+                if (nameElement) {
+                    const originalName = nameElement.textContent;
+                    nameElement.innerHTML = originalName;
+                    
+                    // Add highlighting if there's a query
+                    if (query) {
+                        const regex = new RegExp(`(${escapeRegex(query)})`, 'gi');
+                        const highlightedName = originalName.replace(regex, '<span class="search-highlight">$1</span>');
+                        nameElement.innerHTML = highlightedName;
+                        item.classList.add('search-highlighted');
+                    }
+                }
+                
+                visibleCount++;
+            } else {
+                item.classList.add('hidden');
+            }
+        });
+        
+        // Update stats
+        if (query) {
+            searchStats.innerHTML = `${visibleCount} risultat${visibleCount === 1 ? 'o' : 'i'} per "${query}"`;
+        } else {
+            searchStats.innerHTML = `${allItems.length} aziend${allItems.length === 1 ? 'a' : 'e'} total${allItems.length === 1 ? 'e' : 'i'}`;
+        }
+        
+        // Update breadcrumb and badge
+        document.getElementById('breadcrumbCount').textContent = visibleCount;
+        document.getElementById('contentBadge').textContent = visibleCount;
+        
+        // Show/hide no results
+        if (hasAnyItems && visibleCount === 0 && query) {
+            itemsGrid.style.display = 'none';
+            noResults.style.display = 'block';
+        } else {
+            itemsGrid.style.display = 'grid';
+            noResults.style.display = 'none';
         }
     }
-    
-    function expandAll() {
-        document.querySelectorAll('.cascine-container').forEach(container => {
-            container.classList.add('expanded');
-            const clienteId = container.id.replace('cascine-', '');
-            expandedStates.add(parseInt(clienteId));
-        });
-        document.querySelectorAll('.expand-icon').forEach(icon => {
-            icon.classList.add('expanded');
-        });
+
+    function clearSearch() {
+        const searchInput = document.getElementById('searchInput');
+        searchInput.value = '';
+        performSearch('');
+        searchInput.focus();
     }
-    
-    function collapseAll() {
-        document.querySelectorAll('.cascine-container').forEach(container => {
-            container.classList.remove('expanded');
-            const clienteId = container.id.replace('cascine-', '');
-            expandedStates.delete(parseInt(clienteId));
-        });
-        document.querySelectorAll('.expand-icon').forEach(icon => {
-            icon.classList.remove('expanded');
-        });
+
+    function escapeRegex(string) {
+        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     }
-    
-    // Funzione di filtro
-    function filterAziende() {
-        const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-        const statusFilter = document.getElementById('statusFilter').value;
-        
-        document.querySelectorAll('.azienda-card').forEach(card => {
-            let shouldShow = true;
+
+    function initializeClickEffects() {
+        document.querySelectorAll('.item-card.clickable').forEach(card => {
+            card.addEventListener('mousedown', function() {
+                this.classList.add('clicking');
+            });
             
-            // Filtro per nome
-            if (searchTerm) {
-                const aziendaName = card.dataset.azienda;
-                shouldShow = aziendaName.includes(searchTerm);
-            }
+            card.addEventListener('mouseup', function() {
+                this.classList.remove('clicking');
+            });
             
-            // Filtro per stato trattamenti
-            if (shouldShow && statusFilter) {
-                const programmati = parseInt(card.dataset.programmati) || 0;
-                const comunicati = parseInt(card.dataset.comunicati) || 0;
-                
-                switch (statusFilter) {
-                    case 'programmato':
-                        shouldShow = programmati > 0;
-                        break;
-                    case 'comunicato':
-                        shouldShow = comunicati > 0;
-                        break;
-                    case 'nessuno':
-                        shouldShow = programmati === 0 && comunicati === 0;
-                        break;
-                }
-            }
-            
-            // Mostra/nasconde la card
-            card.style.display = shouldShow ? 'block' : 'none';
+            card.addEventListener('mouseleave', function() {
+                this.classList.remove('clicking');
+            });
         });
+    }
+
+    // Navigate to Cascine
+    function navigateToCascine(clienteId, clienteNome) {
+        // Add fade out effect
+        const contentArea = document.querySelector('.content-area');
+        contentArea.style.opacity = '0.5';
         
-        // Aggiorna il conteggio
-        updateFilterCount();
+        // Navigate to cascine page
+        const url = `{% url 'aziende_cascine' 0 %}`.replace('0', clienteId);
+        window.location.href = url;
     }
-    
-    function updateFilterCount() {
-        const visibleCards = document.querySelectorAll('.azienda-card[style="display: block"], .azienda-card:not([style*="display: none"])').length;
-        const totalCards = document.querySelectorAll('.azienda-card').length;
+
+    // Edit Item Function
+    function editItem(event, id, type, currentName, currentSuperficie = null) {
+        event.stopPropagation(); // Prevent card click
         
-        console.log(`Mostrate ${visibleCards} di ${totalCards} aziende`);
-    }
-    
-    // Utility per mostrare/nascondere loading
-    function showLoading() {
-        document.getElementById('loadingOverlay').classList.add('show');
-    }
-    
-    function hideLoading() {
-        document.getElementById('loadingOverlay').classList.remove('show');
-    }
-    
-    // Funzioni di gestione errori
-    function handleApiError(error, context = '') {
-        console.error(`Errore API ${context}:`, error);
+        // Set form values
+        document.getElementById('editType').value = type;
+        document.getElementById('editId').value = id;
+        document.getElementById('editName').value = currentName;
         
-        // Mostra un messaggio di errore all'utente
-        const errorMsg = document.createElement('div');
-        errorMsg.className = 'alert alert-danger alert-dismissible fade show';
-        errorMsg.style.position = 'fixed';
-        errorMsg.style.top = '20px';
-        errorMsg.style.right = '20px';
-        errorMsg.style.zIndex = '10000';
-        errorMsg.innerHTML = `
-            <strong>Errore!</strong> ${context}: ${error.message || 'Errore sconosciuto'}
-            <button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>
+        // Update modal title
+        const typeLabel = type === 'azienda' ? 'Azienda' : (type === 'cascina' ? 'Cascina' : 'Terreno');
+        document.getElementById('editModalLabel').innerHTML = `
+            <i class="fas fa-edit"></i>
+            Modifica ${typeLabel}
         `;
         
-        document.body.appendChild(errorMsg);
+        // Show/hide superficie field for terreno
+        const superficieContainer = document.getElementById('editSuperficieContainer');
+        if (type === 'terreno') {
+            superficieContainer.style.display = 'block';
+            document.getElementById('editSuperficie').value = currentSuperficie || '';
+            document.getElementById('editSuperficie').required = true;
+        } else {
+            superficieContainer.style.display = 'none';
+            document.getElementById('editSuperficie').required = false;
+        }
         
-        // Rimuovi automaticamente dopo 5 secondi
+        // Set form action
+        let actionUrl = '';
+        if (type === 'azienda') {
+            actionUrl = `{% url 'edit_cliente' 0 %}`.replace('0', id);
+        } else if (type === 'cascina') {
+            actionUrl = `{% url 'edit_cascina' 0 %}`.replace('0', id);
+        } else if (type === 'terreno') {
+            actionUrl = `{% url 'edit_terreno' 0 %}`.replace('0', id);
+        }
+        
+        document.getElementById('editForm').action = actionUrl;
+        
+        // Show modal
+        editModal.show();
+        
+        // Focus on name field
         setTimeout(() => {
-            if (errorMsg.parentElement) {
-                errorMsg.remove();
+            document.getElementById('editName').focus();
+            document.getElementById('editName').select();
+        }, 300);
+    }
+
+    // Handle form submission
+    document.getElementById('editForm').addEventListener('submit', function(e) {
+        const name = document.getElementById('editName').value.trim();
+        const type = document.getElementById('editType').value;
+        const superficie = document.getElementById('editSuperficie').value;
+        
+        // Validate name
+        if (!name) {
+            e.preventDefault();
+            alert('Il nome è obbligatorio');
+            return;
+        }
+        
+        // Validate superficie for terreno
+        if (type === 'terreno' && (!superficie || parseFloat(superficie) <= 0)) {
+            e.preventDefault();
+            alert('La superficie deve essere maggiore di 0');
+            return;
+        }
+        
+        // Show loading state
+        const submitBtn = this.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Salvando...';
+        submitBtn.disabled = true;
+        
+        // Form will submit normally to Django view
+    });
+
+    // Keyboard Shortcuts
+    document.addEventListener('keydown', function(event) {
+        // Escape key - close modal or clear search
+        if (event.key === 'Escape') {
+            if (editModal && document.querySelector('#editModal.show')) {
+                editModal.hide();
+            } else if (document.getElementById('searchInput').value) {
+                clearSearch();
             }
-        }, 5000);
-    }
-    
-    // Event listeners
-    document.addEventListener('DOMContentLoaded', function() {
-        console.log('Pagina aziende caricata correttamente');
-        
-        // Auto-espandi se ci sono poche aziende
-        const aziendeCount = document.querySelectorAll('.azienda-card').length;
-        console.log(`Trovate ${aziendeCount} aziende`);
-        
-        if (aziendeCount <= 3 && aziendeCount > 0) {
-            console.log('Auto-espansione attiva (poche aziende)');
-            expandAll();
         }
         
-        // Test delle API endpoints
-        testApiEndpoints();
+        // Ctrl+F - focus search
+        if (event.ctrlKey && event.key === 'f') {
+            event.preventDefault();
+            document.getElementById('searchInput').focus();
+        }
+        
+        // Enter key in modal form
+        if (event.key === 'Enter' && event.target.closest('#editModal')) {
+            if (event.target.tagName === 'INPUT') {
+                event.preventDefault();
+                document.getElementById('editForm').requestSubmit();
+            }
+        }
     });
-    
-    // Funzione di test per verificare che le API funzionino
-    function testApiEndpoints() {
-        // Test base - non bloccante
-        fetch('/api/statistics/')
-            .then(response => {
-                if (response.ok) {
-                    console.log('✅ API endpoints disponibili');
-                } else {
-                    console.warn('⚠️ Problemi con le API endpoints');
+
+    // Success message handling (if needed)
+    function showSuccessMessage(message) {
+        const successDiv = document.createElement('div');
+        successDiv.className = 'success-feedback';
+        successDiv.innerHTML = `
+            <i class="fas fa-check-circle me-2"></i>
+            ${message}
+        `;
+        
+        document.body.appendChild(successDiv);
+        
+        setTimeout(() => {
+            successDiv.style.animation = 'slideInRight 0.3s ease-out reverse';
+            setTimeout(() => {
+                if (successDiv.parentNode) {
+                    successDiv.parentNode.removeChild(successDiv);
                 }
-            })
-            .catch(error => {
-                console.warn('⚠️ API non raggiungibili:', error);
-            });
+            }, 300);
+        }, 3000);
     }
-    
-    // Funzioni per debug (puoi rimuoverle in produzione)
-    window.debugAziende = {
-        expandedStates: () => expandedStates,
-        getVisibleCards: () => document.querySelectorAll('.azienda-card:not([style*="display: none"])'),
-        testFilter: (term) => {
-            document.getElementById('searchInput').value = term;
-            filterAziende();
+
+    // Handle Django messages
+    {% if messages %}
+        {% for message in messages %}
+            {% if message.tags == 'success' %}
+                showSuccessMessage('{{ message|escapejs }}');
+            {% elif message.tags == 'error' %}
+                alert('{{ message|escapejs }}');
+            {% endif %}
+        {% endfor %}
+    {% endif %}
+
+    // Advanced search features
+    function initializeAdvancedSearch() {
+        // Search suggestion/autocomplete (optional)
+        const searchInput = document.getElementById('searchInput');
+        
+        // Store search history in sessionStorage
+        let searchHistory = [];
+        try {
+            searchHistory = JSON.parse(sessionStorage.getItem('aziende_search_history') || '[]');
+        } catch (e) {
+            searchHistory = [];
         }
-    };
-    
-    // Ottimizzazione performance: debounce per la ricerca
-    let searchTimeout;
-    document.getElementById('searchInput').addEventListener('input', function() {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(filterAziende, 300);
+        
+        // Save search to history
+        function saveSearchToHistory(query) {
+            if (query && query.length > 2) {
+                searchHistory = searchHistory.filter(item => item !== query);
+                searchHistory.unshift(query);
+                searchHistory = searchHistory.slice(0, 5); // Keep only last 5
+                
+                try {
+                    sessionStorage.setItem('aziende_search_history', JSON.stringify(searchHistory));
+                } catch (e) {
+                    // Ignore storage errors
+                }
+            }
+        }
+        
+        // Add search to history on successful search
+        searchInput.addEventListener('blur', function() {
+            if (this.value.trim()) {
+                saveSearchToHistory(this.value.trim());
+            }
+        });
+    }
+
+    // Initialize advanced features
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeAdvancedSearch();
     });
+
+    // Utility functions
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
+    // Export search results (future feature)
+    function exportSearchResults() {
+        const visibleItems = document.querySelectorAll('.item-card:not(.hidden)');
+        console.log(`Exporting ${visibleItems.length} items...`);
+        // Implementation for export functionality
+    }
 </script>
 {% endblock %}

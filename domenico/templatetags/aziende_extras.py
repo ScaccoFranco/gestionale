@@ -262,3 +262,110 @@ def has_prodotti(trattamento):
 @register.filter
 def prodotti_count(trattamento):
     return trattamento.trattamentoprodotto_set.count()
+
+
+
+@register.filter
+def total_terreni(cascine_list):
+    """Calcola il numero totale di terreni da una lista di cascine"""
+    total = 0
+    for cascina in cascine_list:
+        if hasattr(cascina, 'terreni'):
+            total += len(cascina['terreni']) if isinstance(cascina, dict) else cascina.terreni.count()
+        elif isinstance(cascina, dict) and 'terreni_count' in cascina:
+            total += cascina['terreni_count']
+    return total
+
+@register.filter
+def total_superficie(items):
+    """Calcola la superficie totale da una lista di items (terreni o cascine)"""
+    total = 0.0
+    
+    if not items:
+        return 0.0
+    
+    # Se è una lista di terreni
+    if hasattr(items, 'all'):  # QuerySet
+        for item in items.all():
+            if hasattr(item, 'superficie'):
+                total += float(item.superficie or 0)
+    elif isinstance(items, list):  # Lista normale
+        for item in items:
+            if isinstance(item, dict):
+                total += float(item.get('superficie_totale', 0) or item.get('superficie', 0))
+            elif hasattr(item, 'superficie'):
+                total += float(item.superficie or 0)
+            elif hasattr(item, 'superficie_totale'):
+                total += float(item.superficie_totale or 0)
+    
+    return round(total, 2)
+
+@register.filter
+def get_contoterzista_name(cascina):
+    """Ottiene il nome del contoterzista in modo sicuro"""
+    if isinstance(cascina, dict):
+        contoterzista = cascina.get('contoterzista')
+        if isinstance(contoterzista, dict):
+            return contoterzista.get('nome', 'Non assegnato')
+        elif hasattr(contoterzista, 'nome'):
+            return contoterzista.nome
+        elif isinstance(contoterzista, str):
+            return contoterzista
+    elif hasattr(cascina, 'contoterzista') and cascina.contoterzista:
+        return cascina.contoterzista.nome
+    
+    return 'Non assegnato'
+
+@register.filter
+def get_terreni_count(cascina):
+    """Ottiene il numero di terreni in modo sicuro"""
+    if isinstance(cascina, dict):
+        return cascina.get('terreni_count', 0)
+    elif hasattr(cascina, 'terreni'):
+        return cascina.terreni.count()
+    return 0
+
+@register.filter 
+def format_number(value, decimals=1):
+    """Formatta un numero con il numero specificato di decimali"""
+    try:
+        return f"{float(value):.{decimals}f}"
+    except (ValueError, TypeError):
+        return "0"
+
+@register.filter
+def safe_get(dictionary, key):
+    """Ottiene un valore da un dizionario in modo sicuro"""
+    if isinstance(dictionary, dict):
+        return dictionary.get(key, '')
+    return ''
+
+@register.simple_tag
+def get_breadcrumb_icon(level):
+    """Restituisce l'icona appropriata per il livello del breadcrumb"""
+    icons = {
+        'aziende': 'fas fa-building',
+        'cascine': 'fas fa-home',
+        'terreni': 'fas fa-seedling'
+    }
+    return icons.get(level, 'fas fa-circle')
+
+@register.inclusion_tag('components/breadcrumb_item.html')
+def breadcrumb_item(url, icon, text, is_active=False):
+    """Template tag per creare un elemento breadcrumb"""
+    return {
+        'url': url,
+        'icon': icon,
+        'text': text,
+        'is_active': is_active
+    }
+
+@register.filter
+def pluralize_it(value, singular_plural):
+    """Pluralizzazione italiana personalizzata"""
+    try:
+        count = int(value)
+        singular, plural = singular_plural.split(',')
+        return singular if count == 1 else plural
+    except (ValueError, AttributeError):
+        return singular_plural.split(',')[0] if ',' in singular_plural else singular_plural

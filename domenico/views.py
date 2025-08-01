@@ -1,4 +1,4 @@
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
@@ -12,6 +12,8 @@ import json
 from .models import *
 from .weather_service import weather_service
 import logging
+from django.contrib import messages
+from django.urls import reverse
 
 # Import delle funzioni email
 from .email_utils import (
@@ -85,8 +87,12 @@ def home(request):
     return render(request, 'home.html', context)
 
 def aziende(request):
-    """Vista aziende con struttura ad albero"""
+    """Vista aziende con ricerca e ordinamento case-insensitive"""
     from django.db.models import Sum, Count, Q
+    from django.db.models.functions import Lower
+    
+    # Parametro di ricerca
+    search_query = request.GET.get('search', '').strip()
     
     # Carica tutti i clienti con le relazioni necessarie
     clienti = Cliente.objects.prefetch_related(
@@ -103,7 +109,16 @@ def aziende(request):
             'trattamenti', 
             filter=Q(trattamenti__stato='comunicato')
         )
-    ).order_by('nome')
+    )
+    
+    # Applica filtro di ricerca se presente
+    if search_query:
+        clienti = clienti.filter(
+            nome__icontains=search_query
+        )
+    
+    # Ordinamento case-insensitive
+    clienti = clienti.order_by(Lower('nome'))
     
     # Costruisci la struttura ad albero
     aziende_tree = []
@@ -117,7 +132,10 @@ def aziende(request):
             'cascine': []
         }
         
-        for cascina in cliente.cascine.all():
+        # Ordina cascine case-insensitive
+        cascine_ordinate = cliente.cascine.all().order_by(Lower('nome'))
+        
+        for cascina in cascine_ordinate:
             superficie_cascina = sum(terreno.superficie for terreno in cascina.terreni.all())
             
             cascina_data = {
@@ -125,7 +143,10 @@ def aziende(request):
                 'nome': cascina.nome,
                 'superficie_totale': superficie_cascina,
                 'contoterzista': cascina.contoterzista.nome if cascina.contoterzista else None,
-                'terreni': list(cascina.terreni.all())
+                'contoterzista_id': cascina.contoterzista.id if cascina.contoterzista else None,
+                'trattamenti_programmati': 0,  # Calcolo semplificato
+                'trattamenti_comunicati': 0,   # Calcolo semplificato
+                'terreni': list(cascina.terreni.all().order_by(Lower('nome')))
             }
             
             cliente_data['cascine'].append(cascina_data)
@@ -134,6 +155,8 @@ def aziende(request):
     
     context = {
         'aziende_tree': aziende_tree,
+        'search_query': search_query,
+        'total_count': len(aziende_tree)
     }
     
     return render(request, 'aziende.html', context)
@@ -1420,3 +1443,356 @@ def get_location_recommendation(debug_results):
         'coordinates': first_result[1].get('coordinates')
     }
 
+
+# domenico/views.py - Aggiungi queste views alla fine del file esistente
+
+def aziende_cascine(request, cliente_id):
+    """Vista cascine con ricerca e ordinamento case-insensitive"""
+
+    from django.db.models import Sum, Count, Q
+    from django.db.models.functions import Lower
+
+    # Parametro di ricerca
+    search_query = request.GET.get('search', '').strip()
+    
+    # Ottieni il cliente
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+    
+    # Carica cascine con terreni e contoterzista
+    cascine = cliente.cascine.prefetch_related(
+        'terreni', 'contoterzista'
+    ).annotate(
+        superficie_totale=Sum('terreni__superficie')
+    )
+    
+    # Applica filtro di ricerca se presente
+    if search_query:
+        cascine = cascine.filter(
+            nome__icontains=search_query
+        )
+    
+    # Ordinamento case-insensitive
+    cascine = cascine.order_by(Lower('nome'))
+    
+    # Prepara dati per il template
+    cascine_data = []
+    for cascina in cascine:
+        cascina_dict = {
+            'id': cascina.id,
+            'nome': cascina.nome,
+            'superficie_totale': cascina.superficie_totale or 0,
+            'terreni_count': cascina.terreni.count(),
+            'contoterzista': cascina.contoterzista,
+            'terreni': list(cascina.terreni.all().order_by(Lower('nome')))
+        }
+        cascine_data.append(cascina_dict)
+    
+    context = {
+        'cliente': cliente,
+        'cascine_data': cascine_data,
+        'search_query': search_query,
+        'total_count': len(cascine_data),
+        'breadcrumb_level': 'cascine'
+    }
+    
+    return render(request, 'aziende_cascine.html', context)
+
+
+def aziende_terreni(request, cascina_id):
+    """Vista terreni con ricerca e ordinamento case-insensitive"""
+
+    from django.db.models import Q
+    from django.db.models.functions import Lower
+
+    # Parametro di ricerca
+    search_query = request.GET.get('search', '').strip()
+    
+    # Ottieni la cascina con cliente
+    cascina = get_object_or_404(
+        Cascina.objects.select_related('cliente', 'contoterzista'), 
+        id=cascina_id
+    )
+    
+    # Carica terreni
+    terreni = cascina.terreni.all()
+    
+    # Applica filtro di ricerca se presente
+    if search_query:
+        terreni = terreni.filter(
+            Q(nome__icontains=search_query) |
+            Q(coltura__icontains=search_query)
+        )
+    
+    # Ordinamento case-insensitive
+    terreni = terreni.order_by(Lower('nome'))
+    
+    context = {
+        'cascina': cascina,
+        'cliente': cascina.cliente,
+        'terreni': terreni,
+        'search_query': search_query,
+        'total_count': terreni.count(),
+        'breadcrumb_level': 'terreni'
+    }
+    
+    return render(request, 'aziende_terreni.html', context)
+
+
+@require_http_methods(["POST"])
+def edit_cliente(request, cliente_id):
+    """Modifica nome cliente con logging"""
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+    old_name = cliente.nome  # Salva il nome precedente per il log
+    
+    nome = request.POST.get('nome', '').strip()
+    if not nome:
+        messages.error(request, 'Il nome del cliente è obbligatorio')
+        return redirect('aziende')
+    
+    # Aggiorna il cliente
+    cliente.nome = nome
+    cliente.save()
+    
+    # Log dell'attività
+    log_activity(
+        activity_type='cliente_updated',
+        title=f'Azienda modificata: {nome}',
+        description=f'Il nome dell\'azienda è stato cambiato da "{old_name}" a "{nome}"',
+        related_object=cliente,
+        request=request,
+        extra_data={
+            'cliente_id': cliente.id,
+            'old_name': old_name,
+            'new_name': nome,
+            'action': 'name_change'
+        }
+    )
+    
+    messages.success(request, f'Azienda "{nome}" modificata con successo!')
+    
+    # Mantieni la ricerca se presente
+    search_param = request.GET.get('search', '')
+    if search_param:
+        return redirect(f'aziende?search={search_param}')
+    
+    return redirect('aziende')
+
+
+
+@require_http_methods(["POST"])
+def edit_cascina(request, cascina_id):
+    """Modifica nome cascina con logging"""
+
+    cascina = get_object_or_404(Cascina.objects.select_related('cliente'), id=cascina_id)
+    old_name = cascina.nome  # Salva il nome precedente per il log
+    
+    nome = request.POST.get('nome', '').strip()
+    if not nome:
+        messages.error(request, 'Il nome della cascina è obbligatorio')
+        return redirect('aziende_cascine', cliente_id=cascina.cliente.id)
+    
+    # Aggiorna la cascina
+    cascina.nome = nome
+    cascina.save()
+    
+    # Log dell'attività
+    log_activity(
+        activity_type='cascina_updated',
+        title=f'Cascina modificata: {nome}',
+        description=f'Il nome della cascina è stato cambiato da "{old_name}" a "{nome}" per l\'azienda {cascina.cliente.nome}',
+        related_object=cascina,
+        request=request,
+        extra_data={
+            'cascina_id': cascina.id,
+            'cascina_old_name': old_name,
+            'cascina_new_name': nome,
+            'cliente_id': cascina.cliente.id,
+            'cliente_nome': cascina.cliente.nome,
+            'action': 'name_change'
+        }
+    )
+    
+    messages.success(request, f'Cascina "{nome}" modificata con successo!')
+    
+    # Mantieni la ricerca se presente
+    search_param = request.GET.get('search', '')
+    redirect_url = reverse('aziende_cascine', kwargs={'cliente_id': cascina.cliente.id})
+    if search_param:
+        redirect_url += f'?search={search_param}'
+    
+    return redirect(redirect_url)
+
+
+@require_http_methods(["POST"])
+def edit_terreno(request, terreno_id):
+    """Modifica nome e superficie terreno con logging"""
+    terreno = get_object_or_404(
+        Terreno.objects.select_related('cascina__cliente'), 
+        id=terreno_id
+    )
+    
+    # Salva i valori precedenti per il log
+    old_name = terreno.nome
+    old_superficie = terreno.superficie
+    
+    nome = request.POST.get('nome', '').strip()
+    superficie = request.POST.get('superficie', '').strip()
+    
+    if not nome:
+        messages.error(request, 'Il nome del terreno è obbligatorio')
+        return redirect('aziende_terreni', cascina_id=terreno.cascina.id)
+    
+    if not superficie:
+        messages.error(request, 'La superficie è obbligatoria')
+        return redirect('aziende_terreni', cascina_id=terreno.cascina.id)
+    
+    try:
+        superficie_float = float(superficie)
+        if superficie_float <= 0:
+            raise ValueError("La superficie deve essere maggiore di 0")
+    except ValueError:
+        messages.error(request, 'La superficie deve essere un numero maggiore di 0')
+        return redirect('aziende_terreni', cascina_id=terreno.cascina.id)
+    
+    # Aggiorna il terreno
+    terreno.nome = nome
+    terreno.superficie = superficie_float
+    terreno.save()
+    
+    # Prepara i dettagli delle modifiche per il log
+    changes = []
+    if old_name != nome:
+        changes.append(f'nome: "{old_name}" → "{nome}"')
+    if float(old_superficie) != superficie_float:
+        changes.append(f'superficie: {old_superficie} ha → {superficie_float} ha')
+    
+    changes_text = ', '.join(changes) if changes else 'nessuna modifica'
+    
+    # Log dell'attività
+    log_activity(
+        activity_type='terreno_updated',
+        title=f'Terreno modificato: {nome}',
+        description=f'Il terreno "{old_name}" della cascina {terreno.cascina.nome} è stato modificato: {changes_text}',
+        related_object=terreno,
+        request=request,
+        extra_data={
+            'terreno_id': terreno.id,
+            'terreno_old_name': old_name,
+            'terreno_new_name': nome,
+            'old_superficie': float(old_superficie),
+            'new_superficie': superficie_float,
+            'cascina_id': terreno.cascina.id,
+            'cascina_nome': terreno.cascina.nome,
+            'cliente_id': terreno.cascina.cliente.id,
+            'cliente_nome': terreno.cascina.cliente.nome,
+            'changes': changes,
+            'action': 'data_change'
+        }
+    )
+    
+    messages.success(request, f'Terreno "{nome}" modificato con successo!')
+    
+    # Mantieni la ricerca se presente
+    search_param = request.GET.get('search', '')
+    redirect_url = reverse('aziende_terreni', kwargs={'cascina_id': terreno.cascina.id})
+    if search_param:
+        redirect_url += f'?search={search_param}'
+    
+    return redirect(redirect_url)
+
+@require_http_methods(["GET"])
+def api_search_aziende(request):
+    """API per ricerca aziende in tempo reale"""
+
+    from django.db.models import Sum, Count
+    from django.db.models.functions import Lower
+
+    query = request.GET.get('q', '').strip()
+    limit = int(request.GET.get('limit', 10))
+    
+    if not query or len(query) < 2:
+        return JsonResponse({'results': []})
+    
+    try:
+        # Cerca aziende
+        aziende = Cliente.objects.filter(
+            nome__icontains=query
+        ).annotate(
+            superficie_totale=Sum('cascine__terreni__superficie'),
+            cascine_count=Count('cascine', distinct=True),
+            terreni_count=Count('cascine__terreni', distinct=True)
+        ).order_by(Lower('nome'))[:limit]
+        
+        results = []
+        for azienda in aziende:
+            results.append({
+                'id': azienda.id,
+                'nome': azienda.nome,
+                'superficie_totale': float(azienda.superficie_totale or 0),
+                'cascine_count': azienda.cascine_count,
+                'terreni_count': azienda.terreni_count,
+                'url': reverse('aziende_cascine', kwargs={'cliente_id': azienda.id})
+            })
+        
+        return JsonResponse({
+            'results': results,
+            'query': query,
+            'count': len(results)
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'error': str(e),
+            'results': []
+        }, status=500)
+
+@require_http_methods(["GET"])
+def api_search_cascine(request, cliente_id):
+    """API per ricerca cascine di un'azienda"""
+
+    from django.db.models import Sum, Count, Q
+    from django.db.models.functions import Lower
+
+    query = request.GET.get('q', '').strip()
+    limit = int(request.GET.get('limit', 10))
+    
+    if not query or len(query) < 2:
+        return JsonResponse({'results': []})
+    
+    try:
+        cliente = get_object_or_404(Cliente, id=cliente_id)
+        
+        # Cerca cascine
+        cascine = cliente.cascine.filter(
+            nome__icontains=query
+        ).annotate(
+            superficie_totale=Sum('terreni__superficie'),
+            terreni_count=Count('terreni', distinct=True)
+        ).order_by(Lower('nome'))[:limit]
+        
+        results = []
+        for cascina in cascine:
+            results.append({
+                'id': cascina.id,
+                'nome': cascina.nome,
+                'superficie_totale': float(cascina.superficie_totale or 0),
+                'terreni_count': cascina.terreni_count,
+                'contoterzista': cascina.contoterzista.nome if cascina.contoterzista else None,
+                'url': reverse('aziende_terreni', kwargs={'cascina_id': cascina.id})
+            })
+        
+        return JsonResponse({
+            'results': results,
+            'query': query,
+            'count': len(results),
+            'cliente': {
+                'id': cliente.id,
+                'nome': cliente.nome
+            }
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'error': str(e),
+            'results': []
+        }, status=500)

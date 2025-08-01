@@ -96,4 +96,16 @@ urlpatterns = [
     path('api/weather/debug-cache/', views.api_weather_debug_cache, name='api_weather_debug_cache'),
     path('api/weather/location-test/', views.api_weather_location_test, name='api_weather_location_test'),
     path('api/weather/debug/<str:location>/', views.api_weather_debug_location, name='api_weather_debug_location'),
+
+
+        # === NUOVE URL PER INTERFACCIA AZIENDE ===
+    
+    # Navigazione gerarchica
+    path('aziende/<int:cliente_id>/cascine/', views.aziende_cascine, name='aziende_cascine'),
+    path('aziende/cascine/<int:cascina_id>/terreni/', views.aziende_terreni, name='aziende_terreni'),
+    
+    # Modifica elementi
+    path('aziende/edit/cliente/<int:cliente_id>/', views.edit_cliente, name='edit_cliente'),
+    path('aziende/edit/cascina/<int:cascina_id>/', views.edit_cascina, name='edit_cascina'),
+    path('aziende/edit/terreno/<int:terreno_id>/', views.edit_terreno, name='edit_terreno'),
 ]
