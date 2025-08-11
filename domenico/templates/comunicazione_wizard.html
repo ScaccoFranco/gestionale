@@ -831,23 +831,41 @@
     
     // Inizializzazione
     document.addEventListener('DOMContentLoaded', function() {
-        // Recupera i dati dai parametri URL o sessionStorage
+        // Recupera i dati dai parametri URL
         const urlParams = new URLSearchParams(window.location.search);
         const treatmentIds = urlParams.get('treatments');
         
-        console.log('🔍 URL params:', treatmentIds);
+        console.log('🔍 URL params raw:', treatmentIds);
         
         if (treatmentIds) {
-            selectedTreatments = treatmentIds.split(',').map(id => parseInt(id));
-            console.log('🔍 Trattamenti dai params URL:', selectedTreatments);
-            loadTreatmentData();
+            // CORREZIONE: Filtra valori non validi
+            selectedTreatments = treatmentIds.split(',')
+                .map(id => parseInt(id.trim()))
+                .filter(id => !isNaN(id) && id > 0);
+            
+            console.log('🔍 Trattamenti processati:', selectedTreatments);
+            
+            if (selectedTreatments.length > 0) {
+                loadTreatmentData();
+            } else {
+                showError('ID trattamenti non validi nei parametri URL');
+            }
         } else {
-            // Fallback a sessionStorage se non ci sono parametri URL
+            // Fallback a sessionStorage
             const storedTreatments = sessionStorage.getItem('selectedTreatments');
             if (storedTreatments) {
-                selectedTreatments = JSON.parse(storedTreatments);
-                console.log('🔍 Trattamenti da sessionStorage:', selectedTreatments);
-                loadTreatmentData();
+                try {
+                    selectedTreatments = JSON.parse(storedTreatments);
+                    console.log('🔍 Trattamenti da sessionStorage:', selectedTreatments);
+                    if (selectedTreatments.length > 0) {
+                        loadTreatmentData();
+                    } else {
+                        showError('Nessun trattamento valido in sessionStorage');
+                    }
+                } catch (e) {
+                    console.error('Errore parsing sessionStorage:', e);
+                    showError('Dati sessionStorage corrotti');
+                }
             } else {
                 showError('Nessun trattamento selezionato. Ritorna alla lista trattamenti.');
                 setTimeout(() => goBack(), 3000);
@@ -861,6 +879,13 @@
         try {
             console.log('🔍 Caricamento dati per trattamenti:', selectedTreatments);
             
+            // VERIFICA: Assicurati che selectedTreatments non sia vuoto
+            if (!selectedTreatments || selectedTreatments.length === 0) {
+                showError('Nessun trattamento selezionato. Ritorna alla lista trattamenti.');
+                setTimeout(() => goBack(), 3000);
+                return;
+            }
+            
             const response = await fetch('/api/trattamenti/communication-preview/', {
                 method: 'POST',
                 headers: {
@@ -868,7 +893,7 @@
                     'X-CSRFToken': getCsrfToken()
                 },
                 body: JSON.stringify({
-                    trattamenti_ids: selectedTreatments
+                    trattamenti_ids: selectedTreatments  // CORRETTO: usa trattamenti_ids
                 })
             });
             
@@ -885,9 +910,16 @@
             console.log('📦 Dati ricevuti:', data);
             
             if (data.success) {
-                processTreatmentData(data);
-                renderCompanies();
-                updateSummaryStats();
+                // CORREZIONE: Usa il campo corretto dalla risposta
+                if (data.companies && Array.isArray(data.companies)) {
+                    companiesData = data.companies;
+                    console.log('✅ Caricati dati per', companiesData.length, 'aziende');
+                    renderCompanies();
+                    updateSummaryStats();
+                } else {
+                    console.error('❌ Struttura dati non valida:', data);
+                    showError('Struttura dati non valida ricevuta dal server');
+                }
             } else {
                 showError(data.error || 'Errore nel caricamento dei dati');
             }
@@ -954,117 +986,98 @@
     }
     
     function createCompanyCard(company, index) {
+        // Debug dei dati azienda
+        console.log(`🏢 Creando card per ${company.nome}:`, company);
+        
+        let treatmentsHtml = '';
+        let treatmentNumber = 1; // Numerazione progressiva indipendente
+        
+        // CORREZIONE: Verifica che company.trattamenti esista ed è un array
+        const trattamenti = company.trattamenti || [];
+        
+        trattamenti.forEach((treatment) => {
+            treatmentsHtml += `
+                <div class="treatment-card">
+                    <div class="treatment-header">
+                        <div class="treatment-title">
+                            <h6>Trattamento N. ${treatmentNumber}</h6>
+                            <span class="treatment-date">${treatment.data_esecuzione || 'N/D'}</span>
+                        </div>
+                    </div>
+                    <div class="treatment-details">
+                        <div class="detail-item">
+                            <label>Terreno:</label>
+                            <span>${treatment.terreno_nome || 'N/D'}</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Tipo Intervento:</label>
+                            <span>${treatment.tipo_intervento || 'N/D'}</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Superficie:</label>
+                            <span>${treatment.superficie_trattata || 0} ha</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Volume Miscela:</label>
+                            <span>${treatment.volume_miscela || 'N/D'} L/ha</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Condizioni Meteo:</label>
+                            <span>${treatment.condizioni_meteo || 'N/D'}</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Velocità Vento:</label>
+                            <span>${treatment.velocita_vento || 'N/D'} km/h</span>
+                        </div>
+                    </div>
+                    
+                    ${treatment.prodotti && treatment.prodotti.length > 0 ? `
+                    <div class="products-section">
+                        <h6><i class="fas fa-flask me-2"></i>Prodotti Utilizzati</h6>
+                        <div class="products-list">
+                            ${treatment.prodotti.map(prodotto => `
+                                <div class="product-item">
+                                    <strong>${prodotto.nome_commerciale}</strong>
+                                    <small class="text-muted d-block">
+                                        P.A.: ${prodotto.principio_attivo} | 
+                                        Dose: ${prodotto.dose_per_ettaro} ${prodotto.unita_misura}/ha
+                                    </small>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    ` : ''}
+                </div>
+            `;
+            treatmentNumber++; // Incrementa la numerazione progressiva
+        });
+        
         const card = document.createElement('div');
         card.className = 'company-card';
-        card.id = `company-${index}`;
-        
-        // Debug dei trattamenti
-        console.log(`🔍 Trattamenti per ${company.nome}:`, company.trattamenti);
-        
-        const treatmentsHtml = company.trattamenti.length > 0 ? 
-            company.trattamenti.map((treatment, idx) => {
-                console.log(`📋 Rendering trattamento ${idx + 1}:`, treatment);
-                
-                return `
-                    <div class="treatment-item">
-                        <div class="treatment-header">
-                            <h6 class="treatment-title">
-                                <i class="fas fa-flask me-2"></i>
-                                Trattamento #${treatment.id}
-                            </h6>
-                            <span class="treatment-badge">${treatment.livello_applicazione || 'Cliente'}</span>
-                        </div>
-                        
-                        <div class="treatment-details">
-                            <div class="treatment-detail">
-                                <i class="fas fa-expand-alt"></i>
-                                <span>Superficie: <strong>${(treatment.superficie_interessata || 0).toFixed(2)} ha</strong></span>
-                            </div>
-                            <div class="treatment-detail">
-                                <i class="fas fa-calendar"></i>
-                                <span>Data prevista: <strong>${treatment.data_esecuzione_prevista || 'Non specificata'}</strong></span>
-                            </div>
-                            <div class="treatment-detail">
-                                <i class="fas fa-info-circle"></i>
-                                <span>Stato: <strong>${treatment.stato || 'Programmato'}</strong></span>
-                            </div>
-                            ${treatment.cascina_nome ? `
-                                <div class="treatment-detail">
-                                    <i class="fas fa-home"></i>
-                                    <span>Cascina: <strong>${treatment.cascina_nome}</strong></span>
-                                </div>
-                            ` : ''}
-                        </div>
-                        
-                        ${treatment.terreni && treatment.terreni.length > 0 ? `
-                            <div class="terrain-list">
-                                <div class="treatment-detail mb-2">
-                                    <i class="fas fa-seedling"></i>
-                                    <span><strong>Terreni interessati:</strong></span>
-                                </div>
-                                ${treatment.terreni.map(t => `
-                                    <span class="terrain-badge">${t.nome} (${t.superficie} ha)</span>
-                                `).join('')}
-                            </div>
-                        ` : ''}
-                        
-                        ${treatment.prodotti && treatment.prodotti.length > 0 ? `
-                            <div class="product-table">
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            <th><i class="fas fa-vial me-2"></i>Prodotto</th>
-                                            <th>Dose/ha</th>
-                                            <th>Quantità Totale</th>
-                                            <th>Unità</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${treatment.prodotti.map(p => `
-                                            <tr>
-                                                <td><strong>${p.nome}</strong></td>
-                                                <td>${p.quantita_per_ettaro.toFixed(3)}</td>
-                                                <td><strong>${p.quantita_totale.toFixed(3)}</strong></td>
-                                                <td>${p.unita_misura}</td>
-                                            </tr>
-                                        `).join('')}
-                                    </tbody>
-                                </table>
-                            </div>
-                        ` : '<p class="text-muted"><i class="fas fa-exclamation-triangle me-2"></i>Nessun prodotto specificato</p>'}
-                        
-                        ${treatment.note ? `
-                            <div class="alert alert-info mt-3">
-                                <div class="treatment-detail">
-                                    <i class="fas fa-sticky-note"></i>
-                                    <span><strong>Note trattamento:</strong></span>
-                                </div>
-                                <p class="mb-0 mt-2">${treatment.note}</p>
-                            </div>
-                        ` : ''}
-                    </div>
-                `;
-            }).join('') : 
-            '<div class="alert alert-warning"><i class="fas fa-exclamation-triangle me-2"></i>Nessun trattamento trovato per questa azienda</div>';
-        
         card.innerHTML = `
             <div class="company-header">
                 <div class="company-header-content">
-                    <h4 class="company-title">
-                        <i class="fas fa-building me-2"></i>
-                        ${company.nome}
-                    </h4>
+                    <div class="company-info">
+                        <h4 class="company-title">
+                            <i class="fas fa-building me-2"></i>
+                            ${company.nome}
+                        </h4>
+                        <div class="company-details">
+                            <span><i class="fas fa-map-marker-alt me-1"></i>${company.indirizzo || 'N/D'}</span>
+                            <span><i class="fas fa-id-card me-1"></i>CF: ${company.codice_fiscale || 'N/D'}</span>
+                        </div>
+                    </div>
                     <div class="company-stats">
                         <div class="company-stat">
-                            <span class="company-stat-value">${company.trattamenti.length}</span>
-                            <div class="company-stat-label">Trattament${company.trattamenti.length === 1 ? 'o' : 'i'}</div>
+                            <span class="company-stat-value">${trattamenti.length}</span>
+                            <div class="company-stat-label">Trattament${trattamenti.length !== 1 ? 'i' : 'o'}</div>
                         </div>
                         <div class="company-stat">
-                            <span class="company-stat-value">${company.superficie_totale.toFixed(1)}</span>
+                            <span class="company-stat-value">${(company.superficie_totale || 0).toFixed(1)}</span>
                             <div class="company-stat-label">Ettari Totali</div>
                         </div>
                         <div class="company-stat">
-                            <span class="company-stat-value">${company.trattamenti.reduce((sum, t) => sum + (t.prodotti ? t.prodotti.length : 0), 0)}</span>
+                            <span class="company-stat-value">${trattamenti.reduce((sum, t) => sum + (t.prodotti ? t.prodotti.length : 0), 0)}</span>
                             <div class="company-stat-label">Prodotti Totali</div>
                         </div>
                     </div>
@@ -1084,7 +1097,7 @@
                         placeholder="Aggiungi note specifiche che verranno incluse nel PDF di comunicazione per ${company.nome}..."
                         onchange="updateCompanyNotes(${index}, this.value)"
                         rows="4"
-                    >${company.note_personalizzate}</textarea>
+                    >${company.note_personalizzate || ''}</textarea>
                     <div class="notes-help">
                         💡 Queste note verranno aggiunte al PDF per evidenziare informazioni importanti per ${company.nome}
                     </div>
@@ -1104,7 +1117,7 @@
         
         return card;
     }
-    
+
     function updateCompanyNotes(index, notes) {
         if (companiesData[index]) {
             companiesData[index].note_personalizzate = notes;

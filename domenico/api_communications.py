@@ -198,137 +198,213 @@ def generate_company_communication_pdf(trattamenti, custom_notes=''):
     Genera un PDF di comunicazione per un'azienda con tutti i suoi trattamenti
     """
     try:
-        # Import per PDF (prova prima WeasyPrint, poi xhtml2pdf)
+        from weasyprint import HTML, CSS
+        pdf_engine = 'weasyprint'
+    except ImportError:
         try:
-            from weasyprint import HTML, CSS
-            pdf_engine = 'weasyprint'
+            from xhtml2pdf import pisa
+            pdf_engine = 'xhtml2pdf'
         except ImportError:
-            try:
-                from xhtml2pdf import pisa
-                pdf_engine = 'xhtml2pdf'
-            except ImportError:
-                raise Exception("Nessun motore PDF disponibile. Installa WeasyPrint o xhtml2pdf.")
+            raise Exception("Nessun motore PDF disponibile. Installa WeasyPrint o xhtml2pdf.")
+    
+    if not trattamenti:
+        raise Exception("Nessun trattamento fornito per la generazione del PDF")
+    
+    # Prendi i dati dell'azienda dal primo trattamento
+    primo_trattamento = trattamenti[0]
+    azienda = primo_trattamento.terreno.cascina.cliente
+    
+    # Raggruppa i trattamenti per terreno
+    trattamenti_per_terreno = {}
+    for trattamento in trattamenti:
+        terreno_key = f"{trattamento.terreno.cascina.nome} - {trattamento.terreno.nome}"
+        if terreno_key not in trattamenti_per_terreno:
+            trattamenti_per_terreno[terreno_key] = {
+                'terreno': trattamento.terreno,
+                'trattamenti': []
+            }
+        trattamenti_per_terreno[terreno_key]['trattamenti'].append(trattamento)
+    
+    # Template HTML per il PDF (MODIFICATO)
+    html_template = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <title>Comunicazione Trattamenti - {azienda.nome}</title>
+        <style>
+            body {{
+                font-family: Arial, sans-serif;
+                font-size: 12px;
+                line-height: 1.4;
+                margin: 20px;
+            }}
+            .header {{
+                text-align: center;
+                border-bottom: 2px solid #333;
+                padding-bottom: 20px;
+                margin-bottom: 30px;
+            }}
+            .company-info {{
+                margin-bottom: 30px;
+                padding: 15px;
+                border: 1px solid #ddd;
+                background-color: #f9f9f9;
+            }}
+            .custom-notes {{
+                margin-bottom: 30px;
+                padding: 15px;
+                border: 1px solid #007bff;
+                background-color: #e7f3ff;
+                border-radius: 5px;
+            }}
+            .treatments-section {{
+                margin-bottom: 20px;
+            }}
+            .terreno-header {{
+                background-color: #007bff;
+                color: white;
+                padding: 10px;
+                font-weight: bold;
+                margin-bottom: 10px;
+            }}
+            .treatment-item {{
+                border: 1px solid #ddd;
+                margin-bottom: 10px;
+                padding: 15px;
+                background-color: #fff;
+            }}
+            .treatment-header {{
+                font-weight: bold;
+                font-size: 14px;
+                margin-bottom: 10px;
+                color: #007bff;
+            }}
+            .treatment-details {{
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+                margin-bottom: 10px;
+            }}
+            .products-list {{
+                margin-top: 10px;
+                padding: 10px;
+                background-color: #f8f9fa;
+                border-left: 4px solid #007bff;
+            }}
+            .product-item {{
+                margin-bottom: 5px;
+                padding: 5px 0;
+                border-bottom: 1px dotted #ccc;
+            }}
+            .footer {{
+                margin-top: 40px;
+                font-size: 10px;
+                color: #666;
+                text-align: center;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>COMUNICAZIONE TRATTAMENTI FITOSANITARI</h1>
+            <h2>{azienda.nome}</h2>
+            <p>Data comunicazione: {timezone.now().strftime('%d/%m/%Y')}</p>
+        </div>
         
-        # Prepara i dati per il template
-        cliente = trattamenti.first().cliente
+        <div class="company-info">
+            <h3>Dati Azienda</h3>
+            <p><strong>Ragione Sociale:</strong> {azienda.nome}</p>
+            <p><strong>Codice Fiscale:</strong> {azienda.codice_fiscale}</p>
+            <p><strong>Indirizzo:</strong> {azienda.indirizzo}</p>
+            <p><strong>Email:</strong> {azienda.email or 'N/D'}</p>
+            <p><strong>Telefono:</strong> {azienda.telefono or 'N/D'}</p>
+        </div>
         
-        # Calcola totali
-        superficie_totale = sum(t.get_superficie_interessata() for t in trattamenti)
+        {f'''
+        <div class="custom-notes">
+            <h3>Note Aggiuntive</h3>
+            <p>{custom_notes}</p>
+        </div>
+        ''' if custom_notes else ''}
         
-        # Raggruppa prodotti per calcolare totali
-        prodotti_totali = {}
-        for trattamento in trattamenti:
-            for tp in trattamento.trattamentoprodotto_set.all():
-                prodotto_nome = tp.prodotto.nome
-                if prodotto_nome not in prodotti_totali:
-                    prodotti_totali[prodotto_nome] = {
-                        'nome': prodotto_nome,
-                        'unita_misura': tp.prodotto.unita_misura,
-                        'quantita_totale': Decimal('0')
-                    }
-                
-                quantita_trattamento = tp.get_quantita_per_ettaro() * Decimal(str(trattamento.get_superficie_interessata()))
-                prodotti_totali[prodotto_nome]['quantita_totale'] += quantita_trattamento
+        <div class="treatments-section">
+            <h2>TRATTAMENTI COMUNICATI</h2>
+    """
+    
+    # MODIFICA PRINCIPALE: Numerazione progressiva indipendente
+    trattamento_numero = 1  # Inizia da 1 per ogni comunicazione
+    
+    for terreno_key, terreno_data in trattamenti_per_terreno.items():
+        terreno = terreno_data['terreno']
+        html_template += f"""
+            <div class="terreno-header">
+                {terreno.cascina.nome} - {terreno.nome} 
+                (Superficie: {terreno.superficie} ha)
+            </div>
+        """
         
-        # Context per il template
-        context = {
-            'cliente': cliente,
-            'trattamenti': trattamenti,
-            'superficie_totale': superficie_totale,
-            'prodotti_totali': list(prodotti_totali.values()),
-            'custom_notes': custom_notes,
-            'data_comunicazione': timezone.now(),
-            'numero_trattamenti': len(trattamenti)
-        }
-        
-        # Renderizza il template HTML
-        html_content = render_to_string('pdf/comunicazione_trattamenti.html', context)
-        
-        # Genera PDF in base al motore disponibile
-        if pdf_engine == 'weasyprint':
-            # CSS per il PDF
-            css_content = """
-                @page {
-                    size: A4;
-                    margin: 2cm;
-                }
-                body {
-                    font-family: Arial, sans-serif;
-                    font-size: 11pt;
-                    line-height: 1.4;
-                }
-                .header {
-                    text-align: center;
-                    margin-bottom: 30px;
-                    border-bottom: 2px solid #0d6efd;
-                    padding-bottom: 20px;
-                }
-                .company-info {
-                    background: #f8f9fa;
-                    padding: 15px;
-                    border-radius: 8px;
-                    margin-bottom: 20px;
-                }
-                .treatment-item {
-                    border: 1px solid #dee2e6;
-                    margin-bottom: 15px;
-                    padding: 15px;
-                    page-break-inside: avoid;
-                }
-                .product-table {
-                    width: 100%;
-                    border-collapse: collapse;
-                    margin-top: 10px;
-                }
-                .product-table th,
-                .product-table td {
-                    border: 1px solid #dee2e6;
-                    padding: 8px;
-                    text-align: left;
-                }
-                .product-table th {
-                    background: #f8f9fa;
-                    font-weight: bold;
-                }
-                .summary-section {
-                    background: #e3f2fd;
-                    padding: 15px;
-                    border-radius: 8px;
-                    margin: 20px 0;
-                }
-                .custom-notes {
-                    background: #fff3cd;
-                    border: 1px solid #ffeaa7;
-                    padding: 15px;
-                    border-radius: 8px;
-                    margin: 20px 0;
-                }
-                .footer {
-                    margin-top: 30px;
-                    text-align: center;
-                    font-size: 10pt;
-                    color: #6c757d;
-                }
+        for trattamento in terreno_data['trattamenti']:
+            # RIMOZIONE: Non includiamo più le note del singolo trattamento
+            html_template += f"""
+                <div class="treatment-item">
+                    <div class="treatment-header">
+                        Trattamento N. {trattamento_numero}
+                    </div>
+                    <div class="treatment-details">
+                        <div><strong>Data esecuzione:</strong> {trattamento.data_esecuzione.strftime('%d/%m/%Y') if trattamento.data_esecuzione else 'N/D'}</div>
+                        <div><strong>Tipo intervento:</strong> {trattamento.tipo_intervento}</div>
+                        <div><strong>Superficie trattata:</strong> {trattamento.superficie_trattata} ha</div>
+                        <div><strong>Volume miscela:</strong> {trattamento.volume_miscela or 'N/D'} L/ha</div>
+                        <div><strong>Condizioni meteo:</strong> {trattamento.condizioni_meteo or 'N/D'}</div>
+                        <div><strong>Velocità vento:</strong> {trattamento.velocita_vento or 'N/D'} km/h</div>
+                    </div>
             """
             
-            html_doc = HTML(string=html_content)
-            pdf_content = html_doc.write_pdf(stylesheets=[CSS(string=css_content)])
+            # Aggiungi prodotti utilizzati
+            if hasattr(trattamento, 'prodotti') and trattamento.prodotti.exists():
+                html_template += """
+                    <div class="products-list">
+                        <strong>Prodotti utilizzati:</strong>
+                """
+                for prodotto_trattamento in trattamento.prodotti.all():
+                    html_template += f"""
+                        <div class="product-item">
+                            <strong>{prodotto_trattamento.prodotto.nome_commerciale}</strong><br>
+                            Principio attivo: {prodotto_trattamento.prodotto.principio_attivo}<br>
+                            Dose: {prodotto_trattamento.dose_per_ettaro} {prodotto_trattamento.unita_misura}/ha
+                        </div>
+                    """
+                html_template += "</div>"
             
-        else:  # xhtml2pdf
-            result = io.BytesIO()
-            pdf = pisa.pisaDocument(io.BytesIO(html_content.encode('UTF-8')), result)
-            
-            if not pdf.err:
-                pdf_content = result.getvalue()
-            else:
-                raise Exception("Errore nella generazione del PDF con xhtml2pdf")
+            html_template += "</div>"
+            trattamento_numero += 1  # Incrementa il numero progressivo
+    
+    # RIMOZIONE: Eliminiamo la sezione firme
+    html_template += f"""
+        </div>
         
-        return pdf_content
-        
-    except Exception as e:
-        raise Exception(f"Errore nella generazione del PDF: {str(e)}")
-
-
+        <div class="footer">
+            <p>Documento generato automaticamente il {timezone.now().strftime('%d/%m/%Y alle %H:%M')}</p>
+            <p>Sistema di Gestione Trattamenti Fitosanitari - {azienda.nome}</p>
+        </div>
+    </body>
+    </html>
+    """
+    
+    # Genera il PDF usando WeasyPrint o xhtml2pdf
+    if pdf_engine == 'weasyprint':
+        html = HTML(string=html_template)
+        pdf_content = html.write_pdf()
+    else:  # xhtml2pdf
+        from io import BytesIO
+        result = BytesIO()
+        pdf = pisa.pisaDocument(BytesIO(html_template.encode("UTF-8")), result)
+        if pdf.err:
+            raise Exception("Errore durante la generazione del PDF")
+        pdf_content = result.getvalue()
+    
+    return pdf_content
 # Modifica la funzione executeBulkAction esistente per reindirizzare al wizard
 def redirect_to_communication_wizard(selected_treatments):
     """

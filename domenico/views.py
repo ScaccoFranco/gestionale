@@ -802,7 +802,6 @@ def api_update_trattamento_stato(request, trattamento_id):
         }, status=500)
 
 # Sostituisci la funzione api_communication_preview esistente in domenico/views.py con questa versione corretta:
-
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_communication_preview(request):
@@ -813,6 +812,7 @@ def api_communication_preview(request):
     try:
         print(f"🔍 DEBUG: Content-Type: {request.content_type}")
         print(f"🔍 DEBUG: Method: {request.method}")
+        print(f"🔍 DEBUG: Request body: {request.body}")
         
         # Gestisce sia JSON che FormData
         if request.content_type and 'application/json' in request.content_type:
@@ -856,93 +856,85 @@ def api_communication_preview(request):
             }, status=404)
         
         # Raggruppa per cliente e prepara i dati
-        clienti_map = {}
+        companies_dict = {}
         
         for trattamento in trattamenti:
-            cliente_nome = trattamento.cliente.nome
-            print(f"🔍 DEBUG: Elaborando trattamento {trattamento.id} per {cliente_nome}")
+            cliente = trattamento.cliente
+            cliente_key = f"{cliente.id}_{cliente.nome}"
+            
+            if cliente_key not in companies_dict:
+                companies_dict[cliente_key] = {
+                    'id': cliente.id,
+                    'nome': cliente.nome,
+                    'trattamenti': [],
+                    'superficie_totale': 0,
+                    'note_personalizzate': ''
+                }
             
             # Calcola superficie interessata
-            try:
-                superficie = trattamento.get_superficie_interessata()
-                print(f"🔍 DEBUG: Superficie trattamento {trattamento.id}: {superficie}")
-            except Exception as e:
-                print(f"❌ DEBUG: Errore calcolo superficie: {e}")
-                superficie = 0
+            superficie = trattamento.get_superficie_interessata()
             
             # Prepara dati prodotti
             prodotti_data = []
             for tp in trattamento.trattamentoprodotto_set.all():
-                # Usa il campo corretto (quantita_per_ettaro invece di quantita)
-                quantita_per_ettaro = getattr(tp, 'quantita_per_ettaro', getattr(tp, 'quantita', 0))
-                
                 prodotti_data.append({
                     'nome': tp.prodotto.nome,
-                    'quantita_per_ettaro': float(quantita_per_ettaro),
-                    'unita_misura': tp.prodotto.unita_misura,
-                    'quantita_totale': float(quantita_per_ettaro * Decimal(str(superficie)))
+                    'principi_attivi': tp.prodotto.principi_attivi,
+                    'quantita_per_ettaro': float(tp.quantita_per_ettaro),
+                    'unita_misura': tp.prodotto.unita_misura
                 })
             
-            # Prepara dati terreni (se applicabile)
-            terreni_data = []
+            # Prepara dati terreni
+            terreni_nomi = []
             if trattamento.livello_applicazione == 'terreno':
-                for terreno in trattamento.terreni.all():
-                    terreni_data.append({
-                        'nome': terreno.nome,
-                        'superficie': float(terreno.superficie)
-                    })
+                terreni_nomi = [f"{t.cascina.nome} - {t.nome}" for t in trattamento.terreni.all()]
+            else:
+                # Per cascina o cliente, usa tutti i terreni della cascina/cliente
+                if trattamento.livello_applicazione == 'cascina':
+                    terreni_nomi = [f"{trattamento.cascina.nome} - Intera Cascina"]
+                else:  # cliente
+                    terreni_nomi = [f"{cliente.nome} - Intera Azienda"]
             
+            # Aggiungi il trattamento ai dati dell'azienda
             trattamento_data = {
                 'id': trattamento.id,
-                'livello_applicazione': trattamento.livello_applicazione,
-                'superficie_interessata': float(superficie),
-                'data_esecuzione_prevista': trattamento.data_esecuzione_prevista.strftime('%d/%m/%Y') if trattamento.data_esecuzione_prevista else None,
-                'note': trattamento.note or '',
-                'prodotti': prodotti_data,
-                'terreni': terreni_data,
-                'cascina_nome': trattamento.cascina.nome if trattamento.cascina else None,
-                'stato': trattamento.stato
+                'data_esecuzione': trattamento.data_esecuzione.strftime('%d/%m/%Y') if trattamento.data_esecuzione else 'N/D',
+                'terreno_nome': ', '.join(terreni_nomi),
+                'superficie_trattata': float(superficie),
+                'prodotti': prodotti_data
             }
             
-            if cliente_nome not in clienti_map:
-                clienti_map[cliente_nome] = {
-                    'cliente_nome': cliente_nome,
-                    'trattamenti': [],
-                    'superficie_totale': 0
-                }
-            
-            clienti_map[cliente_nome]['trattamenti'].append(trattamento_data)
-            clienti_map[cliente_nome]['superficie_totale'] += float(superficie)
+            companies_dict[cliente_key]['trattamenti'].append(trattamento_data)
+            companies_dict[cliente_key]['superficie_totale'] += float(superficie)
         
-        # Converte in lista per la risposta
-        email_previews = list(clienti_map.values())
+        # Converti in lista e ordina per nome
+        companies_list = list(companies_dict.values())
+        companies_list.sort(key=lambda x: x['nome'])
         
-        print(f"🔍 DEBUG: Preparati {len(email_previews)} gruppi cliente")
+        print(f"🔍 DEBUG: Preparati dati per {len(companies_list)} aziende")
+        for company in companies_list:
+            print(f"  - {company['nome']}: {len(company['trattamenti'])} trattamenti, {company['superficie_totale']:.1f} ha")
         
-        response_data = {
+        return JsonResponse({
             'success': True,
-            'email_previews': email_previews,
-            'trattamenti_count': len(trattamenti),
-            'clienti_count': len(clienti_map)
-        }
-        
-        print(f"🔍 DEBUG: Risposta preparata: {len(str(response_data))} caratteri")
-        
-        return JsonResponse(response_data)
+            'companies': companies_list,  # IMPORTANTE: Usa 'companies' non 'email_previews'
+            'total_treatments': sum(len(company['trattamenti']) for company in companies_list),
+            'total_companies': len(companies_list)
+        })
         
     except json.JSONDecodeError as e:
-        print(f"❌ DEBUG: Errore JSON: {e}")
+        print(f"❌ DEBUG: JSON decode error: {e}")
         return JsonResponse({
             'success': False,
-            'error': f'Formato JSON non valido: {str(e)}'
+            'error': 'Formato JSON non valido'
         }, status=400)
     except Exception as e:
-        print(f"❌ DEBUG: Errore generale: {e}")
+        print(f"❌ DEBUG: Exception: {e}")
         import traceback
         traceback.print_exc()
         return JsonResponse({
             'success': False,
-            'error': f'Errore durante la preparazione anteprima: {str(e)}'
+            'error': f'Errore durante il recupero dei dati: {str(e)}'
         }, status=500)
 
 

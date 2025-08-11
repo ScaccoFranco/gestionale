@@ -151,8 +151,7 @@ class Trattamento(models.Model):
     # Date
     data_inserimento = models.DateTimeField(auto_now_add=True)
     data_comunicazione = models.DateTimeField(null=True, blank=True)
-    data_esecuzione_prevista = models.DateField(null=True, blank=True)
-    data_esecuzione_effettiva = models.DateField(null=True, blank=True)
+    data_esecuzione = models.DateField(null=True, blank=True)
     
     # Stato
     stato = models.CharField(
@@ -556,7 +555,6 @@ def log_trattamento_created(trattamento, request=None):
             'superficie_interessata': float(superficie),
             'livello_applicazione': trattamento.livello_applicazione,
             'stato': trattamento.stato,
-            'data_esecuzione_prevista': trattamento.data_esecuzione_prevista.isoformat() if trattamento.data_esecuzione_prevista else None
         }
     )
 
