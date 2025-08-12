@@ -38,7 +38,6 @@ urlpatterns = [
     
     # API di utilità esistenti
     path('api/test-email/', views.api_test_email_config, name='api_test_email_config'),
-    path('api/trattamenti/communication-preview/', views.api_communication_preview, name='api_communication_preview'),
     path('api/trattamenti/bulk-action/', views.api_bulk_action_trattamenti, name='api_bulk_action_trattamenti'),
 
     # ============ NUOVE API PER DATABASE MANAGEMENT ============
@@ -112,6 +111,8 @@ urlpatterns = [
 
     # Aggiungi questi path
     path('comunicazione-wizard/', views.comunicazione_wizard, name='comunicazione_wizard'),
-    path('api/trattamenti/communication-preview/', views.api_communication_preview, name='api_communication_preview'),
     path('api/trattamenti/generate-company-pdf/', api_communications.api_generate_company_pdf, name='api_generate_company_pdf'),
+
+    path('api/trattamenti/communication-status/', views.api_communication_status_check, name='api_communication_status'),
+    path('api/trattamenti/communication-preview/', api_communications.api_communication_preview, name='api_communication_preview'),
 ]

@@ -705,6 +705,172 @@
             gap: 1rem;
         }
     }
+
+
+
+    /* Stili per il messaggio di completamento comunicazioni */
+    .completion-message {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 400px;
+        padding: 2rem;
+    }
+
+    .completion-card {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border: 2px solid #28a745;
+        border-radius: 20px;
+        padding: 3rem 2rem;
+        text-align: center;
+        box-shadow: 0 10px 30px rgba(40, 167, 69, 0.15);
+        max-width: 600px;
+        width: 100%;
+        animation: completionSlideIn 0.8s ease-out;
+    }
+
+    .completion-icon {
+        animation: completionPulse 2s ease-in-out infinite;
+    }
+
+    .completion-actions {
+        margin-top: 2rem;
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    @keyframes completionSlideIn {
+        from {
+            opacity: 0;
+            transform: translateY(-30px) scale(0.9);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+
+    @keyframes completionPulse {
+        0%, 100% {
+            transform: scale(1);
+            opacity: 1;
+        }
+        50% {
+            transform: scale(1.1);
+            opacity: 0.8;
+        }
+    }
+
+    /* Animazione per la rimozione delle aziende */
+    .company-card.removing {
+        animation: fadeOutSlide 0.5s ease-in-out forwards;
+    }
+
+    @keyframes fadeOutSlide {
+        0% {
+            opacity: 1;
+            transform: translateX(0) scale(1);
+            max-height: 500px;
+        }
+        50% {
+            opacity: 0.5;
+            transform: translateX(-20px) scale(0.95);
+        }
+        100% {
+            opacity: 0;
+            transform: translateX(-50px) scale(0.9);
+            max-height: 0;
+            margin-bottom: 0;
+            padding-top: 0;
+            padding-bottom: 0;
+        }
+    }
+
+    /* Evidenzia l'azienda che sta per essere processata */
+    .company-card.processing {
+        border: 3px solid #007bff;
+        background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+        transform: scale(1.02);
+        box-shadow: 0 8px 25px rgba(0, 123, 255, 0.3);
+        transition: all 0.3s ease;
+    }
+
+    .company-card.processing .company-title {
+        color: #0056b3;
+        font-weight: 600;
+    }
+
+    /* Stile per le comunicazioni completate con successo */
+    .company-card.completed {
+        border: 2px solid #28a745;
+        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+        opacity: 0.8;
+    }
+
+    .company-card.completed .company-title {
+        color: #155724;
+    }
+
+    .company-card.completed::after {
+        content: '✓ Comunicato';
+        position: absolute;
+        top: 10px;
+        right: 15px;
+        background: #28a745;
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 15px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
+    /* Responsive per mobile */
+    @media (max-width: 768px) {
+        .completion-card {
+            padding: 2rem 1rem;
+            margin: 0 1rem;
+        }
+        
+        .completion-actions {
+            flex-direction: column;
+        }
+        
+        .completion-actions .btn {
+            width: 100%;
+            max-width: 300px;
+        }
+    }
+
+    /* Miglioramento del messaggio di loading durante il processamento batch */
+    .loading-overlay.batch-processing .loading-content {
+        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+        color: white;
+    }
+
+    .loading-overlay.batch-processing .loading-spinner {
+        border-top-color: white;
+    }
+
+    /* Progress bar per il processamento batch */
+    .batch-progress {
+        width: 100%;
+        max-width: 400px;
+        height: 6px;
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 3px;
+        margin-top: 1rem;
+        overflow: hidden;
+    }
+
+    .batch-progress-bar {
+        height: 100%;
+        background: white;
+        transition: width 0.3s ease;
+        border-radius: 3px;
+    }
+
 </style>
 {% endblock %}
 
@@ -879,7 +1045,6 @@
         try {
             console.log('🔍 Caricamento dati per trattamenti:', selectedTreatments);
             
-            // VERIFICA: Assicurati che selectedTreatments non sia vuoto
             if (!selectedTreatments || selectedTreatments.length === 0) {
                 showError('Nessun trattamento selezionato. Ritorna alla lista trattamenti.');
                 setTimeout(() => goBack(), 3000);
@@ -893,7 +1058,8 @@
                     'X-CSRFToken': getCsrfToken()
                 },
                 body: JSON.stringify({
-                    trattamenti_ids: selectedTreatments  // CORRETTO: usa trattamenti_ids
+                    trattamenti_ids: selectedTreatments,
+                    exclude_communicated: true  // NUOVO: Escludi automaticamente quelli comunicati
                 })
             });
             
@@ -910,15 +1076,15 @@
             console.log('📦 Dati ricevuti:', data);
             
             if (data.success) {
-                // CORREZIONE: Usa il campo corretto dalla risposta
-                if (data.companies && Array.isArray(data.companies)) {
+                if (data.companies && Array.isArray(data.companies) && data.companies.length > 0) {
                     companiesData = data.companies;
                     console.log('✅ Caricati dati per', companiesData.length, 'aziende');
                     renderCompanies();
                     updateSummaryStats();
                 } else {
-                    console.error('❌ Struttura dati non valida:', data);
-                    showError('Struttura dati non valida ricevuta dal server');
+                    // NUOVO: Tutti i trattamenti sono già stati comunicati
+                    showAllCommunicationsCompleted();
+                    showSuccess('Tutti i trattamenti selezionati sono già stati comunicati!');
                 }
             } else {
                 showError(data.error || 'Errore nel caricamento dei dati');
@@ -985,6 +1151,7 @@
         });
     }
     
+
     function createCompanyCard(company, index) {
         // Debug dei dati azienda
         console.log(`🏢 Creando card per ${company.nome}:`, company);
@@ -996,22 +1163,43 @@
         const trattamenti = company.trattamenti || [];
         
         trattamenti.forEach((treatment) => {
+            // CORREZIONE: Adatta i nomi dei campi dal backend alla struttura HTML originale
+            const dataEsecuzione = treatment.data_programmata || 'N/D';
+            const terrenoNome = treatment.terreni_nomi && treatment.terreni_nomi.length > 0 ? 
+                            treatment.terreni_nomi.join(', ') : 
+                            treatment.cascina_nome || 'N/D';
+            const superficieTrattata = treatment.superficie || 0;
+            
+            // CORREZIONE: Gestisci prodotti con la struttura corretta
+            let prodottiHtml = '';
+            if (treatment.prodotti && Array.isArray(treatment.prodotti) && treatment.prodotti.length > 0) {
+                prodottiHtml = treatment.prodotti.map(prodotto => `
+                    <div class="product-item">
+                        <strong>${prodotto.nome}</strong>
+                        <small class="text-muted d-block">
+                            P.A.: ${prodotto.principi_attivi || 'N/D'} | 
+                            Dose: ${prodotto.dose || 0} ${prodotto.unita_misura || 'L'}/ha
+                        </small>
+                    </div>
+                `).join('');
+            }
+            
             treatmentsHtml += `
-                <div class="treatment-card">
+                <div class="treatment-item">
                     <div class="treatment-header">
-                        <div class="treatment-title">
-                            <h6>Trattamento N. ${treatmentNumber}</h6>
-                            <span class="treatment-date">${treatment.data_esecuzione || 'N/D'}</span>
+                        <div class="treatment-title-group">
+                            <h6 class="treatment-title">Trattamento N. ${treatmentNumber}</h6>
+                            <span class="treatment-date">${dataEsecuzione}</span>
                         </div>
                     </div>
                     <div class="treatment-details">
                         <div class="detail-item">
                             <label>Area Interessata:</label>
-                            <span>${treatment.terreno_nome || 'N/D'}</span>
+                            <span>${terrenoNome}</span>
                         </div>
                         <div class="detail-item">
                             <label>Superficie Interessata:</label>
-                            <span>${treatment.superficie_trattata || 0} ha</span>
+                            <span>${superficieTrattata} ha</span>
                         </div>
                         <div class="detail-item">
                             <label>Stato:</label>
@@ -1023,15 +1211,7 @@
                     <div class="products-section">
                         <h6><i class="fas fa-flask me-2"></i>Prodotti Utilizzati</h6>
                         <div class="products-list">
-                            ${treatment.prodotti.map(prodotto => `
-                                <div class="product-item">
-                                    <strong>${prodotto.nome_commerciale}</strong>
-                                    <small class="text-muted d-block">
-                                        P.A.: ${prodotto.principio_attivo} | 
-                                        Dose: ${prodotto.dose_per_ettaro} ${prodotto.unita_misura}/ha
-                                    </small>
-                                </div>
-                            `).join('')}
+                            ${prodottiHtml}
                         </div>
                     </div>
                     ` : ''}
@@ -1057,12 +1237,8 @@
                             <div class="company-stat-label">Trattament${trattamenti.length !== 1 ? 'i' : 'o'}</div>
                         </div>
                         <div class="company-stat">
-                            <span class="company-stat-value">${(company.superficie_totale || 0).toFixed(1)}</span>
-                            <div class="company-stat-label">Ettari Totali</div>
-                        </div>
-                        <div class="company-stat">
-                            <span class="company-stat-value">${trattamenti.reduce((sum, t) => sum + (t.prodotti ? t.prodotti.length : 0), 0)}</span>
-                            <div class="company-stat-label">Prodotti Totali</div>
+                            <span class="company-stat-value">${(company.superficie_totale || 0).toFixed(1)} ha</span>
+                            <div class="company-stat-label">Superficie</div>
                         </div>
                     </div>
                 </div>
@@ -1071,31 +1247,25 @@
             <div class="company-body">
                 ${treatmentsHtml}
                 
-                <div class="custom-notes">
-                    <div class="notes-header">
-                        <i class="fas fa-sticky-note"></i>
-                        <span>Note personalizzate per questa comunicazione</span>
-                    </div>
+                <div class="company-notes">
+                    <label for="customNotes${index}" class="form-label">
+                        <i class="fas fa-sticky-note me-2"></i>Note personalizzate (opzionale):
+                    </label>
                     <textarea 
-                        class="notes-textarea" 
-                        placeholder="Aggiungi note specifiche che verranno incluse nel PDF di comunicazione per ${company.nome}..."
+                        class="form-control" 
+                        id="customNotes${index}" 
+                        rows="3" 
+                        placeholder="Aggiungi note specifiche per questa comunicazione..."
                         onchange="updateCompanyNotes(${index}, this.value)"
-                        rows="4"
-                    >${company.note_personalizzate || ''}</textarea>
-                    <div class="notes-help">
-                        💡 Queste note verranno aggiunte al PDF per evidenziare informazioni importanti per ${company.nome}
-                    </div>
+                    ></textarea>
                 </div>
-                
-                <div class="company-actions">
-                    <div class="d-flex align-items-center">
-                        <i class="fas fa-info-circle text-primary me-2"></i>
-                        <small class="text-muted">PDF pronto per la generazione</small>
-                    </div>
-                    <button class="btn btn-primary" onclick="generateSinglePdf(${index})">
-                        <i class="fas fa-file-pdf"></i>Genera PDF
-                    </button>
-                </div>
+            </div>
+            
+            <div class="company-actions">
+                <button class="btn btn-success btn-lg company-action-btn" onclick="generateSinglePdf(${index})">
+                    <i class="fas fa-file-pdf me-2"></i>
+                    Genera PDF per ${company.nome}
+                </button>
             </div>
         `;
         
@@ -1109,30 +1279,15 @@
         }
     }
     
+    // Modifica la funzione updateSummaryStats per riflettere le rimozioni
     function updateSummaryStats() {
         const totalTreatments = companiesData.reduce((sum, company) => sum + company.trattamenti.length, 0);
         const totalSurface = companiesData.reduce((sum, company) => sum + company.superficie_totale, 0);
         
-        console.log('📊 Aggiornamento statistiche:', {
-            treatments: totalTreatments,
-            companies: companiesData.length,
-            surface: totalSurface
-        });
-        
         document.getElementById('totalTreatments').textContent = totalTreatments;
         document.getElementById('totalCompanies').textContent = companiesData.length;
-        document.getElementById('totalSurface').textContent = totalSurface.toFixed(1) + ' ha';
+        document.getElementById('totalSurface').textContent = `${totalSurface.toFixed(2)} ha`;
         document.getElementById('totalPdfs').textContent = companiesData.length;
-        
-        // Aggiorna il pulsante generale
-        const generateAllBtn = document.getElementById('generateAllBtn');
-        if (totalTreatments === 0) {
-            generateAllBtn.disabled = true;
-            generateAllBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i>Nessun Trattamento';
-        } else {
-            generateAllBtn.disabled = false;
-            generateAllBtn.innerHTML = `<i class="fas fa-file-pdf"></i>Genera Tutti i PDF (${companiesData.length})`;
-        }
     }
     
     function generateSinglePdf(companyIndex) {
@@ -1158,6 +1313,11 @@
         modal.show();
     }
     
+    
+    // Variabile globale per tracciare i trattamenti già comunicati
+    let communicatedTreatments = [];
+
+    // Modifica la funzione processSingleCompanyPdf esistente
     async function processSingleCompanyPdf(companyIndex) {
         const company = companiesData[companyIndex];
         
@@ -1176,7 +1336,7 @@
                 body: JSON.stringify({
                     trattamenti_ids: treatmentIds,
                     company_name: company.nome,
-                    custom_notes: company.note_personalizzate,
+                    custom_notes: getCustomNotes(companyIndex),
                     update_status: true
                 })
             });
@@ -1186,44 +1346,144 @@
                 const blob = await response.blob();
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
+                a.style.display = 'none';
                 a.href = url;
-                a.download = `Comunicazione_${company.nome.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+                a.download = `Comunicazione_${company.nome.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0,10)}.pdf`;
                 document.body.appendChild(a);
                 a.click();
-                document.body.removeChild(a);
                 window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
                 
-                // Segna come completata
-                markCompanyAsCompleted(companyIndex);
+                // NUOVA FUNZIONALITÀ: Rimuovi l'azienda dalla lista dopo la comunicazione
+                await removeCompanyFromList(companyIndex);
                 
-                showSuccess(`PDF generato e scaricato per ${company.nome}`);
-                
-                // Se non è l'ultima azienda, chiedi se continuare
-                if (companyIndex < companiesData.length - 1) {
-                    setTimeout(() => {
-                        if (confirm(`✅ PDF per ${company.nome} completato!\n\nVuoi procedere con la prossima azienda?`)) {
-                            scrollToNextCompany(companyIndex + 1);
-                        }
-                    }, 1000);
-                } else {
-                    // Ultima azienda completata
-                    setTimeout(() => {
-                        if (confirm('🎉 Tutte le comunicazioni sono state generate!\n\nVuoi tornare alla lista trattamenti?')) {
-                            goBack();
-                        }
-                    }, 1500);
-                }
+                showSuccess(`PDF generato con successo per ${company.nome}!<br>I trattamenti sono stati contrassegnati come "Comunicato".`);
                 
             } else {
                 const errorData = await response.json();
-                showError(errorData.error || 'Errore nella generazione del PDF');
+                showError(`Errore generazione PDF: ${errorData.error || 'Errore sconosciuto'}`);
             }
             
         } catch (error) {
-            console.error('❌ Errore:', error);
-            showError('Errore di connessione durante la generazione del PDF');
+            console.error('❌ Errore generazione PDF:', error);
+            showError(`Errore durante la generazione del PDF: ${error.message}`);
         } finally {
             hideLoading();
+        }
+    }
+
+    // NUOVA FUNZIONE: Rimuove un'azienda dalla lista dopo la comunicazione
+    async function removeCompanyFromList(companyIndex) {
+        const company = companiesData[companyIndex];
+        
+        // Aggiungi i trattamenti alla lista dei comunicati
+        const treatmentIds = company.trattamenti.map(t => t.id);
+        communicatedTreatments.push(...treatmentIds);
+        
+        // NUOVO: Rimuovi questi trattamenti anche da selectedTreatments
+        selectedTreatments = selectedTreatments.filter(id => !treatmentIds.includes(id));
+        console.log('🔄 selectedTreatments aggiornato:', selectedTreatments);
+        
+        // Rimuovi l'azienda dall'array
+        companiesData.splice(companyIndex, 1);
+        
+        // Aggiorna l'interfaccia
+        renderCompanies();
+        updateSummaryStats();
+        
+        // Se non ci sono più aziende, mostra messaggio di completamento
+        if (companiesData.length === 0) {
+            showAllCommunicationsCompleted();
+        }
+        
+        console.log('✅ Azienda rimossa dalla lista. Rimanenti:', companiesData.length);
+    }
+
+    // NUOVA FUNZIONE: Mostra messaggio quando tutte le comunicazioni sono completate
+    function showAllCommunicationsCompleted() {
+        const companiesContainer = document.getElementById('companiesList');
+        companiesContainer.innerHTML = `
+            <div class="completion-message">
+                <div class="completion-card">
+                    <div class="completion-icon">
+                        <i class="fas fa-check-circle text-success" style="font-size: 4rem;"></i>
+                    </div>
+                    <h3 class="text-success mt-3">Tutte le comunicazioni completate!</h3>
+                    <p class="text-muted mb-4">
+                        ${communicatedTreatments.length > 0 ? 
+                            `Hai appena comunicato ${communicatedTreatments.length} trattamenti con successo.` : 
+                            'Tutti i trattamenti selezionati erano già stati comunicati in precedenza.'
+                        }<br>
+                        I PDF sono stati generati e gli stati aggiornati nel database.
+                    </p>
+                    <div class="completion-actions">
+                        <button class="btn btn-primary btn-lg me-3" onclick="goBack()">
+                            <i class="fas fa-arrow-left me-2"></i>
+                            Torna ai Trattamenti
+                        </button>
+                    </div>
+                    <div class="mt-3">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Per evitare duplicazioni, i trattamenti già comunicati non vengono più mostrati.
+                        </small>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Nascondi il pulsante "Genera Tutti i PDF"
+        const generateAllBtn = document.getElementById('generateAllBtn');
+        if (generateAllBtn) {
+            generateAllBtn.style.display = 'none';
+        }
+    }
+
+
+    async function checkValidTreatments() {
+        try {
+            const response = await fetch('/api/trattamenti/communication-status/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: JSON.stringify({
+                    trattamenti_ids: selectedTreatments
+                })
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success) {
+                    const trattamentiRimanenti = data.data.trattamenti_rimanenti.map(t => t.id);
+                    
+                    if (trattamentiRimanenti.length === 0) {
+                        // Tutti già comunicati
+                        showAllCommunicationsCompleted();
+                        showSuccess('Tutti i trattamenti selezionati sono già stati comunicati!');
+                        return;
+                    } else if (trattamentiRimanenti.length < selectedTreatments.length) {
+                        // Alcuni già comunicati
+                        selectedTreatments = trattamentiRimanenti;
+                        const comunicatiCount = selectedTreatments.length - trattamentiRimanenti.length;
+                        showSuccess(`${comunicatiCount} trattamenti erano già stati comunicati. Mostro solo quelli rimanenti.`);
+                    }
+                    
+                    // Procedi con il caricamento normale
+                    loadTreatmentData();
+                } else {
+                    // Fallback al caricamento normale
+                    loadTreatmentData();
+                }
+            } else {
+                // Fallback al caricamento normale
+                loadTreatmentData();
+            }
+        } catch (error) {
+            console.error('❌ Errore verifica trattamenti:', error);
+            // Fallback al caricamento normale
+            loadTreatmentData();
         }
     }
     
@@ -1263,52 +1523,95 @@
         }
     }
     
+    // Modifica la funzione generateAllPdfs per gestire la rimozione progressiva
     async function generateAllPdfs() {
         if (companiesData.length === 0) {
-            showError('Nessuna azienda disponibile per la generazione PDF');
+            showError('Nessuna azienda da processare');
             return;
         }
         
-        if (!confirm(`Sei sicuro di voler generare tutti i ${companiesData.length} PDF in sequenza?\n\nI file verranno scaricati automaticamente uno dopo l'altro.`)) {
-            return;
-        }
+        const totalCompanies = companiesData.length;
+        let processedCompanies = 0;
         
-        let completedCount = 0;
-        let errorCount = 0;
+        showLoading('Generazione PDF in corso...', `Processando azienda 1 di ${totalCompanies}`);
         
-        for (let i = 0; i < companiesData.length; i++) {
+        // Processa le aziende una alla volta, partendo sempre dall'indice 0
+        // perché ogni volta che ne rimuoviamo una, gli indici si riorganizzano
+        while (companiesData.length > 0) {
+            const currentCompany = companiesData[0];
+            processedCompanies++;
+            
+            // Aggiorna il messaggio di loading
+            document.getElementById('loadingMessage').textContent = 
+                `Processando ${currentCompany.nome} (${processedCompanies} di ${totalCompanies})`;
+            
             try {
-                showLoading(
-                    `Generazione PDF ${i + 1} di ${companiesData.length}`, 
-                    `Elaborazione ${companiesData[i].nome}...`
-                );
+                await processSingleCompanyPdfSilent(0); // Sempre indice 0 perché rimuoviamo di volta in volta
                 
-                await processSingleCompanyPdf(i);
-                completedCount++;
-                
-                // Pausa tra le generazioni per evitare sovraccarico
-                if (i < companiesData.length - 1) {
-                    await new Promise(resolve => setTimeout(resolve, 1500));
-                }
             } catch (error) {
-                console.error(`❌ Errore generazione PDF per ${companiesData[i].nome}:`, error);
-                errorCount++;
+                console.error(`❌ Errore processando ${currentCompany.nome}:`, error);
+                showError(`Errore durante il processamento di ${currentCompany.nome}: ${error.message}`);
+                // Rimuovi comunque l'azienda per evitare loop infiniti
+                companiesData.splice(0, 1);
             }
+            
+            // Pausa breve per evitare sovraccarico
+            await new Promise(resolve => setTimeout(resolve, 500));
         }
         
         hideLoading();
         
-        if (errorCount === 0) {
-            showSuccess(`🎉 Tutti i ${completedCount} PDF sono stati generati con successo!`);
-        } else {
-            showError(`⚠️ Generati ${completedCount} PDF con ${errorCount} errore/i. Controlla i singoli risultati.`);
+        if (companiesData.length === 0) {
+            showAllCommunicationsCompleted();
+            showSuccess(`Processate con successo tutte le ${totalCompanies} aziende!`);
         }
+    }
+
+    // NUOVA FUNZIONE: Versione "silenziosa" di processSingleCompanyPdf per uso in batch
+    async function processSingleCompanyPdfSilent(companyIndex) {
+        const company = companiesData[companyIndex];
+        const treatmentIds = company.trattamenti.map(t => t.id);
         
-        setTimeout(() => {
-            if (confirm('Operazione completata! Vuoi tornare alla lista trattamenti?')) {
-                goBack();
-            }
-        }, 2000);
+        const response = await fetch('/api/trattamenti/generate-company-pdf/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({
+                trattamenti_ids: treatmentIds,
+                company_name: company.nome,
+                custom_notes: getCustomNotes(companyIndex),
+                update_status: true
+            })
+        });
+        
+        if (response.ok) {
+            // Scarica il PDF
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = `Comunicazione_${company.nome.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0,10)}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            
+            // Rimuovi l'azienda dalla lista
+            await removeCompanyFromList(companyIndex);
+            
+        } else {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Errore sconosciuto');
+        }
+    }
+
+    // NUOVA FUNZIONE: Ottiene le note personalizzate per un'azienda
+    function getCustomNotes(companyIndex) {
+        const notesTextarea = document.querySelector(`#customNotes${companyIndex}`);
+        return notesTextarea ? notesTextarea.value.trim() : '';
     }
     
     // Utility functions

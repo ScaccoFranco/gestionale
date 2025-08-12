@@ -798,182 +798,6 @@ def api_update_trattamento_stato(request, trattamento_id):
             'error': f'Errore nell\'aggiornamento: {str(e)}'
         }, status=500)
 
-@csrf_exempt
-@require_http_methods(["POST"])
-def api_communication_preview(request):
-    """
-    API per ottenere l'anteprima dei dati dei trattamenti da comunicare
-    raggruppati per azienda - PULITA dai campi inesistenti
-    """
-    try:
-        print(f"🔍 DEBUG: Content-Type: {request.content_type}")
-        print(f"🔍 DEBUG: Method: {request.method}")
-        print(f"🔍 DEBUG: Request body: {request.body}")
-        
-        # Gestisce sia JSON che FormData
-        if request.content_type and 'application/json' in request.content_type:
-            # Dati JSON dal wizard
-            import json
-            data = json.loads(request.body.decode('utf-8'))
-            trattamenti_ids = data.get('trattamenti_ids', [])
-            print(f"🔍 DEBUG JSON: {data}")
-        else:
-            # Dati FormData (per compatibilità)
-            trattamenti_ids_json = request.POST.get('trattamenti_ids', '[]')
-            print(f"🔍 DEBUG FormData: {dict(request.POST)}")
-            try:
-                trattamenti_ids = json.loads(trattamenti_ids_json)
-            except json.JSONDecodeError:
-                trattamenti_ids = []
-        
-        print(f"🔍 DEBUG: trattamenti_ids = {trattamenti_ids}")
-        
-        if not trattamenti_ids:
-            return JsonResponse({
-                'success': False,
-                'error': 'Nessun trattamento specificato'
-            }, status=400)
-        
-        # Recupera i trattamenti con tutte le relazioni necessarie
-        trattamenti = Trattamento.objects.filter(
-            id__in=trattamenti_ids
-        ).select_related(
-            'cliente', 'cascina'
-        ).prefetch_related(
-            'terreni', 'trattamentoprodotto_set__prodotto__principi_attivi'
-        )
-        
-        print(f"🔍 DEBUG: Trovati {trattamenti.count()} trattamenti")
-        
-        if not trattamenti.exists():
-            return JsonResponse({
-                'success': False,
-                'error': 'Nessun trattamento trovato con gli ID specificati'
-            }, status=404)
-        
-        # Raggruppa per cliente e prepara i dati
-        companies_dict = {}
-        
-        for trattamento in trattamenti:
-            cliente = trattamento.cliente
-            cliente_key = f"{cliente.id}_{cliente.nome}"
-            
-            if cliente_key not in companies_dict:
-                companies_dict[cliente_key] = {
-                    'id': cliente.id,
-                    'nome': cliente.nome,
-                    'trattamenti': [],
-                    'superficie_totale': 0,
-                    'note_personalizzate': ''
-                }
-            
-            # CORREZIONE: Calcola superficie interessata in modo sicuro
-            try:
-                superficie = trattamento.get_superficie_interessata()
-                superficie_float = float(superficie) if superficie else 0.0
-            except Exception as e:
-                print(f"❌ Errore calcolo superficie per trattamento {trattamento.id}: {e}")
-                superficie_float = 0.0
-            
-            # CORREZIONE: Prepara dati prodotti convertendo i manager in liste
-            prodotti_data = []
-            try:
-                # Usa .all() per convertire il manager in queryset, poi itera
-                for tp in trattamento.trattamentoprodotto_set.all():
-                    # Gestisci sia quantita_per_ettaro che quantita per compatibilità
-                    if hasattr(tp, 'quantita_per_ettaro'):
-                        dose_per_ettaro = float(tp.quantita_per_ettaro)
-                    elif hasattr(tp, 'quantita'):
-                        dose_per_ettaro = float(tp.quantita)
-                    else:
-                        dose_per_ettaro = 0.0
-                    
-                    # Ottieni i principi attivi come stringa
-                    principi_attivi = []
-                    try:
-                        # CORREZIONE: Converte ManyRelatedManager in lista
-                        principi_attivi = [pa.nome for pa in tp.prodotto.principi_attivi.all()]
-                    except Exception:
-                        principi_attivi = []
-                    
-                    prodotti_data.append({
-                        'nome_commerciale': tp.prodotto.nome,
-                        'principio_attivo': ', '.join(principi_attivi) if principi_attivi else 'N/D',
-                        'dose_per_ettaro': dose_per_ettaro,
-                        'unita_misura': getattr(tp.prodotto, 'unita_misura', 'L')
-                    })
-            except Exception as e:
-                print(f"❌ Errore preparazione prodotti per trattamento {trattamento.id}: {e}")
-                prodotti_data = []
-            
-            # CORREZIONE: Prepara dati terreni convertendo il manager in lista
-            terreni_nomi = []
-            try:
-                if trattamento.livello_applicazione == 'terreno':
-                    # CORREZIONE: Converte ManyRelatedManager in lista
-                    terreni_list = list(trattamento.terreni.all())
-                    terreni_nomi = [f"{t.cascina.nome} - {t.nome}" for t in terreni_list]
-                elif trattamento.livello_applicazione == 'cascina' and trattamento.cascina:
-                    terreni_nomi = [f"{trattamento.cascina.nome} - Intera Cascina"]
-                else:  # cliente
-                    terreni_nomi = [f"{cliente.nome} - Intera Azienda"]
-            except Exception as e:
-                print(f"❌ Errore preparazione terreni per trattamento {trattamento.id}: {e}")
-                terreni_nomi = ["Errore nel caricamento terreni"]
-            
-            # CORREZIONE: Gestisci le date in modo sicuro - solo data_esecuzione esiste
-            try:
-                if trattamento.data_esecuzione:
-                    data_esecuzione_str = trattamento.data_esecuzione.strftime('%d/%m/%Y')
-                else:
-                    data_esecuzione_str = 'Data da definire'
-            except Exception:
-                data_esecuzione_str = 'Data da definire'
-            
-            # Aggiungi il trattamento ai dati dell'azienda - SOLO CAMPI ESISTENTI
-            trattamento_data = {
-                'id': trattamento.id,
-                'data_esecuzione': data_esecuzione_str,
-                'terreno_nome': ', '.join(terreni_nomi),
-                'superficie_trattata': superficie_float,
-                'stato': trattamento.stato,
-                'prodotti': prodotti_data
-            }
-            
-            companies_dict[cliente_key]['trattamenti'].append(trattamento_data)
-            companies_dict[cliente_key]['superficie_totale'] += superficie_float
-        
-        # Converti in lista e ordina per nome
-        companies_list = list(companies_dict.values())
-        companies_list.sort(key=lambda x: x['nome'])
-        
-        print(f"🔍 DEBUG: Preparati dati per {len(companies_list)} aziende")
-        for company in companies_list:
-            print(f"  - {company['nome']}: {len(company['trattamenti'])} trattamenti, {company['superficie_totale']:.1f} ha")
-        
-        return JsonResponse({
-            'success': True,
-            'companies': companies_list,
-            'total_treatments': sum(len(company['trattamenti']) for company in companies_list),
-            'total_companies': len(companies_list)
-        })
-        
-    except json.JSONDecodeError as e:
-        print(f"❌ DEBUG: JSON decode error: {e}")
-        return JsonResponse({
-            'success': False,
-            'error': 'Formato JSON non valido'
-        }, status=400)
-    except Exception as e:
-        print(f"❌ DEBUG: Exception: {e}")
-        import traceback
-        traceback.print_exc()
-        return JsonResponse({
-            'success': False,
-            'error': f'Errore durante il recupero dei dati: {str(e)}'
-        }, status=500)
-    
-
 # Aggiungi anche questa nuova API per la generazione PDF:
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -2065,4 +1889,73 @@ def api_search_cascine(request, cliente_id):
         return JsonResponse({
             'error': str(e),
             'results': []
+        }, status=500)
+    
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_communication_status_check(request):
+    """
+    API per verificare lo stato dei trattamenti e aggiornare la vista
+    dopo le comunicazioni progressive
+    """
+    try:
+        data = json.loads(request.body)
+        trattamenti_ids = data.get('trattamenti_ids', [])
+        
+        if not trattamenti_ids:
+            return JsonResponse({
+                'success': False,
+                'error': 'Nessun trattamento specificato'
+            }, status=400)
+        
+        # Recupera i trattamenti con stato attuale
+        trattamenti = Trattamento.objects.filter(
+            id__in=trattamenti_ids
+        ).select_related('cliente', 'cascina').prefetch_related('terreni')
+        
+        # Raggruppa per stato
+        stati_trattamenti = {}
+        trattamenti_comunicati = []
+        trattamenti_rimanenti = []
+        
+        for trattamento in trattamenti:
+            stato = trattamento.stato
+            if stato not in stati_trattamenti:
+                stati_trattamenti[stato] = 0
+            stati_trattamenti[stato] += 1
+            
+            if stato == 'comunicato':
+                trattamenti_comunicati.append(trattamento.id)
+            elif stato == 'programmato':
+                trattamenti_rimanenti.append({
+                    'id': trattamento.id,
+                    'cliente_nome': trattamento.cliente.nome,
+                    'cascina_nome': trattamento.cascina.nome if trattamento.cascina else '',
+                    'data_esecuzione': trattamento.data_esecuzione.strftime('%Y-%m-%d') if trattamento.data_esecuzione else None,
+                    'superficie': float(trattamento.get_superficie_interessata())
+                })
+        
+        return JsonResponse({
+            'success': True,
+            'data': {
+                'stati_trattamenti': stati_trattamenti,
+                'trattamenti_comunicati': trattamenti_comunicati,
+                'trattamenti_rimanenti': trattamenti_rimanenti,
+                'totale_originale': len(trattamenti_ids),
+                'totale_comunicati': len(trattamenti_comunicati),
+                'totale_rimanenti': len(trattamenti_rimanenti),
+                'percentuale_completamento': round((len(trattamenti_comunicati) / len(trattamenti_ids)) * 100, 1) if trattamenti_ids else 0
+            }
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': 'Formato JSON non valido'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'Errore durante la verifica stato: {str(e)}'
         }, status=500)

@@ -11,16 +11,18 @@ import io
 from decimal import Decimal
 from .models import *
 
+
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_communication_preview(request):
     """
     API per ottenere l'anteprima dei dati dei trattamenti da comunicare
-    raggruppati per azienda
+    raggruppati per azienda - con filtro automatico per i comunicati
     """
     try:
         data = json.loads(request.body)
         trattamenti_ids = data.get('trattamenti_ids', [])
+        exclude_communicated = data.get('exclude_communicated', False)  # NUOVO parametro
         
         if not trattamenti_ids:
             return JsonResponse({
@@ -28,10 +30,16 @@ def api_communication_preview(request):
                 'error': 'Nessun trattamento specificato'
             }, status=400)
         
+        # Query base
+        query = Trattamento.objects.filter(id__in=trattamenti_ids)
+        
+        # NUOVO: Filtra automaticamente i comunicati se richiesto
+        if exclude_communicated:
+            query = query.exclude(stato='comunicato')
+            print(f"🔍 DEBUG: Filtrati trattamenti comunicati. Query aggiornata: {query.count()} rimanenti")
+        
         # Recupera i trattamenti con tutte le relazioni necessarie
-        trattamenti = Trattamento.objects.filter(
-            id__in=trattamenti_ids
-        ).select_related(
+        trattamenti = query.select_related(
             'cliente', 'cascina'
         ).prefetch_related(
             'terreni', 'trattamentoprodotto_set__prodotto'
@@ -39,11 +47,17 @@ def api_communication_preview(request):
         
         if not trattamenti.exists():
             return JsonResponse({
-                'success': False,
-                'error': 'Nessun trattamento trovato con gli ID specificati'
-            }, status=404)
+                'success': True,
+                'companies': [],
+                'message': 'Tutti i trattamenti sono già stati comunicati' if exclude_communicated else 'Nessun trattamento trovato',
+                'stats': {
+                    'trattamenti_count': 0,
+                    'clienti_count': 0,
+                    'all_communicated': exclude_communicated
+                }
+            })
         
-        # Raggruppa per cliente e prepara i dati
+        # Raggruppa per cliente e prepara i dati (logica esistente)
         preview_data = []
         clienti_map = {}
         
@@ -53,53 +67,71 @@ def api_communication_preview(request):
             # Calcola superficie interessata
             superficie = trattamento.get_superficie_interessata()
             
-            # Prepara dati prodotti
+            # Prepara dati prodotti (logica esistente)
             prodotti_data = []
             for tp in trattamento.trattamentoprodotto_set.all():
+                if hasattr(tp, 'get_quantita_per_ettaro') and callable(getattr(tp, 'get_quantita_per_ettaro')):
+                    quantita = float(tp.get_quantita_per_ettaro())
+                elif hasattr(tp, 'quantita_per_ettaro'):
+                    quantita = float(tp.quantita_per_ettaro)
+                elif hasattr(tp, 'quantita'):
+                    quantita = float(tp.quantita)
+                else:
+                    quantita = 0.0
+                
                 prodotti_data.append({
                     'nome': tp.prodotto.nome,
-                    'quantita_per_ettaro': float(tp.get_quantita_per_ettaro()),
-                    'unita_misura': tp.prodotto.unita_misura,
-                    'quantita_totale': float(tp.tp.get_quantita_per_ettaro() * Decimal(str(superficie)))
+                    'dose': quantita,
+                    'unita_misura': tp.prodotto.unita_misura or 'L'
                 })
             
-            # Prepara dati terreni (se applicabile)
-            terreni_data = []
-            if trattamento.livello_applicazione == 'terreno':
-                for terreno in trattamento.terreni.all():
-                    terreni_data.append({
-                        'nome': terreno.nome,
-                        'superficie': float(terreno.superficie)
-                    })
+            # Prepara dati terreni (logica esistente)
+            terreni_nomi = []
+            try:
+                terreni_list = list(trattamento.terreni.all())
+                terreni_nomi = [t.nome for t in terreni_list]
+            except Exception:
+                terreni_nomi = []
             
-            trattamento_data = {
-                'id': trattamento.id,
-                'livello_applicazione': trattamento.livello_applicazione,
-                'superficie_interessata': float(superficie),
-                'data_esecuzione': trattamento.data_esecuzione.strftime('%d/%m/%Y') if trattamento.data_esecuzione else None,
-                'prodotti': prodotti_data,
-                'terreni': terreni_data,
-                'cascina_nome': trattamento.cascina.nome if trattamento.cascina else None
-            }
-            
+            # Inizializza cliente se non esiste
             if cliente_nome not in clienti_map:
                 clienti_map[cliente_nome] = {
-                    'cliente_nome': cliente_nome,
+                    'nome': cliente_nome,
+                    'id': trattamento.cliente.id,
                     'trattamenti': [],
-                    'superficie_totale': 0
+                    'superficie_totale': 0,
+                    'count_trattamenti': 0
                 }
             
-            clienti_map[cliente_nome]['trattamenti'].append(trattamento_data)
-            clienti_map[cliente_nome]['superficie_totale'] += float(superficie)
+            # Aggiungi trattamento
+            clienti_map[cliente_nome]['trattamenti'].append({
+                'id': trattamento.id,
+                'cascina_nome': trattamento.cascina.nome if trattamento.cascina else '',
+                'data_programmata': trattamento.data_programmata.strftime('%d/%m/%Y') if hasattr(trattamento, 'data_programmata') and trattamento.data_programmata else '',
+                'superficie': float(superficie) if superficie else 0.0,
+                'prodotti': prodotti_data,
+                'stato': trattamento.stato,
+                'terreni_nomi': terreni_nomi
+            })
+            
+            clienti_map[cliente_nome]['superficie_totale'] += float(superficie) if superficie else 0.0
+            clienti_map[cliente_nome]['count_trattamenti'] += 1
         
-        # Converte in lista per la risposta
-        email_previews = list(clienti_map.values())
+        # Converti in lista
+        preview_data = list(clienti_map.values())
+        
+        # Log per debug
+        if exclude_communicated:
+            print(f"✅ DEBUG: Filtro comunicati attivo. Risultato: {len(preview_data)} aziende, {len(trattamenti)} trattamenti")
         
         return JsonResponse({
             'success': True,
-            'email_previews': email_previews,
-            'trattamenti_count': len(trattamenti),
-            'clienti_count': len(clienti_map)
+            'companies': preview_data,
+            'stats': {
+                'trattamenti_count': len(trattamenti),
+                'clienti_count': len(clienti_map),
+                'excluded_communicated': exclude_communicated
+            }
         })
         
     except json.JSONDecodeError:
@@ -112,7 +144,7 @@ def api_communication_preview(request):
             'success': False,
             'error': f'Errore durante la preparazione anteprima: {str(e)}'
         }, status=500)
-
+       
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -361,7 +393,7 @@ def generate_company_communication_pdf(trattamenti, custom_notes=''):
             """
             
             for trattamento in area_data['trattamenti']:  
-                           
+
                 # Calcola superficie in modo sicuro
                 try:
                     superficie_trattata = float(trattamento.get_superficie_interessata())
