@@ -161,8 +161,6 @@ class Trattamento(models.Model):
         help_text="Stato attuale del trattamento"
     )
     
-    note = models.TextField(blank=True, help_text="Note aggiuntive per il trattamento")
-    
     class Meta:
         ordering = ['-data_inserimento']
         verbose_name = 'Trattamento'

@@ -76,8 +76,7 @@ def api_communication_preview(request):
                 'id': trattamento.id,
                 'livello_applicazione': trattamento.livello_applicazione,
                 'superficie_interessata': float(superficie),
-                'data_esecuzione_prevista': trattamento.data_esecuzione_prevista.strftime('%d/%m/%Y') if trattamento.data_esecuzione_prevista else None,
-                'note': trattamento.note,
+                'data_esecuzione': trattamento.data_esecuzione.strftime('%d/%m/%Y') if trattamento.data_esecuzione else None,
                 'prodotti': prodotti_data,
                 'terreni': terreni_data,
                 'cascina_nome': trattamento.cascina.nome if trattamento.cascina else None
@@ -192,11 +191,10 @@ def api_generate_company_pdf(request):
             'error': f'Errore durante la generazione del PDF: {str(e)}'
         }, status=500)
 
-
 def generate_company_communication_pdf(trattamenti, custom_notes=''):
     """
     Genera un PDF di comunicazione per un'azienda con tutti i suoi trattamenti
-    CORRETTO per compatibilità con i models aggiornati
+    PULITO dai campi inesistenti nel model
     """
     try:
         # Import per PDF (prova prima WeasyPrint, poi xhtml2pdf)
@@ -217,7 +215,7 @@ def generate_company_communication_pdf(trattamenti, custom_notes=''):
         primo_trattamento = trattamenti[0]
         azienda = primo_trattamento.cliente
         
-        # Raggruppa i trattamenti per terreno/area
+        # Raggruppa i trattamenti per area
         trattamenti_per_area = {}
         for trattamento in trattamenti:
             if trattamento.livello_applicazione == 'terreno':
@@ -253,7 +251,7 @@ def generate_company_communication_pdf(trattamenti, custom_notes=''):
                     }
                 trattamenti_per_area[area_key]['trattamenti'].append(trattamento)
         
-        # Template HTML per il PDF (MODIFICATO per compatibilità)
+        # Template HTML per il PDF - RIMOSSI CAMPI INESISTENTI
         html_template = f"""
         <!DOCTYPE html>
         <html>
@@ -340,18 +338,9 @@ def generate_company_communication_pdf(trattamenti, custom_notes=''):
                 <p>Data comunicazione: {timezone.now().strftime('%d/%m/%Y')}</p>
             </div>
             
-            <div class="company-info">
-                <h3>Dati Azienda</h3>
-                <p><strong>Ragione Sociale:</strong> {azienda.nome}</p>
-                <p><strong>Codice Fiscale:</strong> {getattr(azienda, 'codice_fiscale', 'N/D')}</p>
-                <p><strong>Indirizzo:</strong> {getattr(azienda, 'indirizzo', 'N/D')}</p>
-                <p><strong>Email:</strong> {getattr(azienda, 'email', 'N/D')}</p>
-                <p><strong>Telefono:</strong> {getattr(azienda, 'telefono', 'N/D')}</p>
-            </div>
-            
             {f'''
             <div class="custom-notes">
-                <h3>Note Aggiuntive</h3>
+                <h3>Note:</h3>
                 <p>{custom_notes}</p>
             </div>
             ''' if custom_notes else ''}
@@ -360,8 +349,8 @@ def generate_company_communication_pdf(trattamenti, custom_notes=''):
                 <h2>TRATTAMENTI COMUNICATI</h2>
         """
         
-        # MODIFICA PRINCIPALE: Numerazione progressiva indipendente
-        trattamento_numero = 1  # Inizia da 1 per ogni comunicazione
+        # NUMERAZIONE PROGRESSIVA indipendente
+        trattamento_numero = 1
         
         for area_key, area_data in trattamenti_per_area.items():
             html_template += f"""
@@ -371,36 +360,23 @@ def generate_company_communication_pdf(trattamenti, custom_notes=''):
                 </div>
             """
             
-            for trattamento in area_data['trattamenti']:
-                # CORREZIONE: Gestisci date in modo sicuro
-                try:
-                    if hasattr(trattamento, 'data_esecuzione') and trattamento.data_esecuzione:
-                        data_str = trattamento.data_esecuzione.strftime('%d/%m/%Y')
-                    elif hasattr(trattamento, 'data_esecuzione_prevista') and trattamento.data_esecuzione_prevista:
-                        data_str = trattamento.data_esecuzione_prevista.strftime('%d/%m/%Y')
-                    else:
-                        data_str = 'N/D'
-                except Exception:
-                    data_str = 'N/D'
-                
-                # CORREZIONE: Calcola superficie in modo sicuro
+            for trattamento in area_data['trattamenti']:  
+                           
+                # Calcola superficie in modo sicuro
                 try:
                     superficie_trattata = float(trattamento.get_superficie_interessata())
                 except Exception:
                     superficie_trattata = 0.0
                 
+                # TEMPLATE PDF CON SOLO CAMPI ESISTENTI
                 html_template += f"""
                     <div class="treatment-item">
                         <div class="treatment-header">
                             Trattamento N. {trattamento_numero}
                         </div>
                         <div class="treatment-details">
-                            <div><strong>Data esecuzione:</strong> {data_str}</div>
-                            <div><strong>Tipo intervento:</strong> {getattr(trattamento, 'tipo_intervento', 'N/D')}</div>
-                            <div><strong>Superficie trattata:</strong> {superficie_trattata:.2f} ha</div>
-                            <div><strong>Volume miscela:</strong> {getattr(trattamento, 'volume_miscela', 'N/D')} L/ha</div>
-                            <div><strong>Condizioni meteo:</strong> {getattr(trattamento, 'condizioni_meteo', 'N/D')}</div>
-                            <div><strong>Velocità vento:</strong> {getattr(trattamento, 'velocita_vento', 'N/D')} km/h</div>
+                            <div><strong>Superficie interessata:</strong> {superficie_trattata:.2f} ha</div>
+                            <div><strong>Livello applicazione:</strong> {trattamento.get_livello_applicazione_display()}</div>
                         </div>
                 """
                 
@@ -440,7 +416,7 @@ def generate_company_communication_pdf(trattamenti, custom_notes=''):
                     print(f"❌ Errore nell'aggiungere prodotti al PDF per trattamento {trattamento.id}: {e}")
                 
                 html_template += "</div>"
-                trattamento_numero += 1  # Incrementa il numero progressivo
+                trattamento_numero += 1
         
         # Chiudi il template
         html_template += f"""
@@ -454,7 +430,7 @@ def generate_company_communication_pdf(trattamenti, custom_notes=''):
         </html>
         """
         
-        # Genera il PDF usando WeasyPrint o xhtml2pdf
+        # Genera il PDF
         if pdf_engine == 'weasyprint':
             html = HTML(string=html_template)
             pdf_content = html.write_pdf()
@@ -472,7 +448,7 @@ def generate_company_communication_pdf(trattamenti, custom_notes=''):
         import traceback
         traceback.print_exc()
         raise Exception(f"Errore nella generazione del PDF: {str(e)}")
-
+    
 # Modifica la funzione executeBulkAction esistente per reindirizzare al wizard
 def redirect_to_communication_wizard(selected_treatments):
     """

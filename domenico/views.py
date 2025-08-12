@@ -240,7 +240,6 @@ def trattamenti_table(request, view_type):
         trattamenti = trattamenti.filter(
             Q(cliente__nome__icontains=filters['search']) |
             Q(cascina__nome__icontains=filters['search']) |
-            Q(note__icontains=filters['search']) |
             Q(id__icontains=filters['search'])
         )
     
@@ -647,9 +646,7 @@ def api_trattamento_detail(request, trattamento_id):
             'superficie_interessata': float(trattamento.get_superficie_interessata()),
             'data_inserimento': trattamento.data_inserimento.isoformat(),
             'data_comunicazione': trattamento.data_comunicazione.isoformat() if trattamento.data_comunicazione else None,
-            'data_esecuzione_prevista': trattamento.data_esecuzione_prevista.isoformat() if trattamento.data_esecuzione_prevista else None,
-            'data_esecuzione_effettiva': trattamento.data_esecuzione_effettiva.isoformat() if trattamento.data_esecuzione_effettiva else None,
-            'note': trattamento.note,
+            'data_esecuzione': trattamento.data_esecuzione.isoformat() if trattamento.data_esecuzione else None,
             'prodotti': [
                 {
                     'nome': tp.prodotto.nome,
@@ -801,14 +798,12 @@ def api_update_trattamento_stato(request, trattamento_id):
             'error': f'Errore nell\'aggiornamento: {str(e)}'
         }, status=500)
 
-# Sostituisci la funzione api_communication_preview esistente in domenico/views.py con questa versione corretta:
-
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_communication_preview(request):
     """
     API per ottenere l'anteprima dei dati dei trattamenti da comunicare
-    raggruppati per azienda - CORRETTA per evitare errori di serializzazione JSON
+    raggruppati per azienda - PULITA dai campi inesistenti
     """
     try:
         print(f"🔍 DEBUG: Content-Type: {request.content_type}")
@@ -867,10 +862,6 @@ def api_communication_preview(request):
                 companies_dict[cliente_key] = {
                     'id': cliente.id,
                     'nome': cliente.nome,
-                    'codice_fiscale': getattr(cliente, 'codice_fiscale', ''),
-                    'indirizzo': getattr(cliente, 'indirizzo', ''),
-                    'email': getattr(cliente, 'email', ''),
-                    'telefono': getattr(cliente, 'telefono', ''),
                     'trattamenti': [],
                     'superficie_totale': 0,
                     'note_personalizzate': ''
@@ -930,27 +921,22 @@ def api_communication_preview(request):
                 print(f"❌ Errore preparazione terreni per trattamento {trattamento.id}: {e}")
                 terreni_nomi = ["Errore nel caricamento terreni"]
             
-            # CORREZIONE: Gestisci le date in modo sicuro
+            # CORREZIONE: Gestisci le date in modo sicuro - solo data_esecuzione esiste
             try:
-                if hasattr(trattamento, 'data_esecuzione') and trattamento.data_esecuzione:
+                if trattamento.data_esecuzione:
                     data_esecuzione_str = trattamento.data_esecuzione.strftime('%d/%m/%Y')
-                elif hasattr(trattamento, 'data_esecuzione_prevista') and trattamento.data_esecuzione_prevista:
-                    data_esecuzione_str = trattamento.data_esecuzione_prevista.strftime('%d/%m/%Y')
                 else:
-                    data_esecuzione_str = 'N/D'
+                    data_esecuzione_str = 'Data da definire'
             except Exception:
-                data_esecuzione_str = 'N/D'
+                data_esecuzione_str = 'Data da definire'
             
-            # Aggiungi il trattamento ai dati dell'azienda
+            # Aggiungi il trattamento ai dati dell'azienda - SOLO CAMPI ESISTENTI
             trattamento_data = {
                 'id': trattamento.id,
                 'data_esecuzione': data_esecuzione_str,
                 'terreno_nome': ', '.join(terreni_nomi),
-                'tipo_intervento': getattr(trattamento, 'tipo_intervento', 'N/D'),
                 'superficie_trattata': superficie_float,
-                'volume_miscela': getattr(trattamento, 'volume_miscela', None),
-                'condizioni_meteo': getattr(trattamento, 'condizioni_meteo', None),
-                'velocita_vento': getattr(trattamento, 'velocita_vento', None),
+                'stato': trattamento.stato,
                 'prodotti': prodotti_data
             }
             
@@ -987,6 +973,7 @@ def api_communication_preview(request):
             'error': f'Errore durante il recupero dei dati: {str(e)}'
         }, status=500)
     
+
 # Aggiungi anche questa nuova API per la generazione PDF:
 @csrf_exempt
 @require_http_methods(["POST"])

@@ -1339,9 +1339,8 @@ def api_create_trattamento(request):
             cliente_id = request.POST.get('cliente')
             cascina_id = request.POST.get('cascina') or None
             livello_applicazione = request.POST.get('livello_applicazione', 'cliente')
-            data_esecuzione_prevista = request.POST.get('data_esecuzione_prevista') or None
-            note = request.POST.get('note', '')
-            
+            data_esecuzione = request.POST.get('data_esecuzione') or None
+
             print(f"Cliente ID: {cliente_id}")
             print(f"Cascina ID: {cascina_id}")
             print(f"Livello: {livello_applicazione}")
@@ -1364,8 +1363,7 @@ def api_create_trattamento(request):
                 cliente=cliente,
                 cascina=cascina,
                 livello_applicazione=livello_applicazione,
-                data_esecuzione_prevista=data_esecuzione_prevista if data_esecuzione_prevista else None,
-                note=note,
+                data_esecuzione=data_esecuzione if data_esecuzione else None,
                 stato='programmato'
             )
             

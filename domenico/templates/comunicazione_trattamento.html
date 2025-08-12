@@ -184,8 +184,8 @@
         <h1>COMUNICAZIONE TRATTAMENTO FITOSANITARIO</h1>
         <p><strong>ID Trattamento:</strong> #{{ trattamento.id }}</p>
         <p><strong>Data Comunicazione:</strong> {{ now|date:"d/m/Y H:i" }}</p>
-        {% if trattamento.data_esecuzione_prevista %}
-        <p><strong>Esecuzione Prevista:</strong> {{ trattamento.data_esecuzione_prevista|date:"d/m/Y" }}</p>
+        {% if trattamento.data_esecuzione %}
+        <p><strong>Esecuzione Prevista:</strong> {{ trattamento.data_esecuzione|date:"d/m/Y" }}</p>
         {% endif %}
     </div>
     
@@ -238,10 +238,10 @@
                 <div class="info-label">Data Inserimento:</div>
                 <div class="info-value">{{ trattamento.data_inserimento|date:"d/m/Y H:i" }}</div>
             </div>
-            {% if trattamento.data_esecuzione_prevista %}
+            {% if trattamento.data_esecuzione %}
             <div class="info-row">
-                <div class="info-label">Esecuzione Prevista:</div>
-                <div class="info-value">{{ trattamento.data_esecuzione_prevista|date:"d/m/Y" }}</div>
+                <div class="info-label">Esecuzione:</div>
+                <div class="info-value">{{ trattamento.data_esecuzione|date:"d/m/Y" }}</div>
             </div>
             {% endif %}
         </div>
@@ -302,47 +302,6 @@
         {% else %}
         <p>Nessun prodotto specificato per questo trattamento.</p>
         {% endif %}
-    </div>
-    
-    <!-- Note -->
-    {% if trattamento.note %}
-    <div class="section">
-        <div class="section-title">NOTE E ISTRUZIONI SPECIALI</div>
-        <div class="note-box">
-            {{ trattamento.note|linebreaks }}
-        </div>
-    </div>
-    {% endif %}
-    
-    <!-- Istruzioni -->
-    <div class="section">
-        <div class="section-title">ISTRUZIONI PER L'ESECUZIONE</div>
-        <div class="info-grid">
-            <div class="info-row">
-                <div class="info-label">Condizioni Meteo:</div>
-                <div class="info-value">Verificare condizioni di vento e umidità prima del trattamento</div>
-            </div>
-            <div class="info-row">
-                <div class="info-label">Orario Consigliato:</div>
-                <div class="info-value">Prime ore del mattino o tardo pomeriggio</div>
-            </div>
-            <div class="info-row">
-                <div class="info-label">Comunicazione:</div>
-                <div class="info-value">Comunicare l'avvenuta esecuzione entro 24 ore</div>
-            </div>
-            <div class="info-row">
-                <div class="info-label">Sicurezza:</div>
-                <div class="info-value">Utilizzare i dispositivi di protezione individuale previsti</div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Firma -->
-    <div class="signature">
-        <p><strong>Domenico Franco</strong></p>
-        <p>Sistema di Gestione Trattamenti Agricoli</p>
-        <div class="signature-line"></div>
-        <p style="margin-top: 10px; font-size: 10px;">Firma per presa visione</p>
     </div>
     
     <!-- Footer -->

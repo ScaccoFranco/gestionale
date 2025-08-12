@@ -1006,28 +1006,16 @@
                     </div>
                     <div class="treatment-details">
                         <div class="detail-item">
-                            <label>Terreno:</label>
+                            <label>Area Interessata:</label>
                             <span>${treatment.terreno_nome || 'N/D'}</span>
                         </div>
                         <div class="detail-item">
-                            <label>Tipo Intervento:</label>
-                            <span>${treatment.tipo_intervento || 'N/D'}</span>
-                        </div>
-                        <div class="detail-item">
-                            <label>Superficie:</label>
+                            <label>Superficie Interessata:</label>
                             <span>${treatment.superficie_trattata || 0} ha</span>
                         </div>
                         <div class="detail-item">
-                            <label>Volume Miscela:</label>
-                            <span>${treatment.volume_miscela || 'N/D'} L/ha</span>
-                        </div>
-                        <div class="detail-item">
-                            <label>Condizioni Meteo:</label>
-                            <span>${treatment.condizioni_meteo || 'N/D'}</span>
-                        </div>
-                        <div class="detail-item">
-                            <label>Velocità Vento:</label>
-                            <span>${treatment.velocita_vento || 'N/D'} km/h</span>
+                            <label>Stato:</label>
+                            <span class="badge ${treatment.stato === 'programmato' ? 'bg-warning' : 'bg-info'}">${treatment.stato || 'N/D'}</span>
                         </div>
                     </div>
                     
@@ -1062,10 +1050,6 @@
                             <i class="fas fa-building me-2"></i>
                             ${company.nome}
                         </h4>
-                        <div class="company-details">
-                            <span><i class="fas fa-map-marker-alt me-1"></i>${company.indirizzo || 'N/D'}</span>
-                            <span><i class="fas fa-id-card me-1"></i>CF: ${company.codice_fiscale || 'N/D'}</span>
-                        </div>
                     </div>
                     <div class="company-stats">
                         <div class="company-stat">

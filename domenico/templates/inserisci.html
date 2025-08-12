@@ -1511,7 +1511,6 @@ function submitForm() {
     
     // Creazione trattamenti
     let trattamentiDaCreare = [];
-    const noteAutomatiche = 'Trattamento programmato';
     
     if (selectedTarget === 'cliente') {
         selectedData.clienti.forEach(cliente => {
@@ -1521,8 +1520,6 @@ function submitForm() {
                 cascina: null,
                 terreni_selezionati: [],
                 prodotti_data: JSON.stringify(prodottiData), // ✅ STRINGIFY CORRETTO
-                data_esecuzione_prevista: null,
-                note: noteAutomatiche + ` [${cliente.nome}]`
             });
         });
     } else if (selectedTarget === 'cascina') {
@@ -1533,8 +1530,6 @@ function submitForm() {
                 cascina: cascina.id,
                 terreni_selezionati: [],
                 prodotti_data: JSON.stringify(prodottiData), // ✅ STRINGIFY CORRETTO
-                data_esecuzione_prevista: null,
-                note: noteAutomatiche + ` [${cascina.nome}]`
             });
         });
     } else if (selectedTarget === 'terreno') {
@@ -1544,8 +1539,6 @@ function submitForm() {
             cascina: selectedData.terreni[0].cascina_id,
             terreni_selezionati: selectedData.terreni.map(t => t.id),
             prodotti_data: JSON.stringify(prodottiData), // ✅ STRINGIFY CORRETTO
-            data_esecuzione_prevista: null,
-            note: noteAutomatiche + ` [${selectedData.terreni.length} terreni]`
         });
     }
     
@@ -2769,7 +2762,6 @@ function saveTrattamenti() {
     
     // Creazione trattamenti
     let trattamentiDaCreare = [];
-    const noteAutomatiche = 'Trattamento programmato';
     
     if (selectedTarget === 'cliente') {
         selectedData.clienti.forEach(cliente => {
@@ -2778,9 +2770,7 @@ function saveTrattamenti() {
                 cliente: cliente.id,
                 cascina: null,
                 terreni_selezionati: [],
-                prodotti_data: JSON.stringify(prodottiData), // ✅ STRINGIFY CORRETTO
-                data_esecuzione_prevista: null,
-                note: noteAutomatiche + ` [${cliente.nome}]`
+                prodotti_data: JSON.stringify(prodottiData), // ✅ STRINGIFY CORRETT
             });
         });
     } else if (selectedTarget === 'cascina') {
@@ -2791,8 +2781,6 @@ function saveTrattamenti() {
                 cascina: cascina.id,
                 terreni_selezionati: [],
                 prodotti_data: JSON.stringify(prodottiData), // ✅ STRINGIFY CORRETTO
-                data_esecuzione_prevista: null,
-                note: noteAutomatiche + ` [${cascina.nome}]`
             });
         });
     } else if (selectedTarget === 'terreno') {
@@ -2802,8 +2790,6 @@ function saveTrattamenti() {
             cascina: selectedData.terreni[0].cascina_id,
             terreni_selezionati: selectedData.terreni.map(t => t.id),
             prodotti_data: JSON.stringify(prodottiData), // ✅ STRINGIFY CORRETTO
-            data_esecuzione_prevista: null,
-            note: noteAutomatiche + ` [${selectedData.terreni.length} terreni]`
         });
     }
     
