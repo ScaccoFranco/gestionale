@@ -802,12 +802,13 @@ def api_update_trattamento_stato(request, trattamento_id):
         }, status=500)
 
 # Sostituisci la funzione api_communication_preview esistente in domenico/views.py con questa versione corretta:
+
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_communication_preview(request):
     """
     API per ottenere l'anteprima dei dati dei trattamenti da comunicare
-    raggruppati per azienda - supporta sia JSON che FormData
+    raggruppati per azienda - CORRETTA per evitare errori di serializzazione JSON
     """
     try:
         print(f"🔍 DEBUG: Content-Type: {request.content_type}")
@@ -844,7 +845,7 @@ def api_communication_preview(request):
         ).select_related(
             'cliente', 'cascina'
         ).prefetch_related(
-            'terreni', 'trattamentoprodotto_set__prodotto'
+            'terreni', 'trattamentoprodotto_set__prodotto__principi_attivi'
         )
         
         print(f"🔍 DEBUG: Trovati {trattamenti.count()} trattamenti")
@@ -866,46 +867,95 @@ def api_communication_preview(request):
                 companies_dict[cliente_key] = {
                     'id': cliente.id,
                     'nome': cliente.nome,
+                    'codice_fiscale': getattr(cliente, 'codice_fiscale', ''),
+                    'indirizzo': getattr(cliente, 'indirizzo', ''),
+                    'email': getattr(cliente, 'email', ''),
+                    'telefono': getattr(cliente, 'telefono', ''),
                     'trattamenti': [],
                     'superficie_totale': 0,
                     'note_personalizzate': ''
                 }
             
-            # Calcola superficie interessata
-            superficie = trattamento.get_superficie_interessata()
+            # CORREZIONE: Calcola superficie interessata in modo sicuro
+            try:
+                superficie = trattamento.get_superficie_interessata()
+                superficie_float = float(superficie) if superficie else 0.0
+            except Exception as e:
+                print(f"❌ Errore calcolo superficie per trattamento {trattamento.id}: {e}")
+                superficie_float = 0.0
             
-            # Prepara dati prodotti
+            # CORREZIONE: Prepara dati prodotti convertendo i manager in liste
             prodotti_data = []
-            for tp in trattamento.trattamentoprodotto_set.all():
-                prodotti_data.append({
-                    'nome': tp.prodotto.nome,
-                    'principi_attivi': tp.prodotto.principi_attivi,
-                    'quantita_per_ettaro': float(tp.quantita_per_ettaro),
-                    'unita_misura': tp.prodotto.unita_misura
-                })
+            try:
+                # Usa .all() per convertire il manager in queryset, poi itera
+                for tp in trattamento.trattamentoprodotto_set.all():
+                    # Gestisci sia quantita_per_ettaro che quantita per compatibilità
+                    if hasattr(tp, 'quantita_per_ettaro'):
+                        dose_per_ettaro = float(tp.quantita_per_ettaro)
+                    elif hasattr(tp, 'quantita'):
+                        dose_per_ettaro = float(tp.quantita)
+                    else:
+                        dose_per_ettaro = 0.0
+                    
+                    # Ottieni i principi attivi come stringa
+                    principi_attivi = []
+                    try:
+                        # CORREZIONE: Converte ManyRelatedManager in lista
+                        principi_attivi = [pa.nome for pa in tp.prodotto.principi_attivi.all()]
+                    except Exception:
+                        principi_attivi = []
+                    
+                    prodotti_data.append({
+                        'nome_commerciale': tp.prodotto.nome,
+                        'principio_attivo': ', '.join(principi_attivi) if principi_attivi else 'N/D',
+                        'dose_per_ettaro': dose_per_ettaro,
+                        'unita_misura': getattr(tp.prodotto, 'unita_misura', 'L')
+                    })
+            except Exception as e:
+                print(f"❌ Errore preparazione prodotti per trattamento {trattamento.id}: {e}")
+                prodotti_data = []
             
-            # Prepara dati terreni
+            # CORREZIONE: Prepara dati terreni convertendo il manager in lista
             terreni_nomi = []
-            if trattamento.livello_applicazione == 'terreno':
-                terreni_nomi = [f"{t.cascina.nome} - {t.nome}" for t in trattamento.terreni.all()]
-            else:
-                # Per cascina o cliente, usa tutti i terreni della cascina/cliente
-                if trattamento.livello_applicazione == 'cascina':
+            try:
+                if trattamento.livello_applicazione == 'terreno':
+                    # CORREZIONE: Converte ManyRelatedManager in lista
+                    terreni_list = list(trattamento.terreni.all())
+                    terreni_nomi = [f"{t.cascina.nome} - {t.nome}" for t in terreni_list]
+                elif trattamento.livello_applicazione == 'cascina' and trattamento.cascina:
                     terreni_nomi = [f"{trattamento.cascina.nome} - Intera Cascina"]
                 else:  # cliente
                     terreni_nomi = [f"{cliente.nome} - Intera Azienda"]
+            except Exception as e:
+                print(f"❌ Errore preparazione terreni per trattamento {trattamento.id}: {e}")
+                terreni_nomi = ["Errore nel caricamento terreni"]
+            
+            # CORREZIONE: Gestisci le date in modo sicuro
+            try:
+                if hasattr(trattamento, 'data_esecuzione') and trattamento.data_esecuzione:
+                    data_esecuzione_str = trattamento.data_esecuzione.strftime('%d/%m/%Y')
+                elif hasattr(trattamento, 'data_esecuzione_prevista') and trattamento.data_esecuzione_prevista:
+                    data_esecuzione_str = trattamento.data_esecuzione_prevista.strftime('%d/%m/%Y')
+                else:
+                    data_esecuzione_str = 'N/D'
+            except Exception:
+                data_esecuzione_str = 'N/D'
             
             # Aggiungi il trattamento ai dati dell'azienda
             trattamento_data = {
                 'id': trattamento.id,
-                'data_esecuzione': trattamento.data_esecuzione.strftime('%d/%m/%Y') if trattamento.data_esecuzione else 'N/D',
+                'data_esecuzione': data_esecuzione_str,
                 'terreno_nome': ', '.join(terreni_nomi),
-                'superficie_trattata': float(superficie),
+                'tipo_intervento': getattr(trattamento, 'tipo_intervento', 'N/D'),
+                'superficie_trattata': superficie_float,
+                'volume_miscela': getattr(trattamento, 'volume_miscela', None),
+                'condizioni_meteo': getattr(trattamento, 'condizioni_meteo', None),
+                'velocita_vento': getattr(trattamento, 'velocita_vento', None),
                 'prodotti': prodotti_data
             }
             
             companies_dict[cliente_key]['trattamenti'].append(trattamento_data)
-            companies_dict[cliente_key]['superficie_totale'] += float(superficie)
+            companies_dict[cliente_key]['superficie_totale'] += superficie_float
         
         # Converti in lista e ordina per nome
         companies_list = list(companies_dict.values())
@@ -917,7 +967,7 @@ def api_communication_preview(request):
         
         return JsonResponse({
             'success': True,
-            'companies': companies_list,  # IMPORTANTE: Usa 'companies' non 'email_previews'
+            'companies': companies_list,
             'total_treatments': sum(len(company['trattamenti']) for company in companies_list),
             'total_companies': len(companies_list)
         })
@@ -936,8 +986,7 @@ def api_communication_preview(request):
             'success': False,
             'error': f'Errore durante il recupero dei dati: {str(e)}'
         }, status=500)
-
-
+    
 # Aggiungi anche questa nuova API per la generazione PDF:
 @csrf_exempt
 @require_http_methods(["POST"])
