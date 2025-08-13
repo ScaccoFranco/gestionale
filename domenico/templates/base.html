@@ -255,6 +255,87 @@
         .status-completato {
             background-color: #28a745;
         }
+        .user-info-header {
+    position: absolute;
+    top: 1rem;
+    right: 2rem;
+    z-index: 1000;
+}
+
+.user-info-header .dropdown-toggle {
+    border: 2px solid rgba(255,255,255,0.3);
+    background: rgba(255,255,255,0.1);
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+}
+
+.user-info-header .dropdown-toggle:hover {
+    background: rgba(255,255,255,0.2);
+    border-color: rgba(255,255,255,0.5);
+}
+
+.user-info-header .dropdown-menu {
+    border: none;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    border-radius: 12px;
+    padding: 0.5rem 0;
+    min-width: 250px;
+}
+
+.user-info-header .dropdown-header {
+    background: #f8f9fa;
+    border-radius: 8px;
+    margin: 0.5rem;
+    padding: 0.75rem;
+    font-weight: 600;
+    color: #495057;
+}
+
+.user-info-header .dropdown-item {
+    padding: 0.75rem 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.user-info-header .dropdown-item:hover {
+    background: #f8f9fa;
+    padding-left: 2rem;
+}
+
+.user-info-header .dropdown-item.text-danger:hover {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+/* Responsive per mobile */
+@media (max-width: 768px) {
+    .user-info-header {
+        position: static;
+        margin: 1rem 0;
+    }
+    
+    .user-info-header .dropdown-toggle {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* Admin menu items nel sidebar */
+.sidebar-menu .admin-section {
+    border-top: 1px solid rgba(255,255,255,0.1);
+    margin-top: 1rem;
+    padding-top: 1rem;
+}
+
+.sidebar-menu .admin-section::before {
+    content: "AMMINISTRAZIONE";
+    display: block;
+    padding: 0.5rem 1rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: rgba(255,255,255,0.6);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
     </style>
     
     {% block extra_css %}{% endblock %}
@@ -269,16 +350,6 @@
             <div class="user-info">
                 <i class="fas fa-user-circle"></i> Domenico Franco
             </div>
-        </div>
-        
-        <!-- Search bar in sidebar -->
-        <div class="sidebar-menu">
-            <li style="padding: 1rem; background-color: #495057; display: none;" class="search-sidebar">
-                <div class="search-bar">
-                    <input type="text" placeholder="Search" style="background: #6c757d; border: none; color: white;">
-                    <i class="fas fa-search" style="color: #adb5bd;"></i>
-                </div>
-            </li>
         </div>
         
         <ul class="sidebar-menu">
@@ -312,6 +383,20 @@
                     <span>Inserisci</span>
                 </a>
             </li>
+            {% if user.userprofile.role == 'admin' or user.is_superuser %}
+            <li>
+                <a href="{% url 'admin_dashboard' %}" class="{% if request.resolver_match.url_name == 'admin_dashboard' %}active{% endif %}">
+                    <i class="fas fa-cog"></i>
+                    <span>Admin Panel</span>
+                </a>
+            </li>
+            <li>
+                <a href="{% url 'user_management' %}" class="{% if request.resolver_match.url_name == 'user_management' %}active{% endif %}">
+                    <i class="fas fa-users"></i>
+                    <span>Gestione Utenti</span>
+                </a>
+            </li>
+            {% endif %}
         </ul>
     </nav>
     
@@ -321,6 +406,53 @@
             <h1 class="page-title">
                 {% block page_icon %}<i class="fas fa-home"></i>{% endblock %}
                 {% block page_title %}Home{% endblock %}
+                <div class="user-info-header" style="position: absolute; top: 1rem; right: 2rem;">
+                {% if user.is_authenticated %}
+                    <div class="dropdown">
+                        <button class="btn btn-outline-light dropdown-toggle" type="button" 
+                                id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-user-circle me-2"></i>
+                            {{ user.userprofile.full_name|default:user.username }}
+                            <span class="badge bg-light text-dark ms-2">{{ user.userprofile.get_role_display }}</span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                            <li>
+                                <h6 class="dropdown-header">
+                                    <i class="fas fa-user me-2"></i>{{ user.userprofile.full_name|default:user.username }}
+                                </h6>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item" href="#">
+                                    <i class="fas fa-user-edit me-2"></i>Il mio profilo
+                                </a>
+                            </li>
+                            {% if user.userprofile.role == 'admin' or user.is_superuser %}
+                            <li>
+                                <a class="dropdown-item" href="{% url 'admin_dashboard' %}">
+                                    <i class="fas fa-cog me-2"></i>Admin Panel
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{% url 'user_management' %}">
+                                    <i class="fas fa-users me-2"></i>Gestione Utenti
+                                </a>
+                            </li>
+                            {% endif %}
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item text-danger" href="{% url 'logout' %}">
+                                    <i class="fas fa-sign-out-alt me-2"></i>Logout
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                {% else %}
+                    <a href="{% url 'login' %}" class="btn btn-outline-light">
+                        <i class="fas fa-sign-in-alt me-2"></i>Login
+                    </a>
+                {% endif %}
+            </div>
             </h1>
             <div class="user-profile">
                 <span>Domenico Franco</span>

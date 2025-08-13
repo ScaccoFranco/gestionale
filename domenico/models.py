@@ -1,6 +1,67 @@
 from django.db import models
 from django.core.validators import MinValueValidator
 from django.utils import timezone
+from django.contrib.auth.models import User
+
+
+class UserProfile(models.Model):
+    """
+    Estensione del modello User di Django per funzionalità aggiuntive
+    """
+    ROLE_CHOICES = [
+        ('admin', 'Administrator'),
+        ('editor', 'Editor'),
+        ('viewer', 'Viewer'),
+    ]
+    
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='viewer')
+    phone = models.CharField(max_length=20, blank=True)
+    department = models.CharField(max_length=100, blank=True)
+    last_activity = models.DateTimeField(null=True, blank=True)
+    is_active_custom = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    # Permessi specifici
+    can_manage_users = models.BooleanField(default=False)
+    can_export_data = models.BooleanField(default=False)
+    can_manage_clients = models.BooleanField(default=True)
+    can_manage_treatments = models.BooleanField(default=True)
+    can_view_reports = models.BooleanField(default=True)
+    
+    class Meta:
+        verbose_name = "Profilo Utente"
+        verbose_name_plural = "Profili Utente"
+    
+    def __str__(self):
+        return f"{self.user.username} ({self.get_role_display()})"
+    
+    @property
+    def full_name(self):
+        return f"{self.user.first_name} {self.user.last_name}".strip() or self.user.username
+    
+    def update_last_activity(self):
+        """Aggiorna l'ultima attività dell'utente"""
+        self.last_activity = timezone.now()
+        self.save(update_fields=['last_activity'])
+
+class UserSession(models.Model):
+    """
+    Tracciamento delle sessioni utente
+    """
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    login_time = models.DateTimeField(auto_now_add=True)
+    logout_time = models.DateTimeField(null=True, blank=True)
+    ip_address = models.GenericIPAddressField()
+    user_agent = models.TextField()
+    is_active = models.BooleanField(default=True)
+    
+    class Meta:
+        verbose_name = "Sessione Utente"
+        verbose_name_plural = "Sessioni Utente"
+        ordering = ['-login_time']
+
 
 class Cliente(models.Model):
     nome = models.CharField(max_length=200)

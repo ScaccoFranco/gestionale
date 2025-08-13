@@ -1,0 +1,673 @@
+{% extends 'base.html' %}
+
+{% block page_title %}Gestione Utenti{% endblock %}
+{% block page_icon %}<i class="fas fa-users"></i>{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Stili simili al template precedente */
+    :root {
+        --primary-color: #007bff;
+        --success-color: #28a745;
+        --warning-color: #ffc107;
+        --info-color: #17a2b8;
+        --danger-color: #dc3545;
+        --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.15);
+        --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .page-header {
+        background: var(--gradient-primary);
+        color: white;
+        padding: 2rem 0;
+        margin: -2rem -2rem 3rem -2rem;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .page-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 100" fill="white" opacity="0.1"><polygon points="1000,100 1000,0 0,100"/></svg>');
+        background-size: cover;
+    }
+
+    .page-header-content {
+        position: relative;
+        z-index: 2;
+    }
+
+    .page-header h1 {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+
+    .page-header p {
+        font-size: 1.1rem;
+        opacity: 0.9;
+        font-weight: 300;
+    }
+
+    .filters-section {
+        background: white;
+        border-radius: 20px;
+        box-shadow: var(--shadow);
+        padding: 2rem;
+        margin-bottom: 2rem;
+    }
+
+    .users-table-container {
+        background: white;
+        border-radius: 20px;
+        box-shadow: var(--shadow);
+        overflow: hidden;
+    }
+
+    .table-header {
+        background: #f8f9fa;
+        padding: 1.5rem 2rem;
+        border-bottom: 1px solid #dee2e6;
+        display: flex;
+        justify-content: between;
+        align-items: center;
+    }
+
+    .table-header h3 {
+        margin: 0;
+        color: #333;
+        font-weight: 600;
+        flex: 1;
+    }
+
+    .btn-new-user {
+        background: var(--gradient-primary);
+        border: none;
+        color: white;
+        padding: 0.6rem 1.5rem;
+        border-radius: 12px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .btn-new-user:hover {
+        transform: translateY(-2px);
+        color: white;
+    }
+
+    .table {
+        margin: 0;
+    }
+
+    .table th {
+        background: #f8f9fa;
+        border: none;
+        padding: 1rem;
+        font-weight: 600;
+        color: #495057;
+    }
+
+    .table td {
+        padding: 1rem;
+        vertical-align: middle;
+        border-top: 1px solid #f8f9fa;
+    }
+
+    .user-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: var(--gradient-primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 600;
+        margin-right: 1rem;
+    }
+
+    .user-info {
+        display: flex;
+        align-items: center;
+    }
+
+    .user-details h6 {
+        margin: 0;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .user-details small {
+        color: #666;
+    }
+
+    .role-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .role-admin {
+        background: #dc3545;
+        color: white;
+    }
+
+    .role-editor {
+        background: var(--info-color);
+        color: white;
+    }
+
+    .role-viewer {
+        background: var(--success-color);
+        color: white;
+    }
+
+    .status-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
+    .status-active {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .status-inactive {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .action-buttons .btn {
+        margin-right: 0.5rem;
+        padding: 0.4rem 0.8rem;
+        border-radius: 8px;
+        font-size: 0.9rem;
+    }
+
+    .modal-content {
+        border-radius: 20px;
+        border: none;
+        box-shadow: var(--shadow-lg);
+    }
+
+    .modal-header {
+        background: var(--gradient-primary);
+        color: white;
+        border-radius: 20px 20px 0 0;
+        border-bottom: none;
+    }
+
+    .modal-title {
+        font-weight: 600;
+    }
+
+    .btn-close {
+        filter: invert(1);
+    }
+
+    .permissions-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+
+    .permission-item {
+        background: #f8f9fa;
+        padding: 1rem;
+        border-radius: 12px;
+        border: 2px solid #e9ecef;
+        transition: all 0.3s ease;
+    }
+
+    .permission-item:has(input:checked) {
+        background: #e3f2fd;
+        border-color: var(--primary-color);
+    }
+
+    .permission-item label {
+        font-weight: 600;
+        margin-bottom: 0;
+        cursor: pointer;
+    }
+
+    .pagination {
+        justify-content: center;
+        margin-top: 2rem;
+    }
+
+    .pagination .page-link {
+        border-radius: 8px;
+        margin: 0 0.25rem;
+        border: 2px solid #e9ecef;
+        color: var(--primary-color);
+    }
+
+    .pagination .page-item.active .page-link {
+        background: var(--primary-color);
+        border-color: var(--primary-color);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="page-header">
+    <div class="page-header-content">
+        <h1><i class="fas fa-users me-3"></i>Gestione Utenti</h1>
+        <p>Amministrazione account e permessi utente</p>
+    </div>
+</div>
+
+<!-- Filtri -->
+<div class="filters-section">
+    <form method="get" class="row g-3">
+        <div class="col-md-4">
+            <label for="search" class="form-label">Cerca</label>
+            <input type="text" class="form-control" id="search" name="search" 
+                   value="{{ search }}" placeholder="Nome, username, email...">
+        </div>
+        <div class="col-md-3">
+            <label for="role" class="form-label">Ruolo</label>
+            <select class="form-select" id="role" name="role">
+                <option value="">Tutti i ruoli</option>
+                {% for role_key, role_name in role_choices %}
+                    <option value="{{ role_key }}" {% if role_filter == role_key %}selected{% endif %}>
+                        {{ role_name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label for="status" class="form-label">Stato</label>
+            <select class="form-select" id="status" name="status">
+                <option value="">Tutti</option>
+                <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Attivi</option>
+                <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Inattivi</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">&nbsp;</label>
+            <button type="submit" class="btn btn-primary w-100">
+                <i class="fas fa-search me-2"></i>Filtra
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Tabella Utenti -->
+<div class="users-table-container">
+    <div class="table-header">
+        <h3><i class="fas fa-table me-2"></i>Elenco Utenti</h3>
+        <button type="button" class="btn btn-new-user" data-bs-toggle="modal" data-bs-target="#userModal">
+            <i class="fas fa-plus me-2"></i>Nuovo Utente
+        </button>
+    </div>
+    
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Utente</th>
+                    <th>Ruolo</th>
+                    <th>Stato</th>
+                    <th>Ultima Attività</th>
+                    <th>Azioni</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in page_obj %}
+                    <tr>
+                        <td>
+                            <div class="user-info">
+                                <div class="user-avatar">
+                                    {{ user.first_name.0|default:user.username.0|upper }}
+                                </div>
+                                <div class="user-details">
+                                    <h6>{{ user.userprofile.full_name }}</h6>
+                                    <small>{{ user.email }}</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="role-badge role-{{ user.userprofile.role }}">
+                                {{ user.userprofile.get_role_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="status-badge status-{% if user.is_active %}active{% else %}inactive{% endif %}">
+                                {% if user.is_active %}Attivo{% else %}Inattivo{% endif %}
+                            </span>
+                        </td>
+                        <td>
+                            {% if user.userprofile.last_activity %}
+                                {{ user.userprofile.last_activity|timesince }} fa
+                            {% else %}
+                                <span class="text-muted">Mai</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="action-buttons">
+                                <button type="button" class="btn btn-outline-primary btn-sm" 
+                                        onclick="editUser({{ user.id }})">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                {% if user != request.user and not user.is_superuser %}
+                                    <button type="button" class="btn btn-outline-danger btn-sm" 
+                                            onclick="deleteUser({{ user.id }}, '{{ user.username }}')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-4">
+                            <i class="fas fa-users fa-3x mb-3"></i>
+                            <p>Nessun utente trovato</p>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Paginazione -->
+    {% if page_obj.has_other_pages %}
+        <div class="p-3">
+            <nav aria-label="User pagination">
+                <ul class="pagination">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search %}&search={{ search }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">
+                                <i class="fas fa-chevron-left"></i>
+                            </a>
+                        </li>
+                    {% endif %}
+                    
+                    {% for num in page_obj.paginator.page_range %}
+                        {% if page_obj.number == num %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ num }}</span>
+                            </li>
+                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ num }}{% if search %}&search={{ search }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">{{ num }}</a>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search %}&search={{ search }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">
+                                <i class="fas fa-chevron-right"></i>
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Modal Nuovo/Modifica Utente -->
+<div class="modal fade" id="userModal" tabindex="-1" aria-labelledby="userModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="userModalLabel">
+                    <i class="fas fa-user-plus me-2"></i>Nuovo Utente
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="userForm">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="username" class="form-label">Username *</label>
+                            <input type="text" class="form-control" id="username" name="username" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="first_name" class="form-label">Nome</label>
+                            <input type="text" class="form-control" id="first_name" name="first_name">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="last_name" class="form-label">Cognome</label>
+                            <input type="text" class="form-control" id="last_name" name="last_name">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="password" class="form-label">Password *</label>
+                            <input type="password" class="form-control" id="password" name="password" required>
+                            <div class="form-text">Minimo 8 caratteri</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="confirm_password" class="form-label">Conferma Password *</label>
+                            <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="role" class="form-label">Ruolo *</label>
+                            <select class="form-select" id="role" name="role" required>
+                                {% for role_key, role_name in role_choices %}
+                                    <option value="{{ role_key }}">{{ role_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="phone" class="form-label">Telefono</label>
+                            <input type="tel" class="form-control" id="phone" name="phone">
+                        </div>
+                        <div class="col-12">
+                            <label for="department" class="form-label">Dipartimento</label>
+                            <input type="text" class="form-control" id="department" name="department">
+                        </div>
+                        
+                        <!-- Permessi -->
+                        <div class="col-12">
+                            <label class="form-label">Permessi</label>
+                            <div class="permissions-grid">
+                                <div class="permission-item">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="can_manage_users" name="can_manage_users">
+                                        <label class="form-check-label" for="can_manage_users">
+                                            Gestione Utenti
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="permission-item">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="can_export_data" name="can_export_data">
+                                        <label class="form-check-label" for="can_export_data">
+                                            Esportazione Dati
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="permission-item">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="can_manage_clients" name="can_manage_clients" checked>
+                                        <label class="form-check-label" for="can_manage_clients">
+                                            Gestione Clienti
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="permission-item">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="can_manage_treatments" name="can_manage_treatments" checked>
+                                        <label class="form-check-label" for="can_manage_treatments">
+                                            Gestione Trattamenti
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="permission-item">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="can_view_reports" name="can_view_reports" checked>
+                                        <label class="form-check-label" for="can_view_reports">
+                                            Visualizzazione Report
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Stato -->
+                        <div class="col-12">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="is_active" name="is_active" checked>
+                                <label class="form-check-label" for="is_active">
+                                    Utente attivo
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Annulla
+                </button>
+                <button type="button" class="btn btn-primary" onclick="saveUser()">
+                    <i class="fas fa-save me-2"></i>Salva Utente
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript -->
+<script>
+let currentUserId = null;
+
+// Nuovo utente
+function newUser() {
+    currentUserId = null;
+    document.getElementById('userModalLabel').innerHTML = '<i class="fas fa-user-plus me-2"></i>Nuovo Utente';
+    document.getElementById('userForm').reset();
+    document.getElementById('password').required = true;
+    document.getElementById('confirm_password').required = true;
+    
+    // Imposta permessi di default
+    document.getElementById('can_manage_clients').checked = true;
+    document.getElementById('can_manage_treatments').checked = true;
+    document.getElementById('can_view_reports').checked = true;
+    document.getElementById('is_active').checked = true;
+}
+
+// Modifica utente
+function editUser(userId) {
+    currentUserId = userId;
+    document.getElementById('userModalLabel').innerHTML = '<i class="fas fa-user-edit me-2"></i>Modifica Utente';
+    document.getElementById('password').required = false;
+    document.getElementById('confirm_password').required = false;
+    
+    // Qui dovresti caricare i dati dell'utente tramite AJAX
+    // Per ora simuliamo
+    
+    const modal = new bootstrap.Modal(document.getElementById('userModal'));
+    modal.show();
+}
+
+// Salva utente
+function saveUser() {
+    const form = document.getElementById('userForm');
+    const formData = new FormData(form);
+    
+    // Validazione password
+    const password = formData.get('password');
+    const confirmPassword = formData.get('confirm_password');
+    
+    if (password && password !== confirmPassword) {
+        alert('Le password non coincidono');
+        return;
+    }
+    
+    // Preparazione dati
+    const userData = {
+        username: formData.get('username'),
+        email: formData.get('email'),
+        first_name: formData.get('first_name'),
+        last_name: formData.get('last_name'),
+        role: formData.get('role'),
+        phone: formData.get('phone'),
+        department: formData.get('department'),
+        is_active: formData.has('is_active'),
+        can_manage_users: formData.has('can_manage_users'),
+        can_export_data: formData.has('can_export_data'),
+        can_manage_clients: formData.has('can_manage_clients'),
+        can_manage_treatments: formData.has('can_manage_treatments'),
+        can_view_reports: formData.has('can_view_reports'),
+    };
+    
+    if (password) {
+        userData.password = password;
+    }
+    
+    // URL e metodo
+    const url = currentUserId ? 
+        `/api/users/${currentUserId}/update/` : 
+        '/api/users/create/';
+    
+    const method = currentUserId ? 'POST' : 'POST';
+    
+    // Invio richiesta
+    fetch(url, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify(userData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Errore: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Errore durante il salvataggio');
+    });
+}
+
+// Elimina utente
+function deleteUser(userId, username) {
+    if (!confirm(`Sei sicuro di voler eliminare l'utente "${username}"?`)) {
+        return;
+    }
+    
+    fetch(`/api/users/${userId}/delete/`, {
+        method: 'DELETE',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Errore: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Errore durante l\'eliminazione');
+    });
+}
+</script>
+{% endblock %}
