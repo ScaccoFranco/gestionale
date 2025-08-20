@@ -267,18 +267,173 @@
         white-space: nowrap;
     }
 
-    /* Responsive */
+    /* Mobile Responsive */
     @media (max-width: 768px) {
+        .welcome-section {
+            margin: -1rem -1rem 2rem -1rem;
+            padding: 2rem 1rem;
+        }
+        
         .welcome-title {
-            font-size: 2rem;
+            font-size: 1.8rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .welcome-subtitle {
+            font-size: 1rem;
+        }
+        
+        .user-info {
+            margin-top: 1rem;
+            flex-direction: column;
+            text-align: center;
+        }
+        
+        .user-avatar {
+            width: 50px;
+            height: 50px;
+            font-size: 1.2rem;
         }
         
         .stats-grid {
-            grid-template-columns: 1fr;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat-card {
+            padding: 1rem 0.75rem;
+            border-radius: 15px;
+        }
+        
+        .stat-number {
+            font-size: 1.6rem;
+        }
+        
+        .stat-label {
+            font-size: 0.8rem;
+            margin-top: 0.25rem;
+        }
+        
+        .stat-icon {
+            width: 35px;
+            height: 35px;
+            font-size: 0.9rem;
         }
         
         .actions-grid {
             grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+        
+        .action-card {
+            padding: 1.5rem;
+        }
+        
+        .action-icon {
+            width: 50px;
+            height: 50px;
+            font-size: 1.2rem;
+        }
+        
+        .recent-section {
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .recent-title {
+            font-size: 1.1rem;
+        }
+        
+        .activity-item {
+            padding: 0.75rem 0;
+        }
+        
+        .activity-icon {
+            width: 35px;
+            height: 35px;
+            font-size: 0.8rem;
+            margin-right: 0.75rem;
+        }
+        
+        .activity-title {
+            font-size: 0.9rem;
+        }
+        
+        .activity-description {
+            font-size: 0.8rem;
+        }
+        
+        .activity-time {
+            font-size: 0.7rem;
+            margin-top: 0.25rem;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .welcome-title {
+            font-size: 1.5rem;
+        }
+        
+        .welcome-subtitle {
+            font-size: 0.9rem;
+        }
+        
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem;
+        }
+        
+        .stat-card {
+            padding: 0.75rem 0.5rem;
+            border-radius: 12px;
+        }
+        
+        .stat-number {
+            font-size: 1.4rem;
+        }
+        
+        .stat-label {
+            font-size: 0.7rem;
+            margin-top: 0.2rem;
+            line-height: 1.2;
+        }
+
+        .stat-icon {
+            width: 30px;
+            height: 30px;
+            font-size: 0.8rem;
+        }
+        
+        .action-card {
+            padding: 1rem;
+        }
+        
+        .action-title {
+            font-size: 1rem;
+        }
+        
+        .action-description {
+            font-size: 0.8rem;
+        }
+        
+        .recent-section {
+            padding: 1rem;
+        }
+        
+        .activity-item {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        
+        .activity-icon {
+            margin-bottom: 0.5rem;
+            margin-right: 0;
+        }
+        
+        .activity-time {
+            align-self: flex-end;
+            margin-top: 0.5rem;
         }
     }
 </style>

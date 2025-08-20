@@ -307,6 +307,29 @@
     @media (max-width: 768px) {
         .stats-grid {
             grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 25px;
+        }
+
+        .stat-card {
+            padding: 12px 8px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-card .icon {
+            font-size: 1.8rem;
+            margin-bottom: 6px;
+        }
+
+        .stat-card .number {
+            font-size: 1.4rem;
+            margin-bottom: 3px;
+        }
+
+        .stat-card .label {
+            font-size: 0.75rem;
+            line-height: 1.2;
         }
         
         .quick-add-grid {
@@ -425,6 +448,252 @@
 
     @keyframes spin {
         to { transform: rotate(360deg); }
+    }
+    
+    /* Mobile Responsive Styles */
+    @media (max-width: 768px) {
+        /* Stats Grid */
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 25px;
+        }
+        
+        .stat-card {
+            padding: 12px 8px;
+            border-radius: 10px;
+        }
+        
+        .stat-card .icon {
+            font-size: 1.8rem;
+            margin-bottom: 6px;
+        }
+        
+        .stat-card .number {
+            font-size: 1.4rem;
+            margin-bottom: 3px;
+        }
+        
+        .stat-card .label {
+            font-size: 0.75rem;
+            line-height: 1.2;
+        }
+        
+        /* Quick Add Section */
+        .quick-add-section {
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+        
+        .quick-add-title {
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+        }
+        
+        .quick-add-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+        
+        .quick-add-btn {
+            padding: 15px 10px;
+            min-height: 80px;
+        }
+        
+        .quick-add-btn i {
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+        }
+        
+        .quick-add-btn span {
+            font-size: 0.8rem;
+        }
+        
+        /* Tables Section */
+        .tables-section {
+            padding: 20px;
+        }
+        
+        .section-title {
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+        }
+        
+        /* Table Cards */
+        .table-card {
+            margin-bottom: 20px;
+            padding: 15px;
+        }
+        
+        .table-card h4 {
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+        }
+        
+        .table-card .table-info {
+            font-size: 0.85rem;
+            margin-bottom: 12px;
+        }
+        
+        .table-card .btn {
+            font-size: 0.85rem;
+            padding: 0.5rem 0.8rem;
+            margin-bottom: 0.5rem;
+            width: 100%;
+        }
+        
+        /* Modal adjustments */
+        .modal-dialog {
+            margin: 1rem;
+        }
+        
+        .modal-content {
+            border-radius: 12px;
+        }
+        
+        .modal-header {
+            padding: 1rem;
+        }
+        
+        .modal-title {
+            font-size: 1.1rem;
+        }
+        
+        .modal-body {
+            padding: 1rem;
+        }
+        
+        /* Form elements */
+        .form-control, .form-select {
+            font-size: 0.9rem;
+            padding: 0.6rem 0.8rem;
+        }
+        
+        .btn {
+            font-size: 0.9rem;
+            padding: 0.6rem 1rem;
+        }
+        
+        /* Loading states */
+        .loading-spinner {
+            width: 1.5rem;
+            height: 1.5rem;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        /* Stats Grid - Keep 2 columns on very small screens */
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            padding: 10px 6px;
+            border-radius: 8px;
+        }
+        
+        .stat-card .icon {
+            font-size: 1.6rem;
+            margin-bottom: 4px;
+        }
+        
+        .stat-card .number {
+            font-size: 1.2rem;
+            margin-bottom: 2px;
+        }
+        
+        .stat-card .label {
+            font-size: 0.7rem;
+            line-height: 1.1;
+        }
+        
+        /* Quick Add Section */
+        .quick-add-section {
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .quick-add-title {
+            font-size: 1.2rem;
+            margin-bottom: 12px;
+        }
+        
+        .quick-add-grid {
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+        
+        .quick-add-btn {
+            padding: 12px;
+            min-height: 70px;
+        }
+        
+        .quick-add-btn i {
+            font-size: 1.3rem;
+            margin-bottom: 6px;
+        }
+        
+        .quick-add-btn span {
+            font-size: 0.75rem;
+        }
+        
+        /* Tables Section */
+        .tables-section {
+            padding: 15px;
+        }
+        
+        .section-title {
+            font-size: 1.2rem;
+            margin-bottom: 12px;
+        }
+        
+        .table-card {
+            padding: 12px;
+            margin-bottom: 15px;
+        }
+        
+        .table-card h4 {
+            font-size: 1rem;
+        }
+        
+        .table-card .table-info {
+            font-size: 0.8rem;
+        }
+        
+        .table-card .btn {
+            font-size: 0.8rem;
+            padding: 0.4rem 0.6rem;
+        }
+        
+        /* Form elements */
+        .form-control, .form-select {
+            font-size: 0.85rem;
+            padding: 0.5rem 0.7rem;
+        }
+        
+        .btn {
+            font-size: 0.85rem;
+            padding: 0.5rem 0.8rem;
+        }
+        
+        /* Modal adjustments */
+        .modal-dialog {
+            margin: 0.5rem;
+        }
+        
+        .modal-header {
+            padding: 0.8rem;
+        }
+        
+        .modal-body {
+            padding: 0.8rem;
+        }
+        
+        .modal-title {
+            font-size: 1rem;
+        }
     }
 </style>
 {% endblock %}

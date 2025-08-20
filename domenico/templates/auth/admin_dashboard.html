@@ -250,6 +250,214 @@
         text-transform: uppercase;
         font-weight: 600;
     }
+
+    /* Mobile Responsive Styles */
+    @media (max-width: 768px) {
+        .admin-header {
+            margin: -1rem -1rem 2rem -1rem;
+            padding: 1.5rem 0;
+        }
+
+        .admin-header h1 {
+            font-size: 1.8rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .admin-header p {
+            font-size: 1rem;
+        }
+
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            padding: 1.5rem 1rem;
+            border-radius: 15px;
+        }
+
+        .stat-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            font-size: 1.2rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .stat-number {
+            font-size: 1.5rem;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+        }
+
+        .section-card {
+            border-radius: 15px;
+            margin-bottom: 1.5rem;
+        }
+
+        .section-header {
+            padding: 1rem 1.5rem;
+        }
+
+        .section-header h3 {
+            font-size: 1.1rem;
+        }
+
+        .section-content {
+            padding: 1.5rem;
+        }
+
+        .quick-actions {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem;
+        }
+
+        .action-btn {
+            padding: 0.75rem 0.5rem;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            text-align: center;
+            flex-direction: column;
+        }
+
+        .action-btn i {
+            margin-right: 0;
+            margin-bottom: 0.25rem;
+            font-size: 1.1rem;
+        }
+
+        .activity-item {
+            padding: 0.75rem 0;
+            flex-wrap: wrap;
+        }
+
+        .activity-icon {
+            width: 35px;
+            height: 35px;
+            border-radius: 8px;
+            margin-right: 0.75rem;
+            font-size: 0.9rem;
+        }
+
+        .activity-title {
+            font-size: 0.9rem;
+        }
+
+        .activity-description {
+            font-size: 0.8rem;
+        }
+
+        .activity-time {
+            font-size: 0.75rem;
+        }
+
+        .users-by-role {
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .role-stat {
+            flex: 1;
+            min-width: 80px;
+        }
+
+        .role-number {
+            font-size: 1.2rem;
+        }
+
+        .role-label {
+            font-size: 0.7rem;
+        }
+
+        .row {
+            margin: 0;
+        }
+
+        .col-lg-8, .col-lg-4 {
+            padding: 0;
+            margin-bottom: 1rem;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .admin-header h1 {
+            font-size: 1.5rem;
+        }
+
+        .admin-header p {
+            font-size: 0.9rem;
+        }
+
+        .stats-grid {
+            grid-template-columns: 1fr;
+            gap: 0.75rem;
+        }
+
+        .stat-card {
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .stat-icon {
+            margin: 0 auto 0.5rem;
+        }
+
+        .quick-actions {
+            grid-template-columns: 1fr;
+        }
+
+        .action-btn {
+            padding: 1rem;
+            flex-direction: row;
+            justify-content: center;
+        }
+
+        .action-btn i {
+            margin-right: 0.5rem;
+            margin-bottom: 0;
+        }
+
+        .activity-item {
+            flex-direction: column;
+            align-items: flex-start;
+            text-align: left;
+        }
+
+        .activity-icon {
+            margin-bottom: 0.5rem;
+            margin-right: 0;
+        }
+
+        .users-by-role {
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .role-stat {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f8f9fa;
+            padding: 0.75rem;
+            border-radius: 8px;
+        }
+
+        .role-number {
+            font-size: 1.1rem;
+        }
+
+        .section-content {
+            padding: 1rem;
+        }
+
+        .section-header {
+            padding: 0.75rem 1rem;
+        }
+    }
 </style>
 {% endblock %}
 

@@ -58,11 +58,12 @@
         }
         
         .user-info {
-            color: white;
+            color: #f8f9fa;
             font-size: 0.9rem;
             opacity: 0;
             transition: opacity 0.3s ease;
             white-space: nowrap;
+            font-weight: 500;
         }
         
         .sidebar.expanded .user-info {
@@ -83,16 +84,17 @@
             display: flex;
             align-items: center;
             padding: 1rem;
-            color: #adb5bd;
+            color: #f8f9fa;
             text-decoration: none;
             transition: all 0.3s ease;
             position: relative;
+            font-weight: 500;
         }
         
         .sidebar-menu a:hover,
         .sidebar-menu a.active {
             background-color: var(--sidebar-hover);
-            color: white;
+            color: #ffffff;
         }
         
         .sidebar-menu a.active::before {
@@ -139,6 +141,13 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             display: flex;
             justify-content: space-between;
+            align-items: center;
+            position: relative;
+        }
+        
+        .page-title-section {
+            flex: 1;
+            display: flex;
             align-items: center;
         }
         
@@ -256,23 +265,24 @@
             background-color: #28a745;
         }
         .user-info-header {
-    position: absolute;
-    top: 1rem;
-    right: 2rem;
-    z-index: 1000;
-}
+            position: static;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+        }
 
-.user-info-header .dropdown-toggle {
-    border: 2px solid rgba(255,255,255,0.3);
-    background: rgba(255,255,255,0.1);
-    backdrop-filter: blur(10px);
-    transition: all 0.3s ease;
-}
+        .user-info-header .dropdown-toggle {
+            border: 1px solid #dee2e6;
+            background: white;
+            color: #333;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
 
-.user-info-header .dropdown-toggle:hover {
-    background: rgba(255,255,255,0.2);
-    border-color: rgba(255,255,255,0.5);
-}
+        .user-info-header .dropdown-toggle:hover {
+            background: #f8f9fa;
+            border-color: var(--primary-color);
+        }
 
 .user-info-header .dropdown-menu {
     border: none;
@@ -306,16 +316,199 @@
     color: #721c24;
 }
 
+/* Mobile Menu Overlay */
+.mobile-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+}
+
+.mobile-overlay.show {
+    display: block;
+}
+
+.mobile-menu-btn {
+    display: none;
+    background: none;
+    border: none;
+    color: #333;
+    font-size: 1.5rem;
+    padding: 0.5rem;
+    cursor: pointer;
+}
+
+.mobile-menu-btn:hover {
+    color: var(--primary-color);
+}
+
 /* Responsive per mobile */
 @media (max-width: 768px) {
+    .sidebar {
+        transform: translateX(-100%);
+        width: 280px;
+        transition: transform 0.3s ease;
+        z-index: 1001;
+    }
+    
+    .sidebar.mobile-open {
+        transform: translateX(0);
+        background-color: #212529;
+    }
+    
+    /* Enhanced mobile sidebar text readability */
+    .sidebar.mobile-open .sidebar-menu a {
+        color: #ffffff !important;
+        font-weight: 600;
+        font-size: 0.95rem;
+        padding: 1rem 1.25rem;
+    }
+    
+    .sidebar.mobile-open .sidebar-menu a:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+        color: #ffffff !important;
+    }
+    
+    .sidebar.mobile-open .sidebar-menu a.active {
+        background-color: rgba(255, 255, 255, 0.15);
+        color: #ffffff !important;
+    }
+    
+    .sidebar.mobile-open .sidebar-menu i {
+        color: #ffffff !important;
+        font-size: 1.1rem;
+        width: 20px;
+        text-align: left;
+        margin-right: 1rem;
+    }
+    
+    .sidebar.mobile-open .sidebar-menu span {
+        opacity: 1 !important;
+        color: #ffffff !important;
+        font-weight: 600;
+        display: inline !important;
+    }
+    
+    .sidebar.mobile-open .user-info {
+        color: #ffffff !important;
+        font-weight: 600;
+        opacity: 1;
+    }
+    
+    .main-content {
+        margin-left: 0;
+        transition: none;
+    }
+    
+    .sidebar.expanded ~ .main-content {
+        margin-left: 0;
+    }
+    
+    .top-header {
+        padding: 1rem;
+        flex-direction: row;
+        align-items: center;
+        gap: 1rem;
+    }
+    
+    .page-title-section {
+        flex: 1;
+        margin-left: 3rem; /* Space for mobile menu button */
+    }
+    
+    .page-title {
+        font-size: 1.2rem;
+    }
+    
     .user-info-header {
         position: static;
-        margin: 1rem 0;
+        margin: 0;
+        flex-shrink: 0;
     }
     
     .user-info-header .dropdown-toggle {
-        width: 100%;
-        justify-content: center;
+        font-size: 0.85rem;
+        padding: 0.4rem 0.8rem;
+    }
+    
+    .user-info-header .user-name {
+        display: none;
+    }
+    
+    .user-info-header .user-role {
+        display: none;
+    }
+    
+    .content-area {
+        padding: 1rem;
+    }
+    
+    .mobile-menu-btn {
+        display: inline-block;
+        position: absolute;
+        top: 50%;
+        left: 1rem;
+        transform: translateY(-50%);
+        z-index: 1002;
+    }
+    
+    .user-profile {
+        display: none;
+    }
+}
+
+@media (max-width: 480px) {
+    .top-header {
+        padding: 0.75rem;
+        gap: 0.75rem;
+    }
+    
+    .page-title-section {
+        margin-left: 2.5rem;
+    }
+    
+    .page-title {
+        font-size: 1.1rem;
+    }
+    
+    .content-area {
+        padding: 0.75rem;
+    }
+    
+    .user-info-header .dropdown-toggle {
+        font-size: 0.8rem;
+        padding: 0.3rem 0.6rem;
+    }
+    
+    .sidebar {
+        width: 300px;
+    }
+    
+    .sidebar-menu a {
+        padding: 0.8rem 1rem;
+        font-size: 0.9rem;
+    }
+    
+    .sidebar-menu i {
+        font-size: 1.1rem;
+    }
+    
+    .mobile-menu-btn {
+        top: 50%;
+        left: 0.75rem;
+        transform: translateY(-50%);
+        font-size: 1.3rem;
+    }
+}
+
+/* Desktop styles (hide mobile menu button on desktop) */
+@media (min-width: 769px) {
+    .mobile-menu-btn {
+        display: none !important;
     }
 }
 
@@ -341,6 +534,9 @@
     {% block extra_css %}{% endblock %}
 </head>
 <body>
+    <!-- Mobile Overlay -->
+    <div class="mobile-overlay" id="mobileOverlay" onclick="closeMobileMenu()"></div>
+    
     <!-- Sidebar -->
     <nav class="sidebar" id="sidebar">
         <div class="sidebar-header">
@@ -403,17 +599,28 @@
     <!-- Main Content -->
     <main class="main-content">
         <div class="top-header">
-            <h1 class="page-title">
-                {% block page_icon %}<i class="fas fa-home"></i>{% endblock %}
-                {% block page_title %}Home{% endblock %}
-                <div class="user-info-header" style="position: absolute; top: 1rem; right: 2rem;">
+            <!-- Mobile Menu Button -->
+            <button class="mobile-menu-btn" onclick="toggleMobileMenu()">
+                <i class="fas fa-bars"></i>
+            </button>
+            
+            <!-- Page Title -->
+            <div class="page-title-section">
+                <h1 class="page-title">
+                    {% block page_icon %}<i class="fas fa-home"></i>{% endblock %}
+                    {% block page_title %}Home{% endblock %}
+                </h1>
+            </div>
+            
+            <!-- User Info Section -->
+            <div class="user-info-header">
                 {% if user.is_authenticated %}
                     <div class="dropdown">
-                        <button class="btn btn-outline-light dropdown-toggle" type="button" 
+                        <button class="btn btn-outline-primary dropdown-toggle" type="button" 
                                 id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="fas fa-user-circle me-2"></i>
-                            {{ user.userprofile.full_name|default:user.username }}
-                            <span class="badge bg-light text-dark ms-2">{{ user.userprofile.get_role_display }}</span>
+                            <span class="user-name">{{ user.userprofile.full_name|default:user.username }}</span>
+                            <span class="badge bg-light text-dark ms-2 user-role">{{ user.userprofile.get_role_display }}</span>
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
                             <li>
@@ -448,15 +655,10 @@
                         </ul>
                     </div>
                 {% else %}
-                    <a href="{% url 'login' %}" class="btn btn-outline-light">
+                    <a href="{% url 'login' %}" class="btn btn-outline-primary">
                         <i class="fas fa-sign-in-alt me-2"></i>Login
                     </a>
                 {% endif %}
-            </div>
-            </h1>
-            <div class="user-profile">
-                <span>Domenico Franco</span>
-                <div class="user-avatar">DF</div>
             </div>
         </div>
         
@@ -474,28 +676,92 @@
             const sidebar = document.getElementById('sidebar');
             const searchSidebar = document.querySelector('.search-sidebar');
             
-            sidebar.classList.toggle('expanded');
-            
-            // Mostra/nascondi la barra di ricerca
-            if (sidebar.classList.contains('expanded')) {
-                searchSidebar.style.display = 'block';
-            } else {
-                searchSidebar.style.display = 'none';
+            // On desktop, toggle expanded class
+            if (window.innerWidth > 768) {
+                sidebar.classList.toggle('expanded');
+                
+                // Mostra/nascondi la barra di ricerca
+                if (searchSidebar) {
+                    if (sidebar.classList.contains('expanded')) {
+                        searchSidebar.style.display = 'block';
+                    } else {
+                        searchSidebar.style.display = 'none';
+                    }
+                }
             }
+        }
+        
+        function toggleMobileMenu() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('mobileOverlay');
+            
+            if (!sidebar || !overlay) {
+                console.error('Sidebar or overlay not found');
+                return;
+            }
+            
+            sidebar.classList.toggle('mobile-open');
+            overlay.classList.toggle('show');
+            
+            // Prevent body scroll when menu is open
+            if (sidebar.classList.contains('mobile-open')) {
+                document.body.style.overflow = 'hidden';
+            } else {
+                document.body.style.overflow = 'auto';
+            }
+            
+            console.log('Mobile menu toggled:', sidebar.classList.contains('mobile-open'));
+        }
+        
+        function closeMobileMenu() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('mobileOverlay');
+            
+            sidebar.classList.remove('mobile-open');
+            overlay.classList.remove('show');
+            document.body.style.overflow = 'auto';
         }
         
         // Auto-collapse sidebar on mobile
         if (window.innerWidth <= 768) {
-            document.getElementById('sidebar').classList.remove('expanded');
-            document.querySelector('.search-sidebar').style.display = 'none';
+            const sidebar = document.getElementById('sidebar');
+            const searchSidebar = document.querySelector('.search-sidebar');
+            
+            sidebar.classList.remove('expanded');
+            if (searchSidebar) {
+                searchSidebar.style.display = 'none';
+            }
         }
         
         // Handle window resize
         window.addEventListener('resize', function() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('mobileOverlay');
+            const searchSidebar = document.querySelector('.search-sidebar');
+            
             if (window.innerWidth <= 768) {
-                document.getElementById('sidebar').classList.remove('expanded');
-                document.querySelector('.search-sidebar').style.display = 'none';
+                sidebar.classList.remove('expanded');
+                if (searchSidebar) {
+                    searchSidebar.style.display = 'none';
+                }
+            } else {
+                // Reset mobile menu when switching to desktop
+                sidebar.classList.remove('mobile-open');
+                overlay.classList.remove('show');
+                document.body.style.overflow = 'auto';
             }
+        });
+        
+        // Close mobile menu when clicking on menu items
+        document.addEventListener('DOMContentLoaded', function() {
+            const menuItems = document.querySelectorAll('.sidebar-menu a');
+            menuItems.forEach(item => {
+                item.addEventListener('click', function() {
+                    if (window.innerWidth <= 768) {
+                        closeMobileMenu();
+                    }
+                });
+            });
         });
     </script>
     
