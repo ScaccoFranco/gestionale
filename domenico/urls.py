@@ -21,6 +21,7 @@ auth_urlpatterns = [
 urlpatterns = [
     # ============ PAGINE PRINCIPALI ============
     path('', views.home, name='home'),
+    path('offline/', views.offline_page, name='offline'),
     path('landing/', views.public_landing, name='public_landing'),
     path('dashboard/', views.personal_dashboard, name='personal_dashboard'),
     path('aziende/', views.aziende, name='aziende'),

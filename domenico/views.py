@@ -97,6 +97,10 @@ def home(request):
     else:
         return public_landing(request)
 
+def offline_page(request):
+    """Pagina offline per PWA"""
+    return render(request, 'offline.html')
+
 def legacy_home(request):
     """Vista home originale con statistiche e attività recenti dal database management (deprecated)"""
     from django.db.models import Sum, Count, Q

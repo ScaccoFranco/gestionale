@@ -1,9 +1,33 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="it">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Gestionale Agricolo{% endblock %}</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="application-name" content="Gestionale Agricolo Agriolo">
+    <meta name="apple-mobile-web-app-title" content="Agriolo">
+    <meta name="description" content="Sistema di gestione trattamenti fitosanitari per aziende agricole">
+    <meta name="theme-color" content="#2e7d32">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="manifest" href="{% static 'manifest.json' %}">
+    
+    <!-- Favicons and App Icons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'icons/icon-32x32.png' %}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'icons/icon-16x16.png' %}">
+    <link rel="apple-touch-icon" href="{% static 'icons/icon-180x180.png' %}">
+    <link rel="apple-touch-icon" sizes="152x152" href="{% static 'icons/icon-152x152.png' %}">
+    <link rel="apple-touch-icon" sizes="144x144" href="{% static 'icons/icon-144x144.png' %}">
+    <link rel="apple-touch-icon" sizes="120x120" href="{% static 'icons/icon-120x120.png' %}">
+    <link rel="apple-touch-icon" sizes="114x114" href="{% static 'icons/icon-114x114.png' %}">
+    <link rel="apple-touch-icon" sizes="76x76" href="{% static 'icons/icon-76x76.png' %}">
+    <link rel="apple-touch-icon" sizes="72x72" href="{% static 'icons/icon-72x72.png' %}">
+    <link rel="apple-touch-icon" sizes="60x60" href="{% static 'icons/icon-60x60.png' %}">
+    <link rel="apple-touch-icon" sizes="57x57" href="{% static 'icons/icon-57x57.png' %}">
     
     <!-- Bootstrap CSS -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
@@ -763,6 +787,124 @@
                 });
             });
         });
+    </script>
+    
+    <!-- PWA Service Worker Registration -->
+    <script>
+        // Register Service Worker for PWA functionality
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('{% static "sw.js" %}')
+                    .then(function(registration) {
+                        console.log('SW registered with scope: ', registration.scope);
+                        
+                        // Check for updates
+                        registration.addEventListener('updatefound', function() {
+                            const newWorker = registration.installing;
+                            
+                            newWorker.addEventListener('statechange', function() {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    // Show update notification
+                                    showUpdateNotification();
+                                }
+                            });
+                        });
+                    })
+                    .catch(function(error) {
+                        console.log('SW registration failed: ', error);
+                    });
+            });
+        }
+        
+        // PWA Install Prompt
+        let deferredPrompt;
+        const installButton = document.createElement('button');
+        installButton.className = 'btn btn-success position-fixed';
+        installButton.style.cssText = 'bottom: 20px; right: 20px; z-index: 1050; border-radius: 25px; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.3);';
+        installButton.innerHTML = '<i class="fas fa-download me-2"></i>Installa App';
+        document.body.appendChild(installButton);
+        
+        window.addEventListener('beforeinstallprompt', function(e) {
+            console.log('beforeinstallprompt event fired');
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            // Show install button
+            installButton.style.display = 'block';
+            
+            installButton.addEventListener('click', function() {
+                installButton.style.display = 'none';
+                deferredPrompt.prompt();
+                
+                deferredPrompt.userChoice.then(function(choiceResult) {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('User accepted the install prompt');
+                    } else {
+                        console.log('User dismissed the install prompt');
+                    }
+                    deferredPrompt = null;
+                });
+            });
+        });
+        
+        // Hide install button after app is installed
+        window.addEventListener('appinstalled', function(e) {
+            console.log('App installed successfully');
+            installButton.style.display = 'none';
+        });
+        
+        // Show update notification
+        function showUpdateNotification() {
+            const updateDiv = document.createElement('div');
+            updateDiv.className = 'alert alert-info position-fixed';
+            updateDiv.style.cssText = 'top: 20px; right: 20px; z-index: 1050; max-width: 300px;';
+            updateDiv.innerHTML = `
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-sync-alt me-2"></i>
+                    <div class="flex-grow-1">
+                        <strong>Aggiornamento disponibile</strong>
+                        <small class="d-block">Ricarica per aggiornare l'app</small>
+                    </div>
+                    <button type="button" class="btn-close" onclick="this.parentElement.parentElement.remove()"></button>
+                </div>
+            `;
+            
+            document.body.appendChild(updateDiv);
+            
+            // Auto remove after 10 seconds
+            setTimeout(() => {
+                if (updateDiv.parentElement) {
+                    updateDiv.remove();
+                }
+            }, 10000);
+        }
+        
+        // Network status indicator
+        function updateOnlineStatus() {
+            const statusDiv = document.getElementById('network-status') || createNetworkStatusDiv();
+            
+            if (navigator.onLine) {
+                statusDiv.className = 'alert alert-success position-fixed d-none';
+                statusDiv.innerHTML = '<i class="fas fa-wifi me-2"></i>Connessione ripristinata';
+                statusDiv.classList.remove('d-none');
+                setTimeout(() => statusDiv.classList.add('d-none'), 3000);
+            } else {
+                statusDiv.className = 'alert alert-warning position-fixed';
+                statusDiv.innerHTML = '<i class="fas fa-wifi-slash me-2"></i>Modalità offline';
+                statusDiv.classList.remove('d-none');
+            }
+        }
+        
+        function createNetworkStatusDiv() {
+            const statusDiv = document.createElement('div');
+            statusDiv.id = 'network-status';
+            statusDiv.style.cssText = 'top: 20px; left: 20px; z-index: 1050; max-width: 250px;';
+            document.body.appendChild(statusDiv);
+            return statusDiv;
+        }
+        
+        window.addEventListener('online', updateOnlineStatus);
+        window.addEventListener('offline', updateOnlineStatus);
     </script>
     
     {% block extra_js %}{% endblock %}

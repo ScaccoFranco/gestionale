@@ -1,0 +1,217 @@
+{% extends 'base.html' %}
+
+{% block page_title %}Offline - Non Disponibile{% endblock %}
+{% block page_icon %}<i class="fas fa-wifi-slash"></i>{% endblock %}
+
+{% block extra_css %}
+<style>
+    .offline-container {
+        text-align: center;
+        padding: 4rem 2rem;
+        min-height: 60vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .offline-icon {
+        font-size: 6rem;
+        color: #6c757d;
+        margin-bottom: 2rem;
+        animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.5; }
+        100% { opacity: 1; }
+    }
+
+    .offline-title {
+        font-size: 2rem;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 1rem;
+    }
+
+    .offline-description {
+        font-size: 1.1rem;
+        color: #666;
+        margin-bottom: 2rem;
+        line-height: 1.6;
+        max-width: 500px;
+    }
+
+    .retry-button {
+        background: linear-gradient(135deg, #2e7d32 0%, #66bb6a 100%);
+        border: none;
+        color: white;
+        padding: 1rem 2rem;
+        border-radius: 50px;
+        font-size: 1rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(46, 125, 50, 0.3);
+    }
+
+    .retry-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(46, 125, 50, 0.4);
+    }
+
+    .available-features {
+        margin-top: 3rem;
+        text-align: left;
+        max-width: 400px;
+        width: 100%;
+    }
+
+    .available-features h3 {
+        color: #333;
+        margin-bottom: 1rem;
+        font-size: 1.2rem;
+    }
+
+    .feature-list {
+        list-style: none;
+        padding: 0;
+    }
+
+    .feature-list li {
+        padding: 0.5rem 0;
+        color: #666;
+        display: flex;
+        align-items: center;
+    }
+
+    .feature-list li i {
+        color: #28a745;
+        margin-right: 0.5rem;
+        width: 20px;
+    }
+
+    .offline-status {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #dc3545;
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        z-index: 1050;
+    }
+
+    @media (max-width: 768px) {
+        .offline-container {
+            padding: 2rem 1rem;
+        }
+
+        .offline-icon {
+            font-size: 4rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .offline-title {
+            font-size: 1.5rem;
+        }
+
+        .offline-description {
+            font-size: 1rem;
+        }
+
+        .available-features {
+            margin-top: 2rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="offline-status">
+    <i class="fas fa-wifi-slash me-2"></i>
+    Modalità Offline
+</div>
+
+<div class="offline-container">
+    <div class="offline-icon">
+        <i class="fas fa-wifi-slash"></i>
+    </div>
+
+    <h1 class="offline-title">
+        Connessione Non Disponibile
+    </h1>
+
+    <p class="offline-description">
+        Non è possibile connettersi al server. Controlla la tua connessione internet o riprova più tardi. 
+        Alcune funzionalità potrebbero essere disponibili offline.
+    </p>
+
+    <button class="retry-button" onclick="window.location.reload()">
+        <i class="fas fa-sync-alt me-2"></i>
+        Riprova
+    </button>
+
+    <div class="available-features">
+        <h3>
+            <i class="fas fa-check-circle me-2" style="color: #28a745;"></i>
+            Funzionalità Offline
+        </h3>
+        <ul class="feature-list">
+            <li>
+                <i class="fas fa-eye"></i>
+                Visualizzazione dati in cache
+            </li>
+            <li>
+                <i class="fas fa-save"></i>
+                Salvataggio temporaneo modifiche
+            </li>
+            <li>
+                <i class="fas fa-search"></i>
+                Ricerca nei dati locali
+            </li>
+            <li>
+                <i class="fas fa-sync"></i>
+                Sincronizzazione automatica al ritorno online
+            </li>
+        </ul>
+    </div>
+</div>
+
+<script>
+// Check connection status
+function updateConnectionStatus() {
+    const statusDiv = document.querySelector('.offline-status');
+    
+    if (navigator.onLine) {
+        statusDiv.innerHTML = '<i class="fas fa-wifi me-2"></i>Connessione Ripristinata';
+        statusDiv.style.background = '#28a745';
+        
+        // Redirect to home after connection is restored
+        setTimeout(() => {
+            window.location.href = '/';
+        }, 2000);
+    }
+}
+
+// Listen for connection changes
+window.addEventListener('online', updateConnectionStatus);
+window.addEventListener('offline', updateConnectionStatus);
+
+// Auto-retry connection every 10 seconds
+setInterval(() => {
+    if (navigator.onLine) {
+        // Try to fetch a small resource to test actual connectivity
+        fetch('/', { method: 'HEAD', cache: 'no-cache' })
+            .then(() => {
+                window.location.href = '/';
+            })
+            .catch(() => {
+                // Still offline
+            });
+    }
+}, 10000);
+</script>
+{% endblock %}
