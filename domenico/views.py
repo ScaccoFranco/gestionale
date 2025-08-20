@@ -34,8 +34,71 @@ from .email_utils import (
 )
 
 
+def public_landing(request):
+    """Vista landing page pubblica per utenti non autenticati"""
+    return render(request, 'public_landing.html')
+
+def personal_dashboard(request):
+    """Vista dashboard personale per utenti autenticati"""
+    from django.db.models import Sum, Count, Q
+    from datetime import datetime, timedelta
+    
+    # Calcola statistiche
+    stats = {
+        'clienti_totali': Cliente.objects.count(),
+        'cascine_totali': Cascina.objects.count(),
+        'terreni_totali': Terreno.objects.count(),
+        'superficie_totale': Terreno.objects.aggregate(
+            totale=Sum('superficie')
+        )['totale'] or 0,
+        'trattamenti_programmati': Trattamento.objects.filter(stato='programmato').count(),
+        'trattamenti_completati': Trattamento.objects.filter(stato='completato').count(),
+    }
+    
+    # Attività recenti (ultimi 30 giorni)
+    thirty_days_ago = timezone.now() - timedelta(days=30)
+    recent_activities = ActivityLog.objects.filter(
+        timestamp__gte=thirty_days_ago
+    ).order_by('-timestamp')[:10]
+    
+    # Trattamenti recenti
+    recent_treatments = Trattamento.objects.select_related(
+        'cliente', 'cascina'
+    ).prefetch_related('terreni').order_by('-data_inserimento')[:5]
+    
+    # Dati per grafici (ultimi 12 mesi)
+    monthly_data = []
+    for i in range(12):
+        month_start = datetime.now().replace(day=1) - timedelta(days=30*i)
+        month_treatments = Trattamento.objects.filter(
+            data_inserimento__year=month_start.year,
+            data_inserimento__month=month_start.month
+        ).count()
+        monthly_data.append({
+            'month': month_start.strftime('%b'),
+            'treatments': month_treatments
+        })
+    monthly_data.reverse()
+    
+    context = {
+        'stats': stats,
+        'recent_activities': recent_activities,
+        'recent_treatments': recent_treatments,
+        'monthly_data': monthly_data,
+        'user': request.user,
+    }
+    
+    return render(request, 'personal_dashboard.html', context)
+
 def home(request):
-    """Vista home con statistiche e attività recenti dal database management"""
+    """Vista home che reindirizza alla landing page o dashboard personale"""
+    if request.user.is_authenticated:
+        return personal_dashboard(request)
+    else:
+        return public_landing(request)
+
+def legacy_home(request):
+    """Vista home originale con statistiche e attività recenti dal database management (deprecated)"""
     from django.db.models import Sum, Count, Q
     from datetime import datetime, timedelta
     

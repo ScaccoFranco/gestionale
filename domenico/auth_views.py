@@ -55,9 +55,12 @@ def custom_login(request):
                 
                 messages.success(request, f'Benvenuto, {user.first_name or user.username}!')
                 
-                # Redirect alla pagina richiesta o home
-                next_url = request.GET.get('next', 'home')
-                return redirect(next_url)
+                # Redirect alla pagina richiesta o dashboard personale
+                next_url = request.GET.get('next')
+                if next_url:
+                    return redirect(next_url)
+                else:
+                    return redirect('home')  # Questo ora reindirizza alla dashboard personale
             else:
                 messages.error(request, 'Account disattivato. Contatta l\'amministratore.')
         else:

@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestionale Agriolo - Domenico Franco</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --primary-color: #2e7d32;
+            --secondary-color: #66bb6a;
+            --accent-color: #4caf50;
+            --gradient-primary: linear-gradient(135deg, #2e7d32 0%, #66bb6a 100%);
+            --gradient-hero: linear-gradient(135deg, rgba(46, 125, 50, 0.9) 0%, rgba(102, 187, 106, 0.9) 100%);
+            --shadow: 0 10px 30px rgba(0,0,0,0.1);
+            --shadow-hover: 0 15px 40px rgba(0,0,0,0.2);
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+        }
+
+        /* Hero Section */
+        .hero-section {
+            background: linear-gradient(135deg, rgba(46, 125, 50, 0.95) 0%, rgba(102, 187, 106, 0.95) 100%),
+                        url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 300"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.05)"/></pattern></defs><rect width="100%" height="100%" fill="url(%23grain)"/></svg>');
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .hero-title {
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .hero-subtitle {
+            font-size: 1.3rem;
+            margin-bottom: 2rem;
+            opacity: 0.95;
+            font-weight: 300;
+        }
+
+        .hero-description {
+            font-size: 1.1rem;
+            margin-bottom: 3rem;
+            line-height: 1.6;
+            max-width: 600px;
+        }
+
+        .btn-login-hero {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.8);
+            color: white;
+            padding: 1rem 2.5rem;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .btn-login-hero:hover {
+            background: white;
+            color: var(--primary-color);
+            border-color: white;
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        /* Features Section */
+        .features-section {
+            padding: 5rem 0;
+            background: white;
+        }
+
+        .feature-card {
+            background: white;
+            border-radius: 20px;
+            padding: 2.5rem;
+            text-align: center;
+            box-shadow: var(--shadow);
+            transition: all 0.3s ease;
+            height: 100%;
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .feature-card:hover {
+            transform: translateY(-10px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        .feature-icon {
+            width: 80px;
+            height: 80px;
+            background: var(--gradient-primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            color: white;
+            font-size: 2rem;
+        }
+
+        .feature-title {
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--primary-color);
+        }
+
+        .feature-description {
+            color: #666;
+            line-height: 1.6;
+        }
+
+        /* Stats Section */
+        .stats-section {
+            background: var(--gradient-primary);
+            color: white;
+            padding: 3rem 0;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 1rem;
+        }
+
+        .stat-number {
+            font-size: 3rem;
+            font-weight: 700;
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            margin-top: 0.5rem;
+        }
+
+        /* About Section */
+        .about-section {
+            padding: 5rem 0;
+            background: #f8f9fa;
+        }
+
+        .about-text {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: #555;
+        }
+
+        .about-highlight {
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: 600;
+        }
+
+        /* Footer */
+        .footer {
+            background: #2c3e50;
+            color: white;
+            padding: 2rem 0;
+            text-align: center;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero-title {
+                font-size: 2.5rem;
+            }
+            
+            .hero-subtitle {
+                font-size: 1.1rem;
+            }
+            
+            .feature-card {
+                margin-bottom: 2rem;
+            }
+        }
+
+        /* Animation */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fade-in-up {
+            animation: fadeInUp 0.8s ease-out;
+        }
+    </style>
+</head>
+<body>
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="hero-content fade-in-up">
+                        <h1 class="hero-title">Gestionale Agriolo</h1>
+                        <p class="hero-subtitle">Sistema di Gestione Professionale per Aziende Agricole</p>
+                        <p class="hero-description">
+                            Una soluzione completa e moderna per la gestione di trattamenti fitosanitari, 
+                            clienti, terreni e comunicazioni. Progettato specificamente per il settore agricolo 
+                            con tecnologie all'avanguardia.
+                        </p>
+                        <a href="{% url 'login' %}" class="btn btn-login-hero">
+                            <i class="fas fa-sign-in-alt me-2"></i>Accedi al Sistema
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features-section">
+        <div class="container">
+            <div class="row text-center mb-5">
+                <div class="col-12">
+                    <h2 class="display-5 fw-bold mb-3" style="color: var(--primary-color);">
+                        Funzionalità Principali
+                    </h2>
+                    <p class="lead text-muted">
+                        Tutto quello che ti serve per gestire la tua attività agricola
+                    </p>
+                </div>
+            </div>
+            
+            <div class="row g-4">
+                <div class="col-lg-4 col-md-6">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-seedling"></i>
+                        </div>
+                        <h3 class="feature-title">Gestione Trattamenti</h3>
+                        <p class="feature-description">
+                            Pianifica, monitora e documenta tutti i trattamenti fitosanitari 
+                            con tracciabilità completa e conformità normativa.
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="col-lg-4 col-md-6">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <h3 class="feature-title">Gestione Clienti</h3>
+                        <p class="feature-description">
+                            Organizza clienti, aziende agricole, cascine e terreni 
+                            in una struttura gerarchica chiara e intuitiva.
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="col-lg-4 col-md-6">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-envelope"></i>
+                        </div>
+                        <h3 class="feature-title">Comunicazioni</h3>
+                        <p class="feature-description">
+                            Genera automaticamente comunicazioni e documenti PDF 
+                            personalizzati per clienti e autorità competenti.
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="col-lg-4 col-md-6">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-database"></i>
+                        </div>
+                        <h3 class="feature-title">Database Integrato</h3>
+                        <p class="feature-description">
+                            Database completo di prodotti fitosanitari, principi attivi 
+                            e informazioni tecniche sempre aggiornate.
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="col-lg-4 col-md-6">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <h3 class="feature-title">Report e Statistiche</h3>
+                        <p class="feature-description">
+                            Analizza l'andamento della tua attività con report dettagliati 
+                            e statistiche in tempo reale.
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="col-lg-4 col-md-6">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-cloud"></i>
+                        </div>
+                        <h3 class="feature-title">Cloud Ready</h3>
+                        <p class="feature-description">
+                            Accedi ai tuoi dati da qualsiasi dispositivo, 
+                            ovunque ti trovi, con sicurezza e affidabilità.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section class="stats-section">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="stat-item">
+                        <span class="stat-number"><i class="fas fa-infinity"></i></span>
+                        <div class="stat-label">Trattamenti Gestiti</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-item">
+                        <span class="stat-number">24/7</span>
+                        <div class="stat-label">Disponibilità</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-item">
+                        <span class="stat-number">100%</span>
+                        <div class="stat-label">Conformità Normativa</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-item">
+                        <span class="stat-number"><i class="fas fa-shield-alt"></i></span>
+                        <div class="stat-label">Sicurezza Garantita</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- About Section -->
+    <section class="about-section">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-lg-6">
+                    <h2 class="display-6 fw-bold mb-4" style="color: var(--primary-color);">
+                        Chi Siamo
+                    </h2>
+                    <div class="about-text">
+                        <p>
+                            Il <span class="about-highlight">Gestionale Agriolo</span> è nato dall'esperienza 
+                            diretta nel settore agricolo e dalla necessità di avere uno strumento 
+                            moderno e affidabile per la gestione professionale dei trattamenti fitosanitari.
+                        </p>
+                        <p>
+                            Sviluppato con le più moderne tecnologie web, il sistema garantisce 
+                            <span class="about-highlight">sicurezza, prestazioni</span> e facilità d'uso, 
+                            mantenendo sempre la conformità alle normative del settore.
+                        </p>
+                        <p>
+                            La nostra missione è <span class="about-highlight">semplificare</span> 
+                            la gestione quotidiana delle attività agricole, permettendo agli operatori 
+                            di concentrarsi su quello che sanno fare meglio: coltivare.
+                        </p>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="text-center">
+                        <i class="fas fa-tractor" style="font-size: 15rem; color: var(--secondary-color); opacity: 0.1;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="row">
+                <div class="col-12">
+                    <p class="mb-2">
+                        <strong>Gestionale Agriolo</strong> - Sistema di Gestione per Aziende Agricole
+                    </p>
+                    <p class="mb-0">
+                        <small>Sviluppato con <i class="fas fa-heart text-danger"></i> per il settore agricolo</small>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

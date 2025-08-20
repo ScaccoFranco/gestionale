@@ -1,0 +1,523 @@
+{% extends 'base.html' %}
+
+{% block page_title %}Dashboard Personale{% endblock %}
+{% block page_icon %}<i class="fas fa-user-circle"></i>{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --primary-color: #2e7d32;
+        --secondary-color: #66bb6a;
+        --success-color: #4caf50;
+        --warning-color: #ff9800;
+        --info-color: #2196f3;
+        --danger-color: #f44336;
+        --gradient-primary: linear-gradient(135deg, #2e7d32 0%, #66bb6a 100%);
+        --gradient-success: linear-gradient(135deg, #4caf50 0%, #81c784 100%);
+        --gradient-warning: linear-gradient(135deg, #ff9800 0%, #ffb74d 100%);
+        --gradient-info: linear-gradient(135deg, #2196f3 0%, #64b5f6 100%);
+        --shadow: 0 10px 30px rgba(0,0,0,0.1);
+        --shadow-hover: 0 20px 40px rgba(0,0,0,0.15);
+    }
+
+    .welcome-section {
+        background: var(--gradient-primary);
+        color: white;
+        padding: 3rem 0;
+        margin: -2rem -2rem 3rem -2rem;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .welcome-section::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 100" fill="white" opacity="0.1"><polygon points="1000,100 1000,0 0,100"/></svg>');
+        background-size: cover;
+    }
+
+    .welcome-content {
+        position: relative;
+        z-index: 2;
+    }
+
+    .welcome-title {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+
+    .welcome-subtitle {
+        font-size: 1.2rem;
+        opacity: 0.9;
+        font-weight: 300;
+    }
+
+    .user-info {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+        margin-top: 1.5rem;
+    }
+
+    .user-avatar {
+        width: 60px;
+        height: 60px;
+        background: rgba(255,255,255,0.2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        border: 2px solid rgba(255,255,255,0.3);
+    }
+
+    /* Stats Cards */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 2rem;
+        margin-bottom: 3rem;
+    }
+
+    .stat-card {
+        background: white;
+        border-radius: 20px;
+        padding: 2rem;
+        box-shadow: var(--shadow);
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: var(--shadow-hover);
+    }
+
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: var(--gradient-primary);
+    }
+
+    .stat-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1rem;
+    }
+
+    .stat-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.2rem;
+    }
+
+    .stat-number {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: #333;
+        margin: 0;
+    }
+
+    .stat-label {
+        color: #666;
+        font-size: 0.9rem;
+        margin-top: 0.5rem;
+    }
+
+    /* Quick Actions */
+    .quick-actions {
+        margin-bottom: 3rem;
+    }
+
+    .actions-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 2rem;
+    }
+
+    .action-card {
+        background: white;
+        border-radius: 20px;
+        padding: 2rem;
+        box-shadow: var(--shadow);
+        transition: all 0.3s ease;
+        text-decoration: none;
+        color: inherit;
+        display: block;
+    }
+
+    .action-card:hover {
+        transform: translateY(-10px);
+        box-shadow: var(--shadow-hover);
+        text-decoration: none;
+        color: inherit;
+    }
+
+    .action-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 1rem;
+        font-size: 1.5rem;
+        color: white;
+    }
+
+    .action-title {
+        font-size: 1.2rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: #333;
+    }
+
+    .action-description {
+        color: #666;
+        font-size: 0.9rem;
+        line-height: 1.5;
+    }
+
+    /* Recent Activities */
+    .recent-section {
+        background: white;
+        border-radius: 20px;
+        padding: 2rem;
+        box-shadow: var(--shadow);
+        margin-bottom: 2rem;
+    }
+
+    .recent-header {
+        display: flex;
+        align-items: center;
+        justify-content: between;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #eee;
+    }
+
+    .recent-title {
+        font-size: 1.3rem;
+        font-weight: 600;
+        color: #333;
+        margin: 0;
+    }
+
+    .activity-item {
+        display: flex;
+        align-items: center;
+        padding: 1rem 0;
+        border-bottom: 1px solid #f5f5f5;
+    }
+
+    .activity-item:last-child {
+        border-bottom: none;
+    }
+
+    .activity-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: var(--gradient-primary);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 1rem;
+        font-size: 0.9rem;
+    }
+
+    .activity-content {
+        flex: 1;
+    }
+
+    .activity-title {
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 0.25rem;
+    }
+
+    .activity-description {
+        color: #666;
+        font-size: 0.9rem;
+    }
+
+    .activity-time {
+        color: #999;
+        font-size: 0.8rem;
+        white-space: nowrap;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .welcome-title {
+            font-size: 2rem;
+        }
+        
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .actions-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Welcome Section -->
+<section class="welcome-section">
+    <div class="welcome-content">
+        <h1 class="welcome-title">
+            Benvenuto nel tuo Gestionale
+        </h1>
+        <p class="welcome-subtitle">
+            Dashboard personale - Sistema di gestione agricola
+        </p>
+        <div class="user-info">
+            <div class="user-avatar">
+                <i class="fas fa-user"></i>
+            </div>
+            <div>
+                <strong>{{ user.get_full_name|default:user.username }}</strong>
+                <br>
+                <small>{{ user.userprofile.role|default:"Utente" }}</small>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Stats Grid -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-header">
+            <div>
+                <h3 class="stat-number">{{ stats.clienti_totali }}</h3>
+                <p class="stat-label">Clienti Gestiti</p>
+            </div>
+            <div class="stat-icon" style="background: var(--gradient-primary);">
+                <i class="fas fa-users"></i>
+            </div>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-header">
+            <div>
+                <h3 class="stat-number">{{ stats.cascine_totali }}</h3>
+                <p class="stat-label">Cascine Attive</p>
+            </div>
+            <div class="stat-icon" style="background: var(--gradient-success);">
+                <i class="fas fa-home"></i>
+            </div>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-header">
+            <div>
+                <h3 class="stat-number">{{ stats.terreni_totali }}</h3>
+                <p class="stat-label">Terreni Monitorati</p>
+            </div>
+            <div class="stat-icon" style="background: var(--gradient-info);">
+                <i class="fas fa-map"></i>
+            </div>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-header">
+            <div>
+                <h3 class="stat-number">{{ stats.superficie_totale|floatformat:1 }} ha</h3>
+                <p class="stat-label">Superficie Totale</p>
+            </div>
+            <div class="stat-icon" style="background: var(--gradient-warning);">
+                <i class="fas fa-expand-arrows-alt"></i>
+            </div>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-header">
+            <div>
+                <h3 class="stat-number">{{ stats.trattamenti_programmati }}</h3>
+                <p class="stat-label">Trattamenti Programmati</p>
+            </div>
+            <div class="stat-icon" style="background: linear-gradient(135deg, #9c27b0 0%, #e91e63 100%);">
+                <i class="fas fa-calendar-alt"></i>
+            </div>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-header">
+            <div>
+                <h3 class="stat-number">{{ stats.trattamenti_completati }}</h3>
+                <p class="stat-label">Trattamenti Completati</p>
+            </div>
+            <div class="stat-icon" style="background: linear-gradient(135deg, #4caf50 0%, #2e7d32 100%);">
+                <i class="fas fa-check-circle"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<section class="quick-actions">
+    <h2>Azioni Rapide</h2>
+    <div class="actions-grid">
+        <a href="{% url 'inserisci' %}" class="action-card">
+            <div class="action-icon" style="background: var(--gradient-primary);">
+                <i class="fas fa-plus"></i>
+            </div>
+            <h3 class="action-title">Nuovo Trattamento</h3>
+            <p class="action-description">
+                Programma un nuovo trattamento fitosanitario
+            </p>
+        </a>
+        
+        <a href="{% url 'aziende' %}" class="action-card">
+            <div class="action-icon" style="background: var(--gradient-success);">
+                <i class="fas fa-building"></i>
+            </div>
+            <h3 class="action-title">Gestione Aziende</h3>
+            <p class="action-description">
+                Visualizza e gestisci clienti, cascine e terreni
+            </p>
+        </a>
+        
+        <a href="{% url 'trattamenti' %}" class="action-card">
+            <div class="action-icon" style="background: var(--gradient-info);">
+                <i class="fas fa-list"></i>
+            </div>
+            <h3 class="action-title">Tutti i Trattamenti</h3>
+            <p class="action-description">
+                Consulta l'elenco completo dei trattamenti
+            </p>
+        </a>
+        
+        <a href="{% url 'comunicazioni_dashboard' %}" class="action-card">
+            <div class="action-icon" style="background: var(--gradient-warning);">
+                <i class="fas fa-envelope"></i>
+            </div>
+            <h3 class="action-title">Comunicazioni</h3>
+            <p class="action-description">
+                Gestisci comunicazioni e documenti
+            </p>
+        </a>
+        
+        <a href="{% url 'database' %}" class="action-card">
+            <div class="action-icon" style="background: linear-gradient(135deg, #9c27b0 0%, #e91e63 100%);">
+                <i class="fas fa-database"></i>
+            </div>
+            <h3 class="action-title">Database</h3>
+            <p class="action-description">
+                Gestisci prodotti e principi attivi
+            </p>
+        </a>
+        
+        <a href="{% url 'contatti_email' %}" class="action-card">
+            <div class="action-icon" style="background: linear-gradient(135deg, #607d8b 0%, #90a4ae 100%);">
+                <i class="fas fa-address-book"></i>
+            </div>
+            <h3 class="action-title">Contatti Email</h3>
+            <p class="action-description">
+                Gestisci i contatti email dei clienti
+            </p>
+        </a>
+    </div>
+</section>
+
+<!-- Recent Activities and Treatments -->
+<div class="row">
+    <div class="col-lg-6">
+        <div class="recent-section">
+            <div class="recent-header">
+                <h3 class="recent-title">
+                    <i class="fas fa-history me-2" style="color: var(--primary-color);"></i>
+                    Attività Recenti
+                </h3>
+            </div>
+            {% if recent_activities %}
+                {% for activity in recent_activities %}
+                <div class="activity-item">
+                    <div class="activity-icon">
+                        <i class="fas fa-{% if 'trattamento' in activity.activity_type %}seedling{% elif 'cliente' in activity.activity_type %}user-plus{% elif 'user' in activity.activity_type %}user-cog{% else %}cog{% endif %}"></i>
+                    </div>
+                    <div class="activity-content">
+                        <div class="activity-title">{{ activity.title }}</div>
+                        <div class="activity-description">{{ activity.description|truncatechars:80 }}</div>
+                    </div>
+                    <div class="activity-time">
+                        {{ activity.timestamp|timesince }} fa
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="text-center py-4 text-muted">
+                    <i class="fas fa-clock fa-2x mb-2"></i>
+                    <p>Nessuna attività recente</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="col-lg-6">
+        <div class="recent-section">
+            <div class="recent-header">
+                <h3 class="recent-title">
+                    <i class="fas fa-seedling me-2" style="color: var(--success-color);"></i>
+                    Trattamenti Recenti
+                </h3>
+            </div>
+            {% if recent_treatments %}
+                {% for treatment in recent_treatments %}
+                <div class="activity-item">
+                    <div class="activity-icon" style="background: {% if treatment.stato == 'completato' %}var(--gradient-success){% elif treatment.stato == 'programmato' %}var(--gradient-warning){% else %}var(--gradient-info){% endif %};">
+                        <i class="fas fa-{% if treatment.stato == 'completato' %}check{% elif treatment.stato == 'programmato' %}clock{% else %}seedling{% endif %}"></i>
+                    </div>
+                    <div class="activity-content">
+                        <div class="activity-title">{{ treatment.cliente.nome }}</div>
+                        <div class="activity-description">
+                            {% if treatment.cascina %}{{ treatment.cascina.nome }}{% endif %}
+                            {% if treatment.terreni.all %} - {{ treatment.terreni.all.0.nome }}{% if treatment.terreni.count > 1 %} (+{{ treatment.terreni.count|add:'-1' }}){% endif %}{% endif %}
+                            <span class="badge ms-1" style="background: {% if treatment.stato == 'completato' %}var(--success-color){% elif treatment.stato == 'programmato' %}var(--warning-color){% else %}var(--info-color){% endif %};">
+                                {{ treatment.get_stato_display }}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="activity-time">
+                        {{ treatment.data_inserimento|timesince }} fa
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="text-center py-4 text-muted">
+                    <i class="fas fa-seedling fa-2x mb-2"></i>
+                    <p>Nessun trattamento recente</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
