@@ -586,6 +586,12 @@
                 </a>
             </li>
             <li>
+                <a href="{% url 'trattamenti' %}?view=programmati" class="{% if request.resolver_match.url_name == 'trattamenti' and 'programmati' in request.GET.view|default:'' %}active{% endif %}">
+                    <i class="fas fa-paper-plane"></i>
+                    <span>Comunicazioni</span>
+                </a>
+            </li>
+            <li>
                 <a href="{% url 'aziende' %}" class="{% if request.resolver_match.url_name == 'aziende' %}active{% endif %}">
                     <i class="fas fa-building"></i>
                     <span>Aziende</span>

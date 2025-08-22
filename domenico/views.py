@@ -101,62 +101,6 @@ def offline_page(request):
     """Pagina offline per PWA"""
     return render(request, 'offline.html')
 
-def legacy_home(request):
-    """Vista home originale con statistiche e attività recenti dal database management (deprecated)"""
-    from django.db.models import Sum, Count, Q
-    from datetime import datetime, timedelta
-    
-    # Calcola statistiche
-    stats = {
-        'clienti_totali': Cliente.objects.count(),
-        'cascine_totali': Cascina.objects.count(),
-        'terreni_totali': Terreno.objects.count(),
-        'superficie_totale': Terreno.objects.aggregate(
-            totale=Sum('superficie')
-        )['totale'] or 0,
-        'trattamenti_programmati': Trattamento.objects.filter(stato='programmato').count(),
-        'trattamenti_comunicati': Trattamento.objects.filter(stato='comunicato').count(),
-        'prodotti_totali': Prodotto.objects.count(),
-        'contoterzisti_totali': Contoterzista.objects.count(),
-    }
-    
-    # Attività recenti (ultimi 10 giorni, massimo 15 attività)
-    dieci_giorni_fa = timezone.now() - timedelta(days=10)
-    
-    attivita_recenti = ActivityLog.objects.filter(
-        timestamp__gte=dieci_giorni_fa
-    ).select_related().order_by('-timestamp')[:15]
-    
-    # Trattamenti recenti (per compatibilità con template esistente)
-    trattamenti_recenti = Trattamento.objects.select_related(
-        'cliente', 'cascina'
-    ).prefetch_related('terreni')[:5]
-    
-    # Statistiche attività per tipo (per dashboard)
-    activity_stats = {}
-    if attivita_recenti.exists():
-        from django.db.models import Count
-        activity_stats = ActivityLog.objects.filter(
-            timestamp__gte=dieci_giorni_fa
-        ).values('activity_type').annotate(
-            count=Count('id')
-        ).order_by('-count')[:5]
-    
-    # Attività di oggi
-    oggi_inizio = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    attivita_oggi = ActivityLog.objects.filter(
-        timestamp__gte=oggi_inizio
-    ).count()
-    
-    context = {
-        'stats': stats,
-        'trattamenti_recenti': trattamenti_recenti,  # Per compatibilità
-        'attivita_recenti': attivita_recenti,  # 🔥 NUOVO
-        'activity_stats': activity_stats,  # 🔥 NUOVO
-        'attivita_oggi': attivita_oggi,  # 🔥 NUOVO
-    }
-    
-    return render(request, 'home.html', context)
 
 def aziende(request):
     """Vista aziende con ricerca e ordinamento case-insensitive"""
@@ -289,10 +233,6 @@ def trattamenti_table(request, view_type):
     if view_type in stati_mapping:
         stato_db = stati_mapping[view_type]
         trattamenti = trattamenti.filter(stato=stato_db)
-        print(f"Filtrando per stato: {view_type} -> {stato_db}")
-        print(f"Trattamenti trovati: {trattamenti.count()}")
-    elif view_type != 'tutti':
-        print(f"Tipo vista non riconosciuto: {view_type}")
     
     # Filtri dalla query string
     filters = {
@@ -608,7 +548,6 @@ def api_manage_contatto(request, contatto_id):
             'error': 'Contatto non trovato'
         }, status=404)
     except Exception as e:
-        print(f"Errore in api_manage_contatto: {str(e)}")
         return JsonResponse({
             'success': False,
             'error': f'Errore nell\'operazione: {str(e)}'
@@ -874,8 +813,6 @@ def api_generate_company_pdf(request):
     con tutti i suoi trattamenti e note personalizzate
     """
     try:
-        print(f"🔍 DEBUG PDF: Content-Type: {request.content_type}")
-        
         # Gestisce sia JSON che FormData
         if request.content_type and 'application/json' in request.content_type:
             import json
@@ -891,8 +828,6 @@ def api_generate_company_pdf(request):
         company_name = data.get('company_name', '')
         custom_notes = data.get('custom_notes', '')
         update_status = data.get('update_status', True)
-        
-        print(f"🔍 DEBUG PDF: trattamenti_ids={trattamenti_ids}, company={company_name}")
         
         if not trattamenti_ids:
             return JsonResponse({
@@ -926,9 +861,7 @@ def api_generate_company_pdf(request):
         # Genera il PDF
         try:
             pdf_content = generate_company_communication_pdf(trattamenti, custom_notes)
-            print(f"🔍 DEBUG PDF: Generato PDF di {len(pdf_content)} bytes")
         except Exception as e:
-            print(f"❌ DEBUG PDF: Errore generazione: {e}")
             return JsonResponse({
                 'success': False,
                 'error': f'Errore nella generazione del PDF: {str(e)}'
@@ -942,7 +875,6 @@ def api_generate_company_pdf(request):
                         trattamento.stato = 'comunicato'
                         trattamento.data_comunicazione = timezone.now()
                         trattamento.save()
-                        print(f"🔍 DEBUG PDF: Aggiornato stato trattamento {trattamento.id}")
         
         # Prepara la risposta HTTP con il PDF
         filename = f"Comunicazione_{company_name.replace(' ', '_')}_{timezone.now().strftime('%Y%m%d')}.pdf"
@@ -950,19 +882,14 @@ def api_generate_company_pdf(request):
         response = HttpResponse(pdf_content, content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         
-        print(f"🔍 DEBUG PDF: Risposta preparata con filename: {filename}")
         return response
         
     except json.JSONDecodeError as e:
-        print(f"❌ DEBUG PDF: Errore JSON: {e}")
         return JsonResponse({
             'success': False,
             'error': f'Formato JSON non valido: {str(e)}'
         }, status=400)
     except Exception as e:
-        print(f"❌ DEBUG PDF: Errore generale: {e}")
-        import traceback
-        traceback.print_exc()
         return JsonResponse({
             'success': False,
             'error': f'Errore durante la generazione del PDF: {str(e)}'
@@ -974,19 +901,15 @@ def generate_company_communication_pdf(trattamenti, custom_notes=''):
     Genera un PDF di comunicazione per un'azienda con tutti i suoi trattamenti
     """
     try:
-        print(f"🔍 DEBUG PDF Generator: Inizio generazione per {len(trattamenti)} trattamenti")
-        
         # Import per PDF (prova prima WeasyPrint, poi xhtml2pdf)
         pdf_engine = None
         try:
             from weasyprint import HTML, CSS
             pdf_engine = 'weasyprint'
-            print("🔍 DEBUG PDF: Usando WeasyPrint")
         except ImportError:
             try:
                 from xhtml2pdf import pisa
                 pdf_engine = 'xhtml2pdf'
-                print("🔍 DEBUG PDF: Usando xhtml2pdf")
             except ImportError:
                 raise Exception("Nessun motore PDF disponibile. Installa WeasyPrint o xhtml2pdf.")
         
@@ -1026,14 +949,10 @@ def generate_company_communication_pdf(trattamenti, custom_notes=''):
             'numero_trattamenti': len(trattamenti)
         }
         
-        print(f"🔍 DEBUG PDF: Context preparato con {len(context)} elementi")
-        
         # Renderizza il template HTML
         try:
             html_content = render_to_string('pdf/comunicazione_trattamenti.html', context)
-            print(f"🔍 DEBUG PDF: Template renderizzato, {len(html_content)} caratteri")
         except Exception as e:
-            print(f"❌ DEBUG PDF: Errore template: {e}")
             raise Exception(f"Errore nel rendering del template: {str(e)}")
         
         # Genera PDF in base al motore disponibile
@@ -1062,13 +981,9 @@ def generate_company_communication_pdf(trattamenti, custom_notes=''):
             else:
                 raise Exception("Errore nella generazione del PDF con xhtml2pdf")
         
-        print(f"🔍 DEBUG PDF: PDF generato con successo, {len(pdf_content)} bytes")
         return pdf_content
         
     except Exception as e:
-        print(f"❌ DEBUG PDF Generator: Errore: {e}")
-        import traceback
-        traceback.print_exc()
         raise Exception(f"Errore nella generazione del PDF: {str(e)}")
 
 
@@ -1855,11 +1770,8 @@ def edit_terreno(request, terreno_id):
     if search_param:
         redirect_url += f'?search={search_param}'
     
-
-def comunicazione_wizard(request):
-    """Vista per il wizard di comunicazione trattamenti"""
-    return render(request, 'comunicazione_wizard.html')
     return redirect(redirect_url)
+    
 
 @require_http_methods(["GET"])
 def api_search_aziende(request):
@@ -1911,7 +1823,7 @@ def api_search_aziende(request):
 def api_search_cascine(request, cliente_id):
     """API per ricerca cascine di un'azienda"""
 
-    from django.db.models import Sum, Count, Q
+    from django.db.models import Sum, Count
     from django.db.models.functions import Lower
 
     query = request.GET.get('q', '').strip()
