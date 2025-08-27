@@ -3,16 +3,17 @@
 from django.urls import path
 from . import views, api_views, api_communications, auth_views
 
-auth_urlpatterns = [
-    # Autenticazione
-    path('login/', auth_views.custom_login, name='login'),
-    path('logout/', auth_views.custom_logout, name='logout'),
+# Legacy auth URLs - redirect to new auth system
+legacy_auth_urlpatterns = [
+    # Redirect old login/logout to new auth system
+    path('login/', views.redirect_to_new_auth, {'target': 'login'}, name='login'),
+    path('logout/', views.redirect_to_new_auth, {'target': 'logout'}, name='logout'),
     
-    # Admin pannello
+    # Keep admin dashboard for now (might need updating)
     path('admin-dashboard/', auth_views.admin_dashboard, name='admin_dashboard'),
     path('user-management/', auth_views.user_management, name='user_management'),
     
-    # API gestione utenti
+    # API gestione utenti - keep for backward compatibility
     path('api/users/create/', auth_views.api_create_user, name='api_create_user'),
     path('api/users/<int:user_id>/update/', auth_views.api_update_user, name='api_update_user'),
     path('api/users/<int:user_id>/delete/', auth_views.api_delete_user, name='api_delete_user'),
@@ -131,4 +132,4 @@ urlpatterns = [
 
     path('api/trattamenti/communication-status/', views.api_communication_status_check, name='api_communication_status'),
     path('api/trattamenti/communication-preview/', api_communications.api_communication_preview, name='api_communication_preview'),
-] + auth_urlpatterns
+] + legacy_auth_urlpatterns

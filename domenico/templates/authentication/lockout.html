@@ -1,0 +1,70 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Account Locked - User Management System{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow border-danger">
+            <div class="card-header text-center bg-danger text-white">
+                <h4><i class="fas fa-lock"></i> Account Temporarily Locked</h4>
+            </div>
+            <div class="card-body text-center">
+                <div class="alert alert-danger" role="alert">
+                    <i class="fas fa-exclamation-triangle fa-2x mb-3"></i>
+                    <h5>Too Many Failed Login Attempts</h5>
+                    <p>Your account has been temporarily locked due to multiple failed login attempts.</p>
+                </div>
+                
+                <div class="mb-4">
+                    <p><strong>Security Measure:</strong> This is an automatic security feature to protect your account from unauthorized access attempts.</p>
+                    
+                    {% if cooloff_time %}
+                    <p><strong>Lockout Duration:</strong> {{ cooloff_time }} minutes</p>
+                    {% else %}
+                    <p><strong>Lockout Duration:</strong> 30 minutes</p>
+                    {% endif %}
+                </div>
+                
+                <div class="mb-4">
+                    <h6>What you can do:</h6>
+                    <ul class="list-unstyled">
+                        <li><i class="fas fa-clock text-warning"></i> Wait for the lockout period to expire</li>
+                        <li><i class="fas fa-envelope text-info"></i> Contact system administrator if needed</li>
+                        <li><i class="fas fa-shield-alt text-success"></i> Ensure you're using the correct credentials</li>
+                    </ul>
+                </div>
+                
+                <div class="d-grid gap-2">
+                    <a href="{% url 'login' %}" class="btn btn-outline-primary">
+                        <i class="fas fa-arrow-left"></i> Back to Login
+                    </a>
+                    <a href="{% url 'home' %}" class="btn btn-secondary">
+                        <i class="fas fa-home"></i> Return to Home
+                    </a>
+                </div>
+            </div>
+            
+            <div class="card-footer text-muted text-center">
+                <small>
+                    <i class="fas fa-info-circle"></i>
+                    This security feature helps protect against brute force attacks
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    margin-top: 2rem;
+}
+.fa-2x {
+    color: #dc3545;
+}
+ul li {
+    margin: 0.5rem 0;
+    text-align: left;
+}
+</style>
+{% endblock %}

@@ -1938,3 +1938,15 @@ def api_communication_status_check(request):
             'success': False,
             'error': f'Errore durante la verifica stato: {str(e)}'
         }, status=500)
+
+
+# ============ REDIRECT FUNCTIONS FOR NEW AUTH SYSTEM ============
+
+def redirect_to_new_auth(request, target):
+    """Redirect old auth URLs to new auth system"""
+    if target == 'login':
+        return redirect('/auth/login/')
+    elif target == 'logout':
+        return redirect('/auth/logout/')
+    else:
+        return redirect('/')  # Fallback to home
