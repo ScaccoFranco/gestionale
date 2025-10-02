@@ -64,6 +64,7 @@ INSTALLED_APPS = [
     'core',
     'permissions',
     'authentication',
+    'tickets',
 ]
 
 SITE_ID = 1

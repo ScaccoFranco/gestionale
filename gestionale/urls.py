@@ -23,9 +23,10 @@ from django.conf.urls.static import static
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('auth/', include('authentication.urls')),
-    path('api/auth/', include('authentication.api_urls')),  
+    path('api/auth/', include('authentication.api_urls')),
     path('accounts/', include('allauth.urls')),  # Enable registration/signup
     path('users/', include('users.urls')),
+    path('tickets/', include('tickets.urls')),
     path('', include('domenico.urls')),
 ]
 
