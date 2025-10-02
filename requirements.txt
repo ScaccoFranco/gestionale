@@ -41,8 +41,13 @@ pytz>=2024.2
 django-debug-toolbar>=4.4.6
 
 # PDF Generation
-weasyprint>=59.0
-cffi>=1.15.0
+# weasyprint>=59.0
+# cffi>=1.15.0
 
 # Weather API
 requests
+
+python-decouple
+
+gunicorn>=21.0.0  
+python-dotenv>=1.0.0

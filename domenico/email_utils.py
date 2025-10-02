@@ -16,22 +16,31 @@ logger = logging.getLogger('domenico.email_utils')
 try:
     from weasyprint import HTML, CSS
     from weasyprint.text.fonts import FontConfiguration
-    PDF_AVAILABLE = True
-    PDF_ENGINE = 'weasyprint'
-except ImportError:
-    try:
-        from xhtml2pdf import pisa
-        PDF_AVAILABLE = True
-        PDF_ENGINE = 'xhtml2pdf'
-    except ImportError:
-        logger.warning("Né WeasyPrint né xhtml2pdf sono installati. Le funzioni PDF non saranno disponibili.")
-        PDF_AVAILABLE = False
-        PDF_ENGINE = None
+    WEASYPRINT_AVAILABLE = True
+    PDF_ENGINE="weasyprint"
+    print("✅ WeasyPrint loaded successfully")
+
+except ImportError as e:
+    print(f"⚠️  WeasyPrint not available: {e}")
+    WEASYPRINT_AVAILABLE = False
+    PDF_ENGINE = "None"
+    
+    # Classi dummy per evitare errori
+    class HTML:
+        def __init__(self, *args, **kwargs):
+            pass
+        def write_pdf(self, target):
+            raise NotImplementedError("PDF generation not available - install WeasyPrint dependencies")
+    
+    class CSS:
+        def __init__(self, *args, **kwargs):
+            pass
 
 def generate_pdf_comunicazione(trattamento_id):
     """Genera un PDF per la comunicazione del trattamento"""
-    if not PDF_AVAILABLE:
-        raise Exception("Nessun motore PDF installato. Installa WeasyPrint o xhtml2pdf.")
+    
+    if not WEASYPRINT_AVAILABLE:
+        raise NotImplementedError("PDF generation not available")
     
     try:
         from .models import Trattamento
@@ -52,15 +61,14 @@ def generate_pdf_comunicazione(trattamento_id):
         template = get_template('comunicazione_trattamento.html')
         html = template.render(context)
         
-        if PDF_ENGINE == 'weasyprint':
             # Usa WeasyPrint (più moderno e affidabile)
-            logger.info(f"Generazione PDF con WeasyPrint per trattamento {trattamento_id}")
+        logger.info(f"Generazione PDF con WeasyPrint per trattamento {trattamento_id}")
             
             # Crea la configurazione font
-            font_config = FontConfiguration()
+        font_config = FontConfiguration()
             
             # CSS aggiuntivo per WeasyPrint
-            css = CSS(string='''
+        css = CSS(string='''
                 @page {
                     margin: 2cm;
                     size: A4;
@@ -71,25 +79,11 @@ def generate_pdf_comunicazione(trattamento_id):
             ''', font_config=font_config)
             
             # Genera il PDF
-            html_doc = HTML(string=html)
-            pdf_bytes = html_doc.write_pdf(stylesheets=[css], font_config=font_config)
-            
-            logger.info(f"PDF generato con successo con WeasyPrint per trattamento {trattamento_id}")
-            return pdf_bytes
-            
-        else:
-            # Fallback a xhtml2pdf
-            logger.info(f"Generazione PDF con xhtml2pdf per trattamento {trattamento_id}")
-            
-            result = io.BytesIO()
-            pdf = pisa.pisaDocument(io.BytesIO(html.encode("UTF-8")), result)
-            
-            if not pdf.err:
-                logger.info(f"PDF generato con successo con xhtml2pdf per trattamento {trattamento_id}")
-                return result.getvalue()
-            else:
-                logger.error(f"Errore nella generazione PDF con xhtml2pdf per trattamento {trattamento_id}: {pdf.err}")
-                raise Exception("Errore nella generazione del PDF")
+        html_doc = HTML(string=html)
+        pdf_bytes = html_doc.write_pdf(stylesheets=[css], font_config=font_config)
+        
+        logger.info(f"PDF generato con successo con WeasyPrint per trattamento {trattamento_id}")
+        return pdf_bytes
             
     except Exception as e:
         logger.error(f"Errore nella generazione del PDF per trattamento {trattamento_id}: {str(e)}")
