@@ -82,7 +82,6 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'allauth.account.middleware.AccountMiddleware',
     'django_otp.middleware.OTPMiddleware',
-    # 'axes.middleware.AxesMiddleware',  # Disabled for development
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'core.middleware.TimezoneMiddleware',
@@ -94,7 +93,7 @@ if DEBUG:
     INTERNAL_IPS = ['127.0.0.1', 'localhost']
 else:
     # Controllo bruteforce
-    MIDDLEWARE.insert(1, 'debug_toolbar.middleware.DebugToolbarMiddleware')
+    MIDDLEWARE.insert(1, 'axes.middleware.AxesMiddleware')
 
 ROOT_URLCONF = 'gestionale.urls'
 
