@@ -92,6 +92,9 @@ MIDDLEWARE = [
 if DEBUG:
     MIDDLEWARE.insert(1, 'debug_toolbar.middleware.DebugToolbarMiddleware')
     INTERNAL_IPS = ['127.0.0.1', 'localhost']
+else:
+    # Controllo bruteforce
+    MIDDLEWARE.insert(1, 'debug_toolbar.middleware.DebugToolbarMiddleware')
 
 ROOT_URLCONF = 'gestionale.urls'
 
@@ -287,9 +290,9 @@ ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
 
 # ============ AXES SETTINGS (BRUTE FORCE PROTECTION) ============
 # Disabled for development - enable in production
-AXES_ENABLED = False
-AXES_FAILURE_LIMIT = 100  # High limit for development
-AXES_COOLOFF_TIME = timedelta(minutes=1)  # Short cooloff for development
+AXES_ENABLED = not DEBUG
+AXES_FAILURE_LIMIT = 10  # High limit for development
+AXES_COOLOFF_TIME = timedelta(minutes=30)  # Short cooloff for development
 AXES_LOCKOUT_TEMPLATE = 'authentication/lockout.html'
 
 # ============ CORS SETTINGS ============
@@ -326,3 +329,6 @@ X_FRAME_OPTIONS = 'DENY'
 SECURE_HSTS_SECONDS = 31536000 if not DEBUG else 0
 SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
 SECURE_HSTS_PRELOAD = not DEBUG
+
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE =  not DEBUG
