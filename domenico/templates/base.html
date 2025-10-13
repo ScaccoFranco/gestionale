@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
     <title>{% block title %}Gestionale Agricolo{% endblock %}</title>
     
     <!-- PWA Meta Tags -->
@@ -33,6 +34,8 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Feedback Widget CSS -->
+    <link href="{% static 'tickets/css/feedback-widget.css' %}" rel="stylesheet">
     
     <style>
         :root {
@@ -610,6 +613,7 @@
                 </a>
             </li>
             {% if user.userprofile.role == 'admin' or user.is_superuser %}
+            <!-- TODO: implementare queste funzionalita' 
             <li>
                 <a href="{% url 'admin_dashboard' %}" class="{% if request.resolver_match.url_name == 'admin_dashboard' %}active{% endif %}">
                     <i class="fas fa-cog"></i>
@@ -622,6 +626,7 @@
                     <span>Gestione Utenti</span>
                 </a>
             </li>
+            -->
             {% endif %}
         </ul>
     </nav>
@@ -664,6 +669,7 @@
                                     <i class="fas fa-user-edit me-2"></i>Il mio profilo
                                 </a>
                             </li>
+                            <!--TODO: gestione utenti
                             {% if user.userprofile.role == 'admin' or user.is_superuser %}
                             <li>
                                 <a class="dropdown-item" href="{% url 'admin_dashboard' %}">
@@ -676,6 +682,7 @@
                                 </a>
                             </li>
                             {% endif %}
+                            --> 
                             <li><hr class="dropdown-divider"></li>
                             <li>
                                 <a class="dropdown-item text-danger" href="{% url 'logout' %}">
@@ -912,7 +919,10 @@
         window.addEventListener('online', updateOnlineStatus);
         window.addEventListener('offline', updateOnlineStatus);
     </script>
-    
+
+    <!-- Feedback Widget JavaScript -->
+    <script src="{% static 'tickets/js/feedback-widget.js' %}"></script>
+
     {% block extra_js %}{% endblock %}
 </body>
 </html>

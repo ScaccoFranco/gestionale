@@ -1,1 +1,8 @@
+# Docker
 .env
+.env.prod
+db.sqlite3
+__pycache__/
+*.pyc
+logs/*.log
+media/uploads/

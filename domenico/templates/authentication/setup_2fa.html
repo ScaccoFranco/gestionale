@@ -1,0 +1,66 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Setup 2FA - User Management System{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-shield-alt"></i> Setup Two-Factor Authentication</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Step 1: Scan QR Code</h6>
+                        <p class="text-muted">Use your authenticator app (Google Authenticator, Authy, etc.) to scan this QR code:</p>
+                        
+                        <div class="text-center mb-3">
+                            <img src="data:image/png;base64,{{ qr_code }}" alt="2FA QR Code" class="img-fluid">
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <strong>Manual Entry:</strong><br>
+                            <code>{{ secret_key }}</code>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h6>Step 2: Verify Setup</h6>
+                        <p class="text-muted">Enter the 6-digit code from your authenticator app:</p>
+                        
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="device_id" value="{{ device_id }}">
+                            
+                            <div class="mb-3">
+                                <label for="token" class="form-label">Verification Code</label>
+                                <input type="text" class="form-control form-control-lg text-center" 
+                                       id="token" name="token" maxlength="6" placeholder="000000" required
+                                       style="font-family: monospace; letter-spacing: 0.5em;">
+                            </div>
+                            
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-success">
+                                    <i class="fas fa-check"></i> Verify & Enable 2FA
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <div class="alert alert-warning">
+                    <h6><i class="fas fa-exclamation-triangle"></i> Important!</h6>
+                    <ul class="mb-0">
+                        <li>Save your recovery codes in a secure location</li>
+                        <li>Don't lose access to your authenticator app</li>
+                        <li>Contact support if you lose access to your 2FA device</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

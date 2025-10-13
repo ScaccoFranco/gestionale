@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block page_title %}Demo Feedback Widget{% endblock %}
+{% block page_icon %}<i class="fas fa-comments"></i>{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0"><i class="fas fa-comments me-2"></i>Demo del Sistema di Feedback</h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <h5><i class="fas fa-info-circle me-2"></i>Benvenuto nel sistema di feedback!</h5>
+                        <p>Il widget di feedback è ora attivo su ogni pagina del sito. Puoi vedere l'icona di chat in basso a destra.</p>
+
+                        <h6>Caratteristiche del widget:</h6>
+                        <ul>
+                            <li><strong>🔘 Posizione mobile:</strong> Puoi trascinare l'icona in qualsiasi posizione dello schermo</li>
+                            <li><strong>💾 Memorizzazione posizione:</strong> La posizione viene salvata nel tuo browser</li>
+                            <li><strong>📱 Responsive:</strong> Funziona perfettamente su dispositivi mobile</li>
+                            <li><strong>🔒 Sicuro:</strong> I feedback vengono inviati tramite API protetta</li>
+                            <li><strong>📊 Informazioni tecniche:</strong> Il sistema raccoglie automaticamente info utili per il debug</li>
+                        </ul>
+
+                        <h6>Come testare:</h6>
+                        <ol>
+                            <li>Clicca sull'icona di chat 💬 in basso a destra</li>
+                            <li>Compila il form con il tuo feedback</li>
+                            <li>Invia il feedback</li>
+                            <li>Prova a trascinare l'icona in una nuova posizione</li>
+                        </ol>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card border-success">
+                                <div class="card-header bg-success text-white">
+                                    <h6><i class="fas fa-check-circle me-2"></i>Vantaggi</h6>
+                                </div>
+                                <div class="card-body">
+                                    <ul class="list-unstyled">
+                                        <li><i class="fas fa-rocket text-success me-2"></i>Feedback in tempo reale</li>
+                                        <li><i class="fas fa-mobile-alt text-success me-2"></i>Compatibile mobile</li>
+                                        <li><i class="fas fa-cog text-success me-2"></i>Sistema di priorità</li>
+                                        <li><i class="fas fa-database text-success me-2"></i>Gestione centralizzata</li>
+                                        <li><i class="fas fa-shield-alt text-success me-2"></i>Sicuro e affidabile</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="card border-info">
+                                <div class="card-header bg-info text-white">
+                                    <h6><i class="fas fa-list me-2"></i>Tipi di Feedback</h6>
+                                </div>
+                                <div class="card-body">
+                                    <ul class="list-unstyled">
+                                        <li><i class="fas fa-bug text-danger me-2"></i>🐛 Segnalazione Bug</li>
+                                        <li><i class="fas fa-lightbulb text-warning me-2"></i>✨ Richiesta Funzionalità</li>
+                                        <li><i class="fas fa-chart-line text-success me-2"></i>📈 Miglioramento</li>
+                                        <li><i class="fas fa-question text-info me-2"></i>❓ Domanda</li>
+                                        <li><i class="fas fa-comment text-secondary me-2"></i>📝 Altro</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <div class="card border-primary">
+                            <div class="card-header bg-primary text-white">
+                                <h6><i class="fas fa-user-tie me-2"></i>Per gli Sviluppatori</h6>
+                            </div>
+                            <div class="card-body">
+                                <p>I feedback vengono raccolti automaticamente con informazioni tecniche utili:</p>
+                                <ul>
+                                    <li>URL della pagina corrente</li>
+                                    <li>User agent del browser</li>
+                                    <li>Informazioni sullo schermo e viewport</li>
+                                    <li>Timestamp preciso</li>
+                                    <li>Informazioni sull'utente (se loggato)</li>
+                                </ul>
+                                <p>Tutti i feedback sono accessibili tramite il pannello di amministrazione Django.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease-in-out;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+}
+
+.list-unstyled li {
+    padding: 0.25rem 0;
+}
+</style>
+{% endblock %}

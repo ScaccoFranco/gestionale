@@ -1,0 +1,61 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Two-Factor Authentication - User Management System{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow">
+            <div class="card-header text-center">
+                <h4><i class="fas fa-shield-alt"></i> Two-Factor Authentication</h4>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info" role="alert">
+                    <i class="fas fa-info-circle"></i>
+                    Please enter the 6-digit verification code from your authenticator app.
+                </div>
+                
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="token" class="form-label">Verification Code</label>
+                        <input type="text" class="form-control text-center" id="token" name="token" 
+                               maxlength="6" placeholder="000000" required autocomplete="off"
+                               style="font-size: 1.5rem; letter-spacing: 0.5rem;">
+                        <div class="form-text">Enter the 6-digit code from your authenticator app</div>
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-check"></i> Verify Code
+                        </button>
+                    </div>
+                </form>
+                
+                <div class="text-center mt-3">
+                    <a href="{% url 'login' %}" class="btn btn-link">
+                        <i class="fas fa-arrow-left"></i> Back to Login
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const tokenInput = document.getElementById('token');
+    
+    // Auto-submit when 6 digits are entered
+    tokenInput.addEventListener('input', function() {
+        this.value = this.value.replace(/\D/g, ''); // Only allow digits
+        if (this.value.length === 6) {
+            this.form.submit();
+        }
+    });
+    
+    // Focus on the input
+    tokenInput.focus();
+});
+</script>
+{% endblock %}

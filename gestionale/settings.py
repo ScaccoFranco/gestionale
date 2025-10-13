@@ -12,9 +12,14 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import os
-from dotenv import load_dotenv
+from decouple import config
 
-load_dotenv()
+# Load environment variables
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # dotenv not required if using decouple
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -23,12 +28,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-n4g2g7#xaf4+on$kpo)&d3wq3+01_d(zit0--_o+q88a(h-bcf'
+SECRET_KEY = os.environ.get('SECRET_KEY', 'fallback-key')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = bool(os.environ.get('DEBUG', 1))
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost').split(' ')
 
 # Application definition
 
@@ -39,18 +44,54 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.sites',
+    
+    # Third party apps
+    'rest_framework',
+    'rest_framework_simplejwt',
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'django_otp',
+    'axes',
+    'corsheaders',
+    'django_extensions',
+    'django_filters',
+    
+    # Local apps
     'domenico',
+    'users',
+    'core',
+    'permissions',
+    'authentication',
+    'tickets',
 ]
 
+SITE_ID = 1
+
+# Add debug toolbar in development
+if DEBUG:
+    INSTALLED_APPS += ['debug_toolbar']
+
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'allauth.account.middleware.AccountMiddleware',
+    'django_otp.middleware.OTPMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'core.middleware.TimezoneMiddleware',
+    'axes.middleware.AxesMiddleware',
 ]
+
+# Add debug toolbar middleware in development
+if DEBUG:
+    MIDDLEWARE.insert(1, 'debug_toolbar.middleware.DebugToolbarMiddleware')
+    INTERNAL_IPS = ['127.0.0.1', 'localhost']
 
 ROOT_URLCONF = 'gestionale.urls'
 
@@ -76,8 +117,12 @@ WSGI_APPLICATION = 'gestionale.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': os.environ.get('DB_ENGINE', 'django.db.backends.sqlite3'),
+        'NAME': os.environ.get('DB_NAME', BASE_DIR / 'db.sqlite3'),
+        'USER': os.environ.get('DB_USER', ''),
+        'PASSWORD': os.environ.get('DB_PASSWORD', ''),
+        'HOST': os.environ.get('DB_HOST', ''),
+        'PORT': os.environ.get('DB_PORT', ''),
     }
 }
 
@@ -112,6 +157,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_DIRS = [
     BASE_DIR / "static",
 ]
@@ -205,3 +251,81 @@ CACHES = {
 
 # Crea la directory logs se non esistente
 os.makedirs(os.path.join(BASE_DIR, 'logs'), exist_ok=True)
+
+# ============ CUSTOM USER MODEL ============
+AUTH_USER_MODEL = 'users.User'
+
+# ============ DJANGO REST FRAMEWORK ============
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+}
+
+# ============ JWT SETTINGS ============
+from datetime import timedelta
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'ROTATE_REFRESH_TOKENS': True,
+}
+
+# ============ DJANGO ALLAUTH ============
+AUTHENTICATION_BACKENDS = [
+    'axes.backends.AxesBackend',
+    'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend',
+]
+
+ACCOUNT_LOGIN_METHODS = {'email'}
+ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']
+ACCOUNT_UNIQUE_EMAIL = True
+ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
+
+# ============ AXES SETTINGS (BRUTE FORCE PROTECTION) ============
+# Disabled for development - enable in production
+AXES_ENABLED = not DEBUG
+AXES_FAILURE_LIMIT = 10  # High limit for development
+AXES_COOLOFF_TIME = timedelta(minutes=30)  # Short cooloff for development
+AXES_LOCKOUT_TEMPLATE = 'authentication/lockout.html'
+
+# ============ CORS SETTINGS ============
+CORS_ALLOW_ALL_ORIGINS = DEBUG
+CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='http://localhost:3000', cast=lambda v: [s.strip() for s in v.split(',')])
+
+# ============ REDIS SETTINGS ============
+REDIS_URL = config('REDIS_URL', default='redis://localhost:6379/0')
+
+# ============ CELERY SETTINGS ============
+CELERY_BROKER_URL = REDIS_URL
+CELERY_RESULT_BACKEND = REDIS_URL
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = TIME_ZONE
+
+# ============ CACHE SETTINGS ============
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'gestionale-cache',
+    }
+}
+
+# ============ SESSION SETTINGS ============
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'
+
+# ============ SECURITY SETTINGS ============
+SECURE_SSL_REDIRECT = not DEBUG
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = 'DENY'
+SECURE_HSTS_SECONDS = 31536000 if not DEBUG else 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
+SECURE_HSTS_PRELOAD = not DEBUG
+
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE =  not DEBUG
