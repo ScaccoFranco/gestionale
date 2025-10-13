@@ -1,5 +1,6 @@
 <!-- domenico/templates/comunicazioni_dashboard.html -->
 {% extends 'base.html' %}
+{% load custom_filters %}
 
 {% block page_title %}Storico Comunicazioni{% endblock %}
 {% block page_icon %}<i class="fas fa-paper-plane"></i>{% endblock %}
@@ -889,7 +890,7 @@
 
 <!-- Back Button -->
 <div class="mb-3">
-    <a href="{% url 'gestione_contatti_email' %}" class="btn btn-outline-secondary">
+    <a href="{% url 'contatti_email' %}" class="btn btn-outline-secondary">
         <i class="fas fa-arrow-left"></i> Gestione Contatti
     </a>
     <a href="{% url 'trattamenti' %}" class="btn btn-outline-secondary ms-2">

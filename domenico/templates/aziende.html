@@ -830,7 +830,7 @@
                             </div>
                             <div class="stat-item">
                                 <i class="fas fa-seedling stat-icon"></i>
-                                <span class="stat-value">{{ cliente.cascine|total_terreni }}</span> terren{{ cliente.cascine|total_terreni|pluralize:"o,i" }}
+                                <span class="stat-value">{{ cliente.total_terreni }}</span> terren{{ cliente.total_terreni|pluralize:"o,i" }}
                             </div>
                         </div>
                     </div>
@@ -839,7 +839,7 @@
             </div>
             <div class="item-content">
                 <div class="item-description">
-                    Azienda con {{ cliente.cascine|length }} cascin{{ cliente.cascine|length|pluralize:"a,e" }} e {{ cliente.cascine|total_terreni }} terren{{ cliente.cascine|total_terreni|pluralize:"o,i" }} per un totale di {{ cliente.superficie_totale|floatformat:1 }} ettari.
+                    Azienda con {{ cliente.cascine|length }} cascin{{ cliente.cascine|length|pluralize:"a,e" }} e {{ cliente.total_terreni }} terren{{ cliente.total_terreni|pluralize:"o,i" }} per un totale di {{ cliente.superficie_totale|floatformat:1 }} ettari.
                     {% if cliente.trattamenti_programmati or cliente.trattamenti_comunicati %}
                         Trattamenti attivi: {{ cliente.trattamenti_programmati }} programmat{{ cliente.trattamenti_programmati|pluralize:"o,i" }}, {{ cliente.trattamenti_comunicati }} comunicat{{ cliente.trattamenti_comunicati|pluralize:"o,i" }}.
                     {% endif %}

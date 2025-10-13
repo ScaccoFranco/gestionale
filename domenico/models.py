@@ -79,6 +79,13 @@ class Cliente(models.Model):
             return Decimal(str(superficie))
         except Exception:
             return Decimal('0')
+    
+    @property
+    def total_terreni(self):
+        try:
+            return sum(cascina.total_terreni for cascina in self.cascine.all())
+        except Exception:
+            return 0
 
 
 class ContattoEmail(models.Model):
@@ -128,6 +135,14 @@ class Cascina(models.Model):
             return Decimal(str(superficie))
         except Exception:
             return Decimal('0')
+        
+    @property
+    def total_terreni(self):
+        try:
+            return self.terreni.count()
+        except Exception:
+            return 0
+    
         
 class Terreno(models.Model):
     nome = models.CharField(max_length=200)

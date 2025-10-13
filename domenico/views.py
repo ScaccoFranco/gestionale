@@ -143,6 +143,7 @@ def aziende(request):
             'id': cliente.id,
             'nome': cliente.nome,
             'superficie_totale': cliente.superficie_totale or 0,
+            'total_terreni': cliente.total_terreni or 0,
             'trattamenti_programmati': cliente.trattamenti_programmati,
             'trattamenti_comunicati': cliente.trattamenti_comunicati,
             'cascine': []
@@ -160,6 +161,7 @@ def aziende(request):
                 'superficie_totale': superficie_cascina,
                 'contoterzista': cascina.contoterzista.nome if cascina.contoterzista else None,
                 'contoterzista_id': cascina.contoterzista.id if cascina.contoterzista else None,
+                # TODO: veriificare se ha conseguenze
                 'trattamenti_programmati': 0,  # Calcolo semplificato
                 'trattamenti_comunicati': 0,   # Calcolo semplificato
                 'terreni': list(cascina.terreni.all().order_by(Lower('nome')))
