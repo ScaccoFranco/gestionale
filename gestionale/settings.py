@@ -92,7 +92,7 @@ if DEBUG:
     MIDDLEWARE.insert(1, 'debug_toolbar.middleware.DebugToolbarMiddleware')
     INTERNAL_IPS = ['127.0.0.1', 'localhost']
 else:
-    # Controllo bruteforce
+    # Controllo bruteforce in production
     MIDDLEWARE.insert(1, 'axes.middleware.AxesMiddleware')
 
 ROOT_URLCONF = 'gestionale.urls'
