@@ -251,7 +251,6 @@ def generate_company_communication_pdf(trattamenti, custom_notes=''):
         trattamenti_per_area = {}
         for trattamento in trattamenti:
             if trattamento.livello_applicazione == 'terreno':
-                # CORREZIONE: Gestisci ManyToMany in modo sicuro
                 terreni_list = list(trattamento.terreni.all())
                 for terreno in terreni_list:
                     area_key = f"{terreno.cascina.nome} - {terreno.nome}"
@@ -272,7 +271,7 @@ def generate_company_communication_pdf(trattamenti, custom_notes=''):
                         'trattamenti': []
                     }
                 trattamenti_per_area[area_key]['trattamenti'].append(trattamento)
-            else:  # cliente
+            else:
                 area_key = f"{azienda.nome} - Intera Azienda"
                 if area_key not in trattamenti_per_area:
                     superficie = azienda.get_superficie_totale()
@@ -283,7 +282,7 @@ def generate_company_communication_pdf(trattamenti, custom_notes=''):
                     }
                 trattamenti_per_area[area_key]['trattamenti'].append(trattamento)
         
-        # Template HTML per il PDF - RIMOSSI CAMPI INESISTENTI
+        # Template HTML per il PDF - STILE MINIMALE E MODERNO
         html_template = f"""
         <!DOCTYPE html>
         <html>
@@ -291,75 +290,113 @@ def generate_company_communication_pdf(trattamenti, custom_notes=''):
             <meta charset="utf-8">
             <title>Comunicazione Trattamenti - {azienda.nome}</title>
             <style>
+                @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;500&display=swap');
                 body {{
-                    font-family: Arial, sans-serif;
-                    font-size: 12px;
-                    line-height: 1.4;
-                    margin: 20px;
+                    font-family: 'Roboto', Arial, sans-serif;
+                    font-size: 13px;
+                    color: #333;
+                    line-height: 1.6;
+                    margin: 30px;
+                    background: #fff;
                 }}
                 .header {{
                     text-align: center;
-                    border-bottom: 2px solid #333;
-                    padding-bottom: 20px;
-                    margin-bottom: 30px;
+                    border-bottom: 3px solid #4a90e2;
+                    padding-bottom: 15px;
+                    margin-bottom: 40px;
                 }}
-                .company-info {{
-                    margin-bottom: 30px;
-                    padding: 15px;
-                    border: 1px solid #ddd;
-                    background-color: #f9f9f9;
+                .header h1 {{
+                    font-weight: 500;
+                    font-size: 22px;
+                    margin: 0;
+                    color: #4a90e2;
+                }}
+                .header h2 {{
+                    font-weight: 300;
+                    font-size: 18px;
+                    margin: 5px 0 0 0;
+                }}
+                .header p {{
+                    font-weight: 300;
+                    font-size: 12px;
+                    color: #888;
+                    margin-top: 5px;
                 }}
                 .custom-notes {{
-                    margin-bottom: 30px;
+                    margin-bottom: 35px;
                     padding: 15px;
-                    border: 1px solid #007bff;
-                    background-color: #e7f3ff;
-                    border-radius: 5px;
+                    border: 1px solid #4a90e2;
+                    background-color: #f0f6ff;
+                    border-radius: 7px;
+                    font-weight: 300;
+                }}
+                .custom-notes h3 {{
+                    margin-top: 0;
+                    color: #3a5fbd;
+                    font-weight: 500;
                 }}
                 .treatments-section {{
-                    margin-bottom: 20px;
+                    margin-bottom: 30px;
                 }}
                 .area-header {{
-                    background-color: #007bff;
-                    color: white;
-                    padding: 10px;
-                    font-weight: bold;
-                    margin-bottom: 10px;
+                    background-color: #4a90e2;
+                    color: #fff;
+                    padding: 12px 18px;
+                    font-weight: 500;
+                    font-size: 15px;
+                    border-radius: 6px;
+                    margin-bottom: 16px;
+                    box-shadow: 0 2px 4px rgba(74,144,226,0.3);
                 }}
                 .treatment-item {{
                     border: 1px solid #ddd;
-                    margin-bottom: 10px;
-                    padding: 15px;
-                    background-color: #fff;
+                    border-radius: 8px;
+                    margin-bottom: 18px;
+                    padding: 18px 20px;
+                    background-color: #fafafa;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
                 }}
                 .treatment-header {{
-                    font-weight: bold;
-                    font-size: 14px;
-                    margin-bottom: 10px;
-                    color: #007bff;
+                    font-weight: 500;
+                    font-size: 15px;
+                    color: #4a90e2;
+                    margin-bottom: 12px;
                 }}
                 .treatment-details {{
-                    display: grid;
-                    grid-template-columns: 1fr 1fr;
-                    gap: 10px;
+                    display: flex;
+                    justify-content: space-between;
                     margin-bottom: 10px;
+                    font-weight: 300;
+                    color: #555;
                 }}
                 .products-list {{
-                    margin-top: 10px;
-                    padding: 10px;
-                    background-color: #f8f9fa;
-                    border-left: 4px solid #007bff;
+                    margin-top: 12px;
+                    padding: 12px 15px;
+                    background-color: #e8f0fe;
+                    border-left: 5px solid #4a90e2;
+                    border-radius: 6px;
+                    font-weight: 300;
+                    font-size: 13px;
+                    color: #444;
                 }}
                 .product-item {{
-                    margin-bottom: 5px;
-                    padding: 5px 0;
-                    border-bottom: 1px dotted #ccc;
+                    margin-bottom: 6px;
+                    padding-bottom: 6px;
+                    border-bottom: 1px dotted #cbd3e0;
+                }}
+                .product-item:last-child {{
+                    border-bottom: none;
+                    margin-bottom: 0;
+                    padding-bottom: 0;
                 }}
                 .footer {{
-                    margin-top: 40px;
-                    font-size: 10px;
-                    color: #666;
+                    margin-top: 50px;
+                    font-size: 11px;
+                    color: #a0a0a0;
                     text-align: center;
+                    font-weight: 300;
+                    border-top: 1px solid #ddd;
+                    padding-top: 8px;
                 }}
             </style>
         </head>
@@ -378,7 +415,7 @@ def generate_company_communication_pdf(trattamenti, custom_notes=''):
             ''' if custom_notes else ''}
             
             <div class="treatments-section">
-                <h2>TRATTAMENTI COMUNICATI</h2>
+                <h2>TRATTAMENTI</h2>
         """
         
         # NUMERAZIONE PROGRESSIVA indipendente
@@ -393,14 +430,11 @@ def generate_company_communication_pdf(trattamenti, custom_notes=''):
             """
             
             for trattamento in area_data['trattamenti']:  
-
-                # Calcola superficie in modo sicuro
                 try:
                     superficie_trattata = float(trattamento.get_superficie_interessata())
                 except Exception:
                     superficie_trattata = 0.0
                 
-                # TEMPLATE PDF CON SOLO CAMPI ESISTENTI
                 html_template += f"""
                     <div class="treatment-item">
                         <div class="treatment-header">
@@ -412,7 +446,6 @@ def generate_company_communication_pdf(trattamenti, custom_notes=''):
                         </div>
                 """
                 
-                # CORREZIONE: Aggiungi prodotti utilizzati in modo sicuro
                 try:
                     prodotti_qs = trattamento.trattamentoprodotto_set.all()
                     if prodotti_qs.exists():
@@ -421,15 +454,12 @@ def generate_company_communication_pdf(trattamenti, custom_notes=''):
                                 <strong>Prodotti utilizzati:</strong>
                         """
                         for prodotto_trattamento in prodotti_qs:
-                            # Gestisci sia quantita_per_ettaro che quantita
                             if hasattr(prodotto_trattamento, 'quantita_per_ettaro'):
                                 dose = prodotto_trattamento.quantita_per_ettaro
                             elif hasattr(prodotto_trattamento, 'quantita'):
                                 dose = prodotto_trattamento.quantita
                             else:
                                 dose = 0
-                            
-                            # Ottieni principi attivi in modo sicuro
                             try:
                                 principi_attivi = [pa.nome for pa in prodotto_trattamento.prodotto.principi_attivi.all()]
                                 principi_attivi_str = ', '.join(principi_attivi) if principi_attivi else 'N/D'
@@ -450,7 +480,6 @@ def generate_company_communication_pdf(trattamenti, custom_notes=''):
                 html_template += "</div>"
                 trattamento_numero += 1
         
-        # Chiudi il template
         html_template += f"""
             </div>
             
@@ -466,7 +495,7 @@ def generate_company_communication_pdf(trattamenti, custom_notes=''):
         if pdf_engine == 'weasyprint':
             html = HTML(string=html_template)
             pdf_content = html.write_pdf()
-        else:  # xhtml2pdf
+        else:
             from io import BytesIO
             result = BytesIO()
             pdf = pisa.pisaDocument(BytesIO(html_template.encode("UTF-8")), result)
@@ -480,7 +509,9 @@ def generate_company_communication_pdf(trattamenti, custom_notes=''):
         import traceback
         traceback.print_exc()
         raise Exception(f"Errore nella generazione del PDF: {str(e)}")
-    
+
+
+
 # Modifica la funzione executeBulkAction esistente per reindirizzare al wizard
 def redirect_to_communication_wizard(selected_treatments):
     """
