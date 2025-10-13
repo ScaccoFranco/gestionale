@@ -77,3 +77,5 @@ INFO 2025-08-01 13:19:21,245 email_utils Iniziando comunicazione per trattamento
 ERROR 2025-08-01 13:19:21,248 email_utils Errore generale nella comunicazione per trattamento 58: Cannot resolve keyword 'attivo' into field. Choices are: cliente, cliente_id, email, id, nome
 INFO 2025-08-01 13:19:31,087 email_utils Iniziando comunicazione per trattamento 58
 ERROR 2025-08-01 13:19:31,088 email_utils Errore generale nella comunicazione per trattamento 58: Cannot resolve keyword 'attivo' into field. Choices are: cliente, cliente_id, email, id, nome
+INFO 2025-10-13 20:25:16,624 email_utils Email di test inviata con successo
+INFO 2025-10-13 20:25:28,456 email_utils Email di test inviata con successo

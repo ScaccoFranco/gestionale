@@ -613,6 +613,7 @@
                 </a>
             </li>
             {% if user.userprofile.role == 'admin' or user.is_superuser %}
+            <!-- TODO: implementare queste funzionalita' 
             <li>
                 <a href="{% url 'admin_dashboard' %}" class="{% if request.resolver_match.url_name == 'admin_dashboard' %}active{% endif %}">
                     <i class="fas fa-cog"></i>
@@ -625,6 +626,7 @@
                     <span>Gestione Utenti</span>
                 </a>
             </li>
+            -->
             {% endif %}
         </ul>
     </nav>
@@ -667,6 +669,7 @@
                                     <i class="fas fa-user-edit me-2"></i>Il mio profilo
                                 </a>
                             </li>
+                            <!--TODO: gestione utenti
                             {% if user.userprofile.role == 'admin' or user.is_superuser %}
                             <li>
                                 <a class="dropdown-item" href="{% url 'admin_dashboard' %}">
@@ -679,6 +682,7 @@
                                 </a>
                             </li>
                             {% endif %}
+                            --> 
                             <li><hr class="dropdown-divider"></li>
                             <li>
                                 <a class="dropdown-item text-danger" href="{% url 'logout' %}">
