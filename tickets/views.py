@@ -6,6 +6,7 @@ from django.contrib.auth import get_user_model
 from django.shortcuts import render
 from .models import Ticket, TicketComment
 from .serializers import TicketSerializer, TicketCreateSerializer, TicketCommentSerializer
+import requests
 
 User = get_user_model()
 
@@ -71,6 +72,29 @@ def submit_feedback(request):
         if serializer.is_valid():
             ticket = serializer.save()
             response_serializer = TicketSerializer(ticket)
+
+            try:
+                from decouple import config
+                BOT_TOKEN = config('BOT_TOKEN', default='')
+                CHAT_ID = config('CHAT_ID', default='')
+            except ImportError:
+                import os
+
+                BOT_TOKEN = os.environ.get('BOT_TOKEN', '')
+                CHAT_ID = os.environ.get('CHAT_ID', '')
+                
+
+            output = f"Ticket {data.get('priority')}: {data.get('ticket_type')}\n\n{data.get('description')}"
+
+            url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+            payload = {
+                "chat_id": CHAT_ID,
+                "text": output,
+                "parse_mode": "HTML"
+            }
+
+            response = requests.post(url, data=payload)
+
             return Response({
                 'success': True,
                 'message': 'Feedback inviato con successo! Grazie per il tuo contributo.',
