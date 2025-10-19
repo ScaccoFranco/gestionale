@@ -10,19 +10,22 @@ services:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U gestionale_user -d gestionale_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 30s
     networks:
-      - webnet
+      - rete-proxy  # <-- MODIFICATO
 
   web:
     build: .
     command: gunicorn gestionale.wsgi:application --bind 0.0.0.0:8000
+    # NOTA: Rimuovi la riga 'volumes: - .:/app' per la produzione
+    # se il tuo Dockerfile copia già il codice con "COPY . ."
     volumes:
-      - .:/app
+      - .:/app 
+      - ./static:/app/static # Aggiunto per i file statici
     expose:
       - "8000"
     environment:
@@ -36,24 +39,11 @@ services:
       db:
         condition: service_healthy
     networks:
-      - webnet
-
-  nginx:
-    image: nginx:alpine
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
-      - ./certs:/etc/nginx/certs:ro
-      - ./static:/app/static
-    depends_on:
-      - web
-    networks:
-      - webnet
+      - rete-proxy  # <-- MODIFICATO
 
 volumes:
   postgres_data:
 
 networks:
-  webnet:
+  rete-proxy:  # <-- MODIFICATO
+    external: true
