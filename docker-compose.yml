@@ -1,36 +1,49 @@
+version: '3.9'
+
 services:
   db:
     image: postgres:15-alpine
     volumes:
       - postgres_data:/var/lib/postgresql/data/
     environment:
-      POSTGRES_DB: gestionale_db
-      POSTGRES_USER: gestionale_user
-      POSTGRES_PASSWORD: gestionale_password
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U gestionale_user -d gestionale_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 30s
+    networks:
+      - rete-proxy  # <-- MODIFICATO
 
   web:
     build: .
-    command: python manage.py runserver 0.0.0.0:8000
+    command: gunicorn gestionale.wsgi:application --bind 0.0.0.0:8000
+    # NOTA: Rimuovi la riga 'volumes: - .:/app' per la produzione
+    # se il tuo Dockerfile copia già il codice con "COPY . ."
     volumes:
-      - .:/app
-    ports:
-      - "8000:8000"
+      - .:/app 
+      - ./static:/app/static # Aggiunto per i file statici
+    expose:
+      - "8000"
     environment:
-      - DEBUG=1
-      - DB_HOST=db
-      - DB_PORT=5432
-      - DB_NAME=gestionale_db
-      - DB_USER=gestionale_user
-      - DB_PASSWORD=gestionale_password
+      DEBUG: ${DEBUG}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
     depends_on:
       db:
         condition: service_healthy
+    networks:
+      - rete-proxy  # <-- MODIFICATO
 
 volumes:
   postgres_data:
+
+networks:
+  rete-proxy:  # <-- MODIFICATO
+    external: true
