@@ -3,6 +3,8 @@ class FeedbackWidget {
         this.widget = null;
         this.modal = null;
         this.isDragging = false;
+        this.hasMoved = false; // <-- Aggiunto per tracciare il movimento
+        this.clickThreshold = 5; // <-- Aggiunta soglia in pixel
         this.dragStartX = 0;
         this.dragStartY = 0;
         this.widgetStartX = 0;
@@ -142,10 +144,11 @@ class FeedbackWidget {
         document.addEventListener('touchend', this.endDrag.bind(this));
     }
 
+    // --- LOGICA DI DRAG MODIFICATA ---
+
     startDrag(e) {
-        e.preventDefault();
         this.isDragging = true;
-        this.button.classList.add('dragging');
+        this.hasMoved = false; // Resetta il flag di movimento
 
         const clientX = e.clientX || (e.touches && e.touches[0].clientX);
         const clientY = e.clientY || (e.touches && e.touches[0].clientY);
@@ -156,15 +159,12 @@ class FeedbackWidget {
         const rect = this.widget.getBoundingClientRect();
         this.widgetStartX = rect.left;
         this.widgetStartY = rect.top;
-
-        // Prevent text selection during drag
-        document.body.style.userSelect = 'none';
+        
+        // Non aggiungere la classe 'dragging' o userSelect qui
     }
 
     drag(e) {
         if (!this.isDragging) return;
-
-        e.preventDefault();
 
         const clientX = e.clientX || (e.touches && e.touches[0].clientX);
         const clientY = e.clientY || (e.touches && e.touches[0].clientY);
@@ -172,37 +172,64 @@ class FeedbackWidget {
         const deltaX = clientX - this.dragStartX;
         const deltaY = clientY - this.dragStartY;
 
-        let newX = this.widgetStartX + deltaX;
-        let newY = this.widgetStartY + deltaY;
+        // Controlla se il movimento supera la soglia
+        if (!this.hasMoved && (Math.abs(deltaX) > this.clickThreshold || Math.abs(deltaY) > this.clickThreshold)) {
+            this.hasMoved = true;
+            this.button.classList.add('dragging');
+            document.body.style.userSelect = 'none';
+        }
 
-        // Constrain to viewport
-        const maxX = window.innerWidth - this.widget.offsetWidth;
-        const maxY = window.innerHeight - this.widget.offsetHeight;
+        // Muovi solo se il flag hasMoved è true
+        if (this.hasMoved) {
+            e.preventDefault(); // Previeni lo scroll della pagina SOLO se si sta trascinando
 
-        newX = Math.max(0, Math.min(newX, maxX));
-        newY = Math.max(0, Math.min(newY, maxY));
+            let newX = this.widgetStartX + deltaX;
+            let newY = this.widgetStartY + deltaY;
 
-        this.widget.style.left = newX + 'px';
-        this.widget.style.top = newY + 'px';
-        this.widget.style.right = 'auto';
-        this.widget.style.bottom = 'auto';
+            // Constrain to viewport
+            const maxX = window.innerWidth - this.widget.offsetWidth;
+            const maxY = window.innerHeight - this.widget.offsetHeight;
+
+            newX = Math.max(0, Math.min(newX, maxX));
+            newY = Math.max(0, Math.min(newY, maxY));
+
+            this.widget.style.left = newX + 'px';
+            this.widget.style.top = newY + 'px';
+            this.widget.style.right = 'auto';
+            this.widget.style.bottom = 'auto';
+        }
     }
 
     endDrag(e) {
         if (!this.isDragging) return;
 
-        this.isDragging = false;
-        this.button.classList.remove('dragging');
-        document.body.style.userSelect = '';
+        const wasADrag = this.hasMoved;
 
-        // Save position
-        this.savePosition();
+        if (wasADrag) {
+            // Pulisci gli stili e salva se era un trascinamento
+            this.button.classList.remove('dragging');
+            document.body.style.userSelect = '';
+            this.savePosition();
+        }
 
-        // Small delay to prevent click event after drag
-        setTimeout(() => {
-            this.isDragging = false;
-        }, 100);
+        // Resetta lo stato
+        this.isDragging = false; 
+        this.hasMoved = false;
+
+        if (wasADrag) {
+            // Se era un VERO trascinamento, dobbiamo bloccare il 'click'
+            // impostando temporaneamente isDragging a true.
+            this.isDragging = true;
+            setTimeout(() => {
+                this.isDragging = false;
+            }, 100); 
+        }
+        // Se era un TAP (wasADrag = false),
+        // isDragging è ora 'false' e il gestore 'click' 
+        // funzionerà, aprendo il modale.
     }
+
+    // --- FINE LOGICA DI DRAG MODIFICATA ---
 
     savePosition() {
         const rect = this.widget.getBoundingClientRect();
