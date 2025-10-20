@@ -11,6 +11,6 @@ echo "PostgreSQL is up - executing command"
 # Resto dello script...
 python manage.py migrate --noinput
 python manage.py collectstatic --noinput
-python manage.py populate_from_csv --noinput
+python manage.py populate_from_csv
 
 exec "$@"
