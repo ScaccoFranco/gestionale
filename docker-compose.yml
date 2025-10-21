@@ -39,39 +39,6 @@ services:
     networks:
       - rete-proxy
 
-  nginx:
-    image: nginx:1.25-alpine
-    ports:
-      - "80:80"
-      - "443:443"  # <-- Aggiungi questa riga per HTTPS
-    volumes:
-      # Questo è il tuo file di configurazione principale (che gestisce già SSL)
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
-      
-      # Volumi per Django static e media (già presenti)
-      - static_volume:/app/staticfiles:ro
-      - media_volume:/app/media:ro
-      
-      # --- Aggiungi i volumi seguenti ---
-      
-      # Monta la directory dei certificati Let's Encrypt
-      # Assicurati che /etc/letsencrypt esista sul tuo computer host
-      - /etc/letsencrypt:/etc/letsencrypt:ro 
-      
-      # Monta la directory dei log (richiesta in 1.conf)
-      # Assicurati che /data/logs esista sul tuo computer host
-      - /data/logs:/data/logs 
-      
-      # Monta i file di configurazione Nginx inclusi (richiesti in 1.conf)
-      # (Sulla base di 1.conf, questi file sembrano necessari)
-      # Assicurati che queste directory esistano sul tuo host:
-      - /data/nginx/conf.d/include:/etc/nginx/conf.d/include:ro 
-      - /data/nginx/custom:/data/nginx/custom:ro 
-
-    depends_on:
-      - web
-    networks:
-      - rete-proxy
   
 volumes:
   postgres_data:
