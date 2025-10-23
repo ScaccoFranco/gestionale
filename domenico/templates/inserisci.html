@@ -2263,7 +2263,6 @@ function loadTargetSelection(type) {
                 
                 <div class="clients-grid" id="clients-container">
                     {% for cliente in clienti %}
-                    {% if cliente.get_superficie_totale > 0 %}
                     <div class="selection-item" 
                          data-name="{{ cliente.nome|lower }}" 
                          data-cliente-id="{{ cliente.id }}"
@@ -2278,7 +2277,6 @@ function loadTargetSelection(type) {
                             <div class="selection-info">{{ cliente.get_superficie_totale|floatformat:2 }} ha totali</div>
                         </div>
                     </div>
-                    {% endif %}
                     {% endfor %}
                 </div>
             </div>

@@ -309,7 +309,7 @@ class TrattamentoProdotto(models.Model):
             
             from decimal import Decimal
             if superficie is None or superficie == 0:
-                return quantita_per_ettaro
+                return 0
             
             superficie_decimal = Decimal(str(superficie))
             quantita_decimal = Decimal(str(quantita_per_ettaro))
