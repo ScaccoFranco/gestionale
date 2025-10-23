@@ -39,7 +39,7 @@ services:
     networks:
       - rete-proxy
 
-nginx:
+  nginx:
     image: nginx:1.25-alpine
     ports:
       - "80:80"
